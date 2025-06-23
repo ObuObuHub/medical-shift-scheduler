@@ -43,16 +43,25 @@ export const GanttView: React.FC<GanttViewProps> = ({
   // Dynamic import of Frappe Gantt
   useEffect(() => {
     const loadGantt = async () => {
-      if (typeof window !== 'undefined') {
+      if (typeof window !== 'undefined' && !Gantt) {
         try {
           const GanttModule = await import('frappe-gantt');
           Gantt = GanttModule.default || GanttModule;
+          
+          // Check if Gantt constructor is available
+          if (typeof Gantt !== 'function') {
+            throw new Error('Gantt constructor not found');
+          }
+          
           setIsLoading(false);
+          setError(null);
         } catch (err) {
           console.error('Failed to load Frappe Gantt:', err);
-          setError('Eroare la încărcarea componentei Gantt');
+          setError(`Eroare la încărcarea componentei Gantt: ${err.message}`);
           setIsLoading(false);
         }
+      } else if (Gantt) {
+        setIsLoading(false);
       }
     };
     
@@ -106,7 +115,8 @@ export const GanttView: React.FC<GanttViewProps> = ({
 
       // Create new Gantt instance
       if (filteredTasks.length > 0) {
-        ganttInstance.current = new Gantt(ganttRef.current, filteredTasks, {
+        try {
+          ganttInstance.current = new Gantt(ganttRef.current, filteredTasks, {
           view_mode: viewMode,
           date_format: 'YYYY-MM-DD HH:mm',
           bar_height: 24,
@@ -142,6 +152,11 @@ export const GanttView: React.FC<GanttViewProps> = ({
             setViewMode(mode);
           }
         });
+        } catch (ganttErr) {
+          console.error('Error creating Gantt instance:', ganttErr);
+          setError(`Eroare la crearea graficului: ${ganttErr.message}`);
+          return;
+        }
       }
 
       setError(null);
@@ -262,13 +277,24 @@ export const GanttView: React.FC<GanttViewProps> = ({
     return (
       <div className="medical-gantt-container">
         <div className="gantt-error">
-          <p>{error}</p>
-          <button 
-            onClick={() => window.location.reload()} 
-            className="mt-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
-          >
-            Reîncarcă Pagina
-          </button>
+          <h3 className="text-lg font-semibold mb-2">Eroare încărcare Gantt</h3>
+          <p className="mb-4">{error}</p>
+          <div className="space-y-2">
+            <button 
+              onClick={() => {
+                setError(null);
+                setIsLoading(true);
+                Gantt = null;
+                window.location.reload();
+              }} 
+              className="block w-full px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+            >
+              Reîncarcă Pagina
+            </button>
+            <p className="text-sm text-gray-600">
+              Dacă problema persistă, utilizează vizualizarea Calendar pentru planificarea turilor.
+            </p>
+          </div>
         </div>
       </div>
     );

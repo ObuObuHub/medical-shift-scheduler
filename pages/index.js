@@ -9,7 +9,7 @@ import { AuthProvider, useAuth } from '../components/AuthContext';
 import { DataProvider, useData } from '../components/DataContext';
 import { LoginForm } from '../components/LoginForm';
 import { ShiftTypeEditModal } from '../components/ShiftTypeEditModal';
-import { GanttView } from '../components/GanttView';
+import { GanttViewWrapper as GanttView } from '../components/GanttViewWrapper';
 
 // Main app component with authentication
 function AppContent() {
