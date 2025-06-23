@@ -5,10 +5,6 @@ import { useAuth } from './AuthContext';
 import { transformShiftsToGantt, getShiftStatistics, GanttTask } from '../utils/ganttDataTransformer';
 import { Staff, ShiftType } from '../types/medical';
 
-// Import Frappe Gantt
-// Note: We'll import this dynamically to avoid SSR issues
-let Gantt: any = null;
-
 interface GanttViewProps {
   selectedHospital: string;
   currentDate: Date;
@@ -27,6 +23,7 @@ export const GanttView: React.FC<GanttViewProps> = ({
   
   const ganttRef = useRef<HTMLDivElement>(null);
   const ganttInstance = useRef<any>(null);
+  const GanttClass = useRef<any>(null);
   
   const [viewMode, setViewMode] = useState<ViewMode>('Week');
   const [isLoading, setIsLoading] = useState(true);
@@ -43,13 +40,14 @@ export const GanttView: React.FC<GanttViewProps> = ({
   // Dynamic import of Frappe Gantt
   useEffect(() => {
     const loadGantt = async () => {
-      if (typeof window !== 'undefined' && !Gantt) {
+      if (typeof window !== 'undefined' && !GanttClass.current) {
         try {
+          // Import the Gantt library
           const GanttModule = await import('frappe-gantt');
-          Gantt = GanttModule.default || GanttModule;
+          GanttClass.current = GanttModule.default || GanttModule;
           
           // Check if Gantt constructor is available
-          if (typeof Gantt !== 'function') {
+          if (typeof GanttClass.current !== 'function') {
             throw new Error('Gantt constructor not found');
           }
           
@@ -60,7 +58,7 @@ export const GanttView: React.FC<GanttViewProps> = ({
           setError(`Eroare la încărcarea componentei Gantt: ${err.message}`);
           setIsLoading(false);
         }
-      } else if (Gantt) {
+      } else if (GanttClass.current) {
         setIsLoading(false);
       }
     };
@@ -70,7 +68,7 @@ export const GanttView: React.FC<GanttViewProps> = ({
 
   // Transform data and create/update Gantt chart
   useEffect(() => {
-    if (!Gantt || !ganttRef.current || isLoading) return;
+    if (!GanttClass.current || !ganttRef.current || isLoading) return;
 
     try {
       const startDate = new Date(currentDate);
@@ -116,7 +114,7 @@ export const GanttView: React.FC<GanttViewProps> = ({
       // Create new Gantt instance
       if (filteredTasks.length > 0) {
         try {
-          ganttInstance.current = new Gantt(ganttRef.current, filteredTasks, {
+          ganttInstance.current = new GanttClass.current(ganttRef.current, filteredTasks, {
           view_mode: viewMode,
           date_format: 'YYYY-MM-DD HH:mm',
           bar_height: 24,
@@ -284,7 +282,7 @@ export const GanttView: React.FC<GanttViewProps> = ({
               onClick={() => {
                 setError(null);
                 setIsLoading(true);
-                Gantt = null;
+                GanttClass.current = null;
                 window.location.reload();
               }} 
               className="block w-full px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
