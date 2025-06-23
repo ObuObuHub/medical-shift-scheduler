@@ -1,17 +1,5 @@
 import React from 'react';
-import dynamic from 'next/dynamic';
-
-// Dynamically import GanttView to avoid SSR issues
-const GanttView = dynamic(() => import('./GanttView').then(mod => ({ default: mod.GanttView })), {
-  ssr: false,
-  loading: () => (
-    <div className="medical-gantt-container">
-      <div className="gantt-loading">
-        Se încarcă vizualizarea Gantt...
-      </div>
-    </div>
-  )
-});
+import { SimpleGanttView } from './SimpleGanttView';
 
 interface GanttViewWrapperProps {
   selectedHospital: string;
@@ -20,5 +8,5 @@ interface GanttViewWrapperProps {
 }
 
 export const GanttViewWrapper: React.FC<GanttViewWrapperProps> = (props) => {
-  return <GanttView {...props} />;
+  return <SimpleGanttView {...props} />;
 };
