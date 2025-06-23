@@ -2,9 +2,6 @@
 const nextConfig = {
   reactStrictMode: true,
   swcMinify: true,
-  experimental: {
-    appDir: false
-  },
   // Optimization for Vercel deployment
   compress: true,
   poweredByHeader: false,
