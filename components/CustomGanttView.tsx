@@ -30,7 +30,7 @@ export const CustomGanttView: React.FC<CustomGanttViewProps> = ({
   const { shiftTypes, hospitals, staff, shifts, addNotification } = useData();
   const { hasPermission } = useAuth();
   
-  const [viewMode, setViewMode] = useState<ViewMode>('Week');
+  const [viewMode, setViewMode] = useState<ViewMode>('Month');
   const [filteredDepartments, setFilteredDepartments] = useState<string[]>([]);
   const [filteredStaffTypes, setFilteredStaffTypes] = useState<string[]>([]);
 
@@ -182,36 +182,61 @@ export const CustomGanttView: React.FC<CustomGanttViewProps> = ({
     onDateChange(newDate);
   };
 
-  // Export functionality
+  // Export functionality - human-readable text format
   const handleExport = (): void => {
-    const exportData = {
-      hospital: hospitals.find(h => h.id === selectedHospital)?.name,
-      period: `${dateRange[0].toLocaleDateString('ro-RO')} - ${dateRange[dateRange.length - 1].toLocaleDateString('ro-RO')}`,
-      viewMode,
-      tasks: ganttTasks.map(task => ({
-        staff: task.staffName,
-        department: task.department,
-        shift: task.shiftType.name,
-        date: task.date,
-        start: task.startTime.toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit' }),
-        end: task.endTime.toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit' })
-      }))
-    };
+    const hospitalName = hospitals.find(h => h.id === selectedHospital)?.name;
+    const period = `${dateRange[0].toLocaleDateString('ro-RO')} - ${dateRange[dateRange.length - 1].toLocaleDateString('ro-RO')}`;
     
-    const blob = new Blob([JSON.stringify(exportData, null, 2)], {
-      type: 'application/json'
+    // Group tasks by department and date
+    const tasksByDept = ganttTasks.reduce((acc, task) => {
+      if (!acc[task.department]) acc[task.department] = {};
+      if (!acc[task.department][task.date]) acc[task.department][task.date] = [];
+      acc[task.department][task.date].push(task);
+      return acc;
+    }, {} as Record<string, Record<string, typeof ganttTasks>>);
+    
+    let textContent = `PROGRAM TURE MEDICALE\n`;
+    textContent += `========================\n\n`;
+    textContent += `Spital: ${hospitalName}\n`;
+    textContent += `Perioada: ${period}\n`;
+    textContent += `Generat: ${new Date().toLocaleDateString('ro-RO')} ${new Date().toLocaleTimeString('ro-RO')}\n\n`;
+    
+    // Export by department
+    Object.keys(tasksByDept).sort().forEach(department => {
+      textContent += `DEPARTAMENT: ${department.toUpperCase()}\n`;
+      textContent += `${'-'.repeat(department.length + 13)}\n\n`;
+      
+      Object.keys(tasksByDept[department]).sort().forEach(date => {
+        const dateObj = new Date(date);
+        textContent += `${dateObj.toLocaleDateString('ro-RO', { weekday: 'long', day: 'numeric', month: 'long' })}\n`;
+        
+        tasksByDept[department][date].forEach(task => {
+          const startTime = task.startTime.toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit' });
+          const endTime = task.endTime.toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit' });
+          textContent += `  ${startTime}-${endTime} | ${task.shiftType.name} | ${task.staffName}\n`;
+        });
+        textContent += `\n`;
+      });
+      textContent += `\n`;
+    });
+    
+    textContent += `Total departamente: ${Object.keys(tasksByDept).length}\n`;
+    textContent += `Total ture: ${ganttTasks.length}\n`;
+    
+    const blob = new Blob([textContent], {
+      type: 'text/plain;charset=utf-8'
     });
     
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `gantt-ture-${selectedHospital}-${new Date().toISOString().split('T')[0]}.json`;
+    a.download = `ture-${selectedHospital}-${new Date().toISOString().split('T')[0]}.txt`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
     
-    addNotification('Graficul Gantt a fost exportat cu succes', 'success');
+    addNotification('Programul de ture a fost exportat în format text', 'success');
   };
 
   // Toggle filters
@@ -252,21 +277,10 @@ export const CustomGanttView: React.FC<CustomGanttViewProps> = ({
           </h2>
           
           <div className="flex items-center space-x-2">
-            {/* View mode selector */}
-            <div className="flex bg-gray-100 rounded-lg p-1">
-              {['Day', 'Week', 'Month'].map((mode) => (
-                <button
-                  key={mode}
-                  onClick={() => setViewMode(mode as ViewMode)}
-                  className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
-                    viewMode === mode
-                      ? 'bg-white text-gray-900 shadow-sm'
-                      : 'text-gray-600 hover:text-gray-900'
-                  }`}
-                >
-                  {mode === 'Day' ? 'Zi' : mode === 'Week' ? 'Săptămână' : 'Lună'}
-                </button>
-              ))}
+            {/* Month-only indicator */}
+            <div className="flex bg-blue-50 rounded-lg px-3 py-2">
+              <Calendar className="w-4 h-4 mr-2 text-blue-600" />
+              <span className="text-sm font-medium text-blue-800">Vizualizare Lunară</span>
             </div>
             
             {/* Export button */}
@@ -306,12 +320,6 @@ export const CustomGanttView: React.FC<CustomGanttViewProps> = ({
                 <ChevronRight className="w-5 h-5" />
               </button>
               
-              <button
-                onClick={() => onDateChange(new Date())}
-                className="px-3 py-1 text-sm bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
-              >
-                Azi
-              </button>
             </div>
           </div>
 

@@ -49,17 +49,50 @@ export const SimpleGanttView: React.FC<SimpleGanttViewProps> = ({
     onDateChange(newDate);
   };
 
-  // Mock export functionality
+  // Export functionality - human-readable text format
   const handleExport = (): void => {
-    const exportData = {
-      hospital: hospitals.find(h => h.id === selectedHospital)?.name,
-      period: currentDate.toLocaleDateString('ro-RO'),
-      shifts: Object.keys(shifts).length,
-      staff: hospitalStaff.length
-    };
+    const hospitalName = hospitals.find(h => h.id === selectedHospital)?.name;
+    const monthYear = currentDate.toLocaleDateString('ro-RO', { month: 'long', year: 'numeric' });
     
-    console.log('Exporting data:', exportData);
-    addNotification('Date exportate cu succes', 'success');
+    let textContent = `RAPORT LUNAR TURE MEDICALE\n`;
+    textContent += `==========================\n\n`;
+    textContent += `Spital: ${hospitalName}\n`;
+    textContent += `Luna: ${monthYear}\n`;
+    textContent += `Generat: ${new Date().toLocaleDateString('ro-RO')} ${new Date().toLocaleTimeString('ro-RO')}\n\n`;
+    
+    // Staff summary by department
+    const departments = [...new Set(hospitalStaff.map(s => s.specialization))].sort();
+    textContent += `PERSONAL PE DEPARTAMENTE\n`;
+    textContent += `========================\n\n`;
+    
+    departments.forEach(dept => {
+      const deptStaff = hospitalStaff.filter(s => s.specialization === dept);
+      textContent += `${dept}:\n`;
+      textContent += `  Medici: ${deptStaff.filter(s => s.type === 'medic').length}\n`;
+      textContent += `  Asistenți: ${deptStaff.filter(s => s.type === 'asistent').length}\n`;
+      textContent += `  Total: ${deptStaff.length}\n\n`;
+    });
+    
+    textContent += `STATISTICI\n`;
+    textContent += `==========\n`;
+    textContent += `Total departamente: ${departments.length}\n`;
+    textContent += `Total personal: ${hospitalStaff.length}\n`;
+    textContent += `Total ture planificate: ${Object.keys(shifts).length}\n`;
+    
+    const blob = new Blob([textContent], {
+      type: 'text/plain;charset=utf-8'
+    });
+    
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `raport-${selectedHospital}-${currentDate.toISOString().split('T')[0]}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    
+    addNotification('Raportul a fost exportat în format text', 'success');
   };
 
   if (isLoading) {
@@ -157,12 +190,6 @@ export const SimpleGanttView: React.FC<SimpleGanttViewProps> = ({
                 <ChevronRight className="w-5 h-5" />
               </button>
               
-              <button
-                onClick={() => onDateChange(new Date())}
-                className="px-3 py-1 text-sm bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
-              >
-                Azi
-              </button>
             </div>
           </div>
 

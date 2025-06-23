@@ -16,12 +16,37 @@ const DEFAULT_HOSPITALS = [
 ];
 
 const DEFAULT_STAFF = [
-  { id: 1, name: 'Dr. Popescu Ion', type: 'medic', specialization: 'Urgențe', hospital: 'spital1', role: 'staff' },
-  { id: 2, name: 'Dr. Ionescu Maria', type: 'medic', specialization: 'Chirurgie', hospital: 'spital1', role: 'manager' },
-  { id: 3, name: 'As. Radu Ana', type: 'asistent', specialization: 'ATI', hospital: 'spital1', role: 'staff' },
-  { id: 4, name: 'As. Popa Elena', type: 'asistent', specialization: 'Urgențe', hospital: 'spital1', role: 'staff' },
-  { id: 5, name: 'Inf. Stan Mihai', type: 'infirmier', specialization: 'General', hospital: 'spital1', role: 'staff' },
-  { id: 6, name: 'Dr. Gheorghe Andrei', type: 'medic', specialization: 'Pediatrie', hospital: 'spital2', role: 'staff' }
+  // Urgențe
+  { id: 1, name: 'Dr. Popescu Ion', type: 'medic', specialization: 'Urgențe', hospital: 'spital1', role: 'manager' },
+  { id: 2, name: 'Dr. Stanescu Mihai', type: 'medic', specialization: 'Urgențe', hospital: 'spital1', role: 'staff' },
+  { id: 3, name: 'As. Popa Elena', type: 'asistent', specialization: 'Urgențe', hospital: 'spital1', role: 'staff' },
+  { id: 4, name: 'As. Marinescu Ana', type: 'asistent', specialization: 'Urgențe', hospital: 'spital1', role: 'staff' },
+  
+  // Chirurgie
+  { id: 5, name: 'Dr. Ionescu Maria', type: 'medic', specialization: 'Chirurgie', hospital: 'spital1', role: 'manager' },
+  { id: 6, name: 'Dr. Dumitrescu Paul', type: 'medic', specialization: 'Chirurgie', hospital: 'spital1', role: 'staff' },
+  { id: 7, name: 'As. Vlad Carmen', type: 'asistent', specialization: 'Chirurgie', hospital: 'spital1', role: 'staff' },
+  { id: 8, name: 'As. Tudor Diana', type: 'asistent', specialization: 'Chirurgie', hospital: 'spital1', role: 'staff' },
+  
+  // ATI
+  { id: 9, name: 'Dr. Radulescu Alex', type: 'medic', specialization: 'ATI', hospital: 'spital1', role: 'staff' },
+  { id: 10, name: 'Dr. Constantinescu Ioana', type: 'medic', specialization: 'ATI', hospital: 'spital1', role: 'staff' },
+  { id: 11, name: 'As. Radu Ana', type: 'asistent', specialization: 'ATI', hospital: 'spital1', role: 'staff' },
+  { id: 12, name: 'As. Barbu Cristina', type: 'asistent', specialization: 'ATI', hospital: 'spital1', role: 'staff' },
+  
+  // Pediatrie
+  { id: 13, name: 'Dr. Gheorghe Andrei', type: 'medic', specialization: 'Pediatrie', hospital: 'spital2', role: 'manager' },
+  { id: 14, name: 'Dr. Moraru Elena', type: 'medic', specialization: 'Pediatrie', hospital: 'spital2', role: 'staff' },
+  { id: 15, name: 'As. Neagu Raluca', type: 'asistent', specialization: 'Pediatrie', hospital: 'spital2', role: 'staff' },
+  { id: 16, name: 'As. Marin Gabriela', type: 'asistent', specialization: 'Pediatrie', hospital: 'spital2', role: 'staff' },
+  
+  // Cardiologie
+  { id: 17, name: 'Dr. Georgescu Radu', type: 'medic', specialization: 'Cardiologie', hospital: 'spital1', role: 'staff' },
+  { id: 18, name: 'As. Cristea Adriana', type: 'asistent', specialization: 'Cardiologie', hospital: 'spital1', role: 'staff' },
+  
+  // Neurologie
+  { id: 19, name: 'Dr. Petrescu Dana', type: 'medic', specialization: 'Neurologie', hospital: 'spital1', role: 'staff' },
+  { id: 20, name: 'As. Enache Monica', type: 'asistent', specialization: 'Neurologie', hospital: 'spital1', role: 'staff' }
 ];
 
 const DataContext = createContext();

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import Head from 'next/head';
 import {
-  Calendar, Users, Bell, Building2, ArrowLeftRight, Clock, CheckCircle,
+  Calendar, Users, Bell, Building2, ArrowLeftRight, Clock, CheckCircle, XCircle,
   AlertCircle, ChevronLeft, ChevronRight, Menu, X, Settings, Shield,
   Wand2, Plus, Edit2, Trash2, Save, UserCog, LogOut, BarChart3, Filter, Download
 } from '../components/Icons';
@@ -78,7 +78,7 @@ function AppContent() {
     return <LoginForm />;
   }
 
-  // Automatic shift generation function (for Manager)
+  // Department-based automatic shift generation with simplified staffing
   const generateAutomaticShifts = () => {
     if (!hasPermission('generate_shifts')) {
       addNotification('Nu aveți permisiunea de a genera ture automat', 'error');
@@ -91,48 +91,57 @@ function AppContent() {
     const endDate = new Date(currentDate);
     endDate.setMonth(endDate.getMonth() + 1, 0);
 
-    // Simplified automatic generation algorithm
+    // Available staff by department for current hospital
+    const availableStaff = staff.filter(s => s.hospital === selectedHospital);
+    const departments = [...new Set(availableStaff.map(s => s.specialization))];
+
+    // Department-based automatic generation algorithm
     for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
       const dateKey = d.toISOString().split('T')[0];
       const dayOfWeek = d.getDay();
       newShifts[dateKey] = [];
 
-      // Available staff for current hospital
-      const availableStaff = staff.filter(s => s.hospital === selectedHospital);
-      const medici = availableStaff.filter(s => s.type === 'medic');
-      const asistenti = availableStaff.filter(s => s.type === 'asistent');
-      const infirmieri = availableStaff.filter(s => s.type === 'infirmier');
+      // Generate shifts for each department
+      departments.forEach((department, deptIndex) => {
+        const deptStaff = availableStaff.filter(s => s.specialization === department);
+        const medici = deptStaff.filter(s => s.type === 'medic');
+        const asistenti = deptStaff.filter(s => s.type === 'asistent');
 
-      // Day shift - weekdays only
-      if (dayOfWeek !== 0 && dayOfWeek !== 6) {
-        newShifts[dateKey].push({
-          id: `${dateKey}-zi`,
-          type: shiftTypes.ZI,
-          staffIds: [
-            medici[Math.floor(Math.random() * medici.length)]?.id,
-            asistenti[0]?.id,
-            asistenti[1]?.id,
-            infirmieri[0]?.id
-          ].filter(Boolean),
-          required: { medic: 1, asistent: 2, infirmier: 1 }
-        });
-      }
+        // Skip if department doesn't have minimum required staff
+        if (medici.length === 0 || asistenti.length === 0) return;
 
-      // Night shift - every day
-      newShifts[dateKey].push({
-        id: `${dateKey}-noapte`,
-        type: shiftTypes.NOAPTE,
-        staffIds: [
-          medici[Math.floor(Math.random() * medici.length)]?.id,
-          asistenti[Math.floor(Math.random() * asistenti.length)]?.id,
-          infirmieri[Math.floor(Math.random() * infirmieri.length)]?.id
-        ].filter(Boolean),
-        required: { medic: 1, asistent: 1, infirmier: 1 }
+        // Day shift - weekdays for most departments, emergency always
+        if (dayOfWeek !== 0 && dayOfWeek !== 6 || department === 'Urgențe') {
+          const selectedMedic = medici[Math.floor(Math.random() * medici.length)];
+          const selectedAsistent = asistenti[Math.floor(Math.random() * asistenti.length)];
+          
+          newShifts[dateKey].push({
+            id: `${dateKey}-zi-${department.toLowerCase()}`,
+            type: shiftTypes.ZI,
+            department: department,
+            staffIds: [selectedMedic?.id, selectedAsistent?.id].filter(Boolean),
+            required: { medic: 1, asistent: 1 }
+          });
+        }
+
+        // Night shift - critical departments only (Urgențe, ATI, Chirurgie)
+        if (['Urgențe', 'ATI', 'Chirurgie'].includes(department)) {
+          const nightMedic = medici[Math.floor(Math.random() * medici.length)];
+          const nightAsistent = asistenti[Math.floor(Math.random() * asistenti.length)];
+          
+          newShifts[dateKey].push({
+            id: `${dateKey}-noapte-${department.toLowerCase()}`,
+            type: shiftTypes.NOAPTE,
+            department: department,
+            staffIds: [nightMedic?.id, nightAsistent?.id].filter(Boolean),
+            required: { medic: 1, asistent: 1 }
+          });
+        }
       });
     }
 
     setShifts(newShifts);
-    addNotification('Ture generate automat pentru luna curentă!', 'success');
+    addNotification(`Ture generate automat pentru ${departments.length} departamente!`, 'success');
   };
 
   // Calendar navigation functions
@@ -163,20 +172,21 @@ function AppContent() {
     return days;
   };
 
-  // Check minimum staff requirements
+  // Check minimum staff requirements - simplified to 1 doctor + 1 assistant
   const checkMinimumStaff = (shift) => {
     const assignedStaff = staff.filter(s => shift.staffIds.includes(s.id));
     const counts = {
       medic: assignedStaff.filter(s => s.type === 'medic').length,
-      asistent: assignedStaff.filter(s => s.type === 'asistent').length,
-      infirmier: assignedStaff.filter(s => s.type === 'infirmier').length
+      asistent: assignedStaff.filter(s => s.type === 'asistent').length
     };
 
+    const required = shift.required || { medic: 1, asistent: 1 };
     return {
-      isValid: counts.medic >= shift.required.medic && 
-               counts.asistent >= shift.required.asistent && 
-               counts.infirmier >= shift.required.infirmier,
-      counts
+      isValid: counts.medic >= required.medic && counts.asistent >= required.asistent,
+      counts,
+      message: counts.medic < required.medic ? 'Lipsește medic' : 
+               counts.asistent < required.asistent ? 'Lipsește asistent' : 
+               'Echipă completă'
     };
   };
 
@@ -219,9 +229,6 @@ function AppContent() {
             <button onClick={() => navigateMonth(-1)} className="p-2 hover:bg-gray-100 rounded-lg">
               <ChevronLeft className="w-5 h-5" />
             </button>
-            <button onClick={() => setCurrentDate(new Date())} className="px-4 py-2 text-sm bg-blue-500 text-white rounded-lg hover:bg-blue-600">
-              Azi
-            </button>
             <button onClick={() => navigateMonth(1)} className="p-2 hover:bg-gray-100 rounded-lg">
               <ChevronRight className="w-5 h-5" />
             </button>
@@ -257,11 +264,16 @@ function AppContent() {
                 <div className="space-y-1">
                   {dayShifts.slice(0, 2).map((shift) => {
                     const validation = checkMinimumStaff(shift);
+                    const department = shift.department || (shift.staffIds.length > 0 ? 
+                      staff.find(s => s.id === shift.staffIds[0])?.specialization : 'General');
                     return (
-                      <div key={shift.id} className="text-xs p-1 rounded flex items-center justify-between"
+                      <div key={shift.id} className="text-xs p-1 rounded flex flex-col"
                         style={{ backgroundColor: shift.type.color + '20', borderLeft: `3px solid ${shift.type.color}` }}>
-                        <span className="truncate">{shift.type.name.split(' ')[0]}</span>
-                        {!validation.isValid && <AlertCircle className="w-3 h-3 text-red-500 flex-shrink-0 ml-1" />}
+                        <div className="flex items-center justify-between">
+                          <span className="truncate font-medium">{shift.type.name.split(' ')[0]}</span>
+                          {!validation.isValid && <AlertCircle className="w-3 h-3 text-red-500 flex-shrink-0 ml-1" />}
+                        </div>
+                        <span className="text-gray-600 truncate text-xs">{department}</span>
                       </div>
                     );
                   })}
@@ -288,25 +300,56 @@ function AppContent() {
     );
   };
 
-  // Shift Exchange View Component
+  // Enhanced Shift Exchange View Component with department awareness
   const ShiftExchangeView = () => {
     const [exchanges, setExchanges] = useState([
       {
         id: 1,
         requester: 'Dr. Popescu Ion',
+        department: 'Urgențe',
         requestDate: new Date(2025, 5, 20),
-        myShift: { date: '20 Iunie', type: shiftTypes.ZI },
-        wantedShift: { date: '22 Iunie', type: shiftTypes.ZI },
+        myShift: { date: '2025-06-20', type: shiftTypes.ZI },
+        wantedShift: { date: '2025-06-22', type: shiftTypes.ZI },
         status: 'pending',
         reason: 'Programare medicală personală'
       }
     ]);
+    const [showNewForm, setShowNewForm] = useState(false);
 
     const canApprove = hasPermission('approve_exchanges');
+    const canRequest = hasPermission('request_exchange');
+
+    const handleApprove = (exchangeId) => {
+      setExchanges(prev => prev.map(ex => 
+        ex.id === exchangeId ? { ...ex, status: 'approved' } : ex
+      ));
+      const exchange = exchanges.find(ex => ex.id === exchangeId);
+      addNotification(`Schimb aprobat cu ${exchange.requester}`, 'success');
+    };
+
+    const handleReject = (exchangeId) => {
+      setExchanges(prev => prev.map(ex => 
+        ex.id === exchangeId ? { ...ex, status: 'rejected' } : ex
+      ));
+      const exchange = exchanges.find(ex => ex.id === exchangeId);
+      addNotification(`Schimb respins cu ${exchange.requester}`, 'warning');
+    };
+
+    const formatDateForDisplay = (dateStr) => {
+      return new Date(dateStr).toLocaleDateString('ro-RO', { 
+        day: 'numeric', 
+        month: 'long' 
+      });
+    };
 
     return (
       <div className="bg-white rounded-xl shadow-lg p-6">
-        <h2 className="text-2xl font-bold text-gray-800 mb-6">Schimb Ture</h2>
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-2xl font-bold text-gray-800">Schimb Ture - {formatMonthYear(currentDate)}</h2>
+          <div className="text-sm text-gray-600">
+            {exchanges.filter(ex => ex.status === 'pending').length} cereri în așteptare
+          </div>
+        </div>
         
         <div className="space-y-4">
           {exchanges.map(exchange => (
@@ -316,6 +359,8 @@ function AppContent() {
                   <div className="flex items-center mb-2">
                     <Users className="w-4 h-4 mr-2 text-gray-400" />
                     <span className="font-medium">{exchange.requester}</span>
+                    <span className="mx-2 text-gray-400">•</span>
+                    <span className="text-sm text-blue-600 font-medium">{exchange.department}</span>
                     <StatusBadge status={exchange.status} />
                   </div>
                   
@@ -323,7 +368,7 @@ function AppContent() {
                     <div>
                       <p className="text-sm text-gray-600">Oferă:</p>
                       <div className="bg-blue-50 p-2 rounded mt-1">
-                        <p className="font-medium text-sm">{exchange.myShift.date}</p>
+                        <p className="font-medium text-sm">{formatDateForDisplay(exchange.myShift.date)}</p>
                         <p className="text-xs text-gray-600">{exchange.myShift.type.name}</p>
                       </div>
                     </div>
@@ -331,7 +376,7 @@ function AppContent() {
                     <div>
                       <p className="text-sm text-gray-600">Dorește:</p>
                       <div className="bg-green-50 p-2 rounded mt-1">
-                        <p className="font-medium text-sm">{exchange.wantedShift.date}</p>
+                        <p className="font-medium text-sm">{formatDateForDisplay(exchange.wantedShift.date)}</p>
                         <p className="text-xs text-gray-600">{exchange.wantedShift.type.name}</p>
                       </div>
                     </div>
@@ -339,6 +384,9 @@ function AppContent() {
 
                   <div className="mt-3">
                     <p className="text-sm text-gray-600">Motiv: {exchange.reason}</p>
+                    <p className="text-xs text-gray-400 mt-1">
+                      Solicitat: {exchange.requestDate.toLocaleDateString('ro-RO')}
+                    </p>
                   </div>
                 </div>
               </div>
@@ -346,29 +394,61 @@ function AppContent() {
               {exchange.status === 'pending' && canApprove && (
                 <div className="mt-4 flex space-x-3">
                   <button
-                    onClick={() => {
-                      addNotification(`Schimb aprobat cu ${exchange.requester}`, 'success');
-                      exchange.status = 'approved';
-                    }}
+                    onClick={() => handleApprove(exchange.id)}
                     className="flex-1 bg-green-600 text-white py-2 px-4 rounded-lg font-medium hover:bg-green-700 transition-colors flex items-center justify-center"
                   >
                     <CheckCircle className="w-4 h-4 mr-2" />
                     Aprobă
                   </button>
                   <button
-                    className="flex-1 bg-red-600 text-white py-2 px-4 rounded-lg font-medium hover:bg-red-700 transition-colors"
+                    onClick={() => handleReject(exchange.id)}
+                    className="flex-1 bg-red-600 text-white py-2 px-4 rounded-lg font-medium hover:bg-red-700 transition-colors flex items-center justify-center"
                   >
+                    <XCircle className="w-4 h-4 mr-2" />
                     Respinge
                   </button>
                 </div>
               )}
             </div>
           ))}
+
+          {exchanges.length === 0 && (
+            <div className="text-center py-8 text-gray-500">
+              <Users className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+              <p>Nu există cereri de schimb ture pentru această lună</p>
+            </div>
+          )}
         </div>
 
-        <button className="mt-6 w-full bg-blue-600 text-white py-3 px-4 rounded-lg font-semibold hover:bg-blue-700 transition-colors">
-          Solicită Schimb Nou
-        </button>
+        {canRequest && (
+          <button 
+            onClick={() => setShowNewForm(!showNewForm)}
+            className="mt-6 w-full bg-blue-600 text-white py-3 px-4 rounded-lg font-semibold hover:bg-blue-700 transition-colors flex items-center justify-center"
+          >
+            <Plus className="w-5 h-5 mr-2" />
+            {showNewForm ? 'Anulează' : 'Solicită Schimb Nou'}
+          </button>
+        )}
+
+        {showNewForm && (
+          <div className="mt-4 p-4 border border-gray-200 rounded-lg bg-gray-50">
+            <h3 className="font-semibold mb-3">Solicitare Schimb Tură</h3>
+            <p className="text-sm text-gray-600 mb-3">
+              Completează formularul pentru a solicita un schimb de tură cu un coleg din același departament.
+            </p>
+            <div className="text-center">
+              <button 
+                onClick={() => {
+                  setShowNewForm(false);
+                  addNotification('Funcționalitatea de solicitare va fi implementată în versiunea următoare', 'info');
+                }}
+                className="bg-gray-600 text-white px-4 py-2 rounded text-sm"
+              >
+                În curând disponibil
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     );
   };
@@ -390,40 +470,53 @@ function AppContent() {
     );
   };
 
-  // Staff View Component
+  // Staff View Component - organized by department
   const StaffView = () => {
+    const hospitalStaff = staff.filter(s => s.hospital === selectedHospital);
+    const departments = [...new Set(hospitalStaff.map(s => s.specialization))].sort();
+    
     return (
       <div className="bg-white rounded-xl shadow-lg p-6">
-        <h2 className="text-2xl font-bold text-gray-800 mb-6">Gestionare Personal</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {staff.filter(s => s.hospital === selectedHospital).map(person => (
-            <div key={person.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
-              <div className="flex items-start justify-between">
-                <div>
-                  <h3 className="font-semibold">{person.name}</h3>
-                  <p className="text-sm text-gray-600">{person.type} - {person.specialization}</p>
-                  <span className={`inline-block mt-2 px-2 py-1 rounded-full text-xs font-semibold ${
-                    person.role === 'admin' ? 'bg-purple-100 text-purple-800' :
-                    person.role === 'manager' ? 'bg-blue-100 text-blue-800' :
-                    'bg-gray-100 text-gray-800'
-                  }`}>
-                    {person.role}
-                  </span>
-                </div>
-                {person.role === 'manager' && (
-                  <UserCog className="w-4 h-4 text-blue-600" />
-                )}
-                {person.role === 'admin' && (
-                  <Shield className="w-4 h-4 text-purple-600" />
-                )}
-              </div>
-              <div className="mt-3 flex justify-between text-sm">
-                <span className="text-gray-500">Ture luna aceasta: 12</span>
-                <button className="text-blue-600 hover:text-blue-700">Detalii</button>
+        <h2 className="text-2xl font-bold text-gray-800 mb-6">Gestionare Personal - {formatMonthYear(currentDate)}</h2>
+        {departments.map(department => {
+          const departmentStaff = hospitalStaff.filter(s => s.specialization === department);
+          return (
+            <div key={department} className="mb-8">
+              <h3 className="text-lg font-semibold text-gray-700 mb-4 border-b border-gray-200 pb-2">
+                {department} ({departmentStaff.length} personal)
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {departmentStaff.map(person => (
+                  <div key={person.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <h4 className="font-semibold">{person.name}</h4>
+                        <p className="text-sm text-gray-600">{person.type}</p>
+                        <span className={`inline-block mt-2 px-2 py-1 rounded-full text-xs font-semibold ${
+                          person.role === 'admin' ? 'bg-purple-100 text-purple-800' :
+                          person.role === 'manager' ? 'bg-blue-100 text-blue-800' :
+                          'bg-gray-100 text-gray-800'
+                        }`}>
+                          {person.role}
+                        </span>
+                      </div>
+                      {person.role === 'manager' && (
+                        <UserCog className="w-4 h-4 text-blue-600" />
+                      )}
+                      {person.role === 'admin' && (
+                        <Shield className="w-4 h-4 text-purple-600" />
+                      )}
+                    </div>
+                    <div className="mt-3 flex justify-between text-sm">
+                      <span className="text-gray-500">Ture luna aceasta: 12</span>
+                      <button className="text-blue-600 hover:text-blue-700">Detalii</button>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
-          ))}
-        </div>
+          );
+        })}
       </div>
     );
   };
@@ -544,6 +637,58 @@ function AppContent() {
                 </div>
               </div>
             ))}
+          </div>
+        </div>
+
+        {/* Template Management */}
+        <div className="bg-white rounded-xl shadow-lg p-6">
+          <h3 className="text-xl font-bold text-gray-800 mb-4">Șabloane Schedule Lunare</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-3">
+              <h4 className="font-semibold text-gray-700">Salvare Șablon</h4>
+              <p className="text-sm text-gray-600">
+                Salvează programul curent ca șablon pentru a-l reutiliza în alte luni.
+              </p>
+              <button
+                onClick={() => {
+                  const templateName = `Șablon-${formatMonthYear(currentDate)}`;
+                  localStorage.setItem(`template-${selectedHospital}-${templateName}`, JSON.stringify(shifts));
+                  addNotification(`Șablon "${templateName}" salvat cu succes!`, 'success');
+                }}
+                className="w-full bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center"
+              >
+                <Save className="w-4 h-4 mr-2" />
+                Salvează ca Șablon
+              </button>
+            </div>
+            
+            <div className="space-y-3">
+              <h4 className="font-semibold text-gray-700">Încărcare Șablon</h4>
+              <p className="text-sm text-gray-600">
+                Încarcă un șablon salvat anterior pentru a popula luna curentă.
+              </p>
+              <button
+                onClick={() => {
+                  // Try to load a saved template
+                  const templateKeys = Object.keys(localStorage).filter(key => 
+                    key.startsWith(`template-${selectedHospital}-`)
+                  );
+                  
+                  if (templateKeys.length > 0) {
+                    const latestTemplate = templateKeys[templateKeys.length - 1];
+                    const templateData = JSON.parse(localStorage.getItem(latestTemplate));
+                    setShifts(templateData);
+                    addNotification('Șablon încărcat cu succes!', 'success');
+                  } else {
+                    addNotification('Nu există șabloane salvate pentru acest spital', 'warning');
+                  }
+                }}
+                className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center"
+              >
+                <Download className="w-4 h-4 mr-2" />
+                Încarcă Șablon
+              </button>
+            </div>
           </div>
         </div>
       </div>

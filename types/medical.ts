@@ -1,5 +1,23 @@
 // TypeScript types for medical shift scheduling
 
+// Standard medical departments
+export const MEDICAL_DEPARTMENTS = [
+  'Urgențe',
+  'Chirurgie',
+  'ATI',
+  'Pediatrie',
+  'Cardiologie',
+  'Neurologie',
+  'Ortopedice',
+  'Ginecologie',
+  'Oftalmologie',
+  'ORL',
+  'Dermatologie',
+  'Psihiatrie'
+] as const;
+
+export type MedicalDepartment = typeof MEDICAL_DEPARTMENTS[number];
+
 export interface ShiftType {
   id: string;
   name: string;
@@ -17,8 +35,8 @@ export interface Hospital {
 export interface Staff {
   id: number;
   name: string;
-  type: 'medic' | 'asistent' | 'infirmier';
-  specialization: string;
+  type: 'medic' | 'asistent';
+  specialization: MedicalDepartment | string;
   hospital: string;
   role: 'staff' | 'manager' | 'admin';
 }
@@ -27,10 +45,10 @@ export interface Shift {
   id: string;
   type: ShiftType;
   staffIds: number[];
+  department: string;
   required: {
-    medic: number;
-    asistent: number;
-    infirmier: number;
+    medic: 1;
+    asistent: 1;
   };
 }
 
@@ -39,8 +57,8 @@ export interface User {
   name: string;
   role: 'staff' | 'manager' | 'admin';
   hospital: string;
-  type?: 'medic' | 'asistent' | 'infirmier';
-  specialization?: string;
+  type?: 'medic' | 'asistent';
+  specialization?: MedicalDepartment | string;
 }
 
 export interface Notification {
