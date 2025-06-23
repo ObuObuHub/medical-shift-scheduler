@@ -1,5 +1,5 @@
 import React from 'react';
-import { SimpleGanttView } from './SimpleGanttView';
+import { CustomGanttView } from './CustomGanttView';
 
 interface GanttViewWrapperProps {
   selectedHospital: string;
@@ -8,5 +8,5 @@ interface GanttViewWrapperProps {
 }
 
 export const GanttViewWrapper: React.FC<GanttViewWrapperProps> = (props) => {
-  return <SimpleGanttView {...props} />;
+  return <CustomGanttView {...props} />;
 };
