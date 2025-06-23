@@ -1,14 +1,15 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Head from 'next/head';
 import {
   Calendar, Users, Bell, Building2, ArrowLeftRight, Clock, CheckCircle,
   AlertCircle, ChevronLeft, ChevronRight, Menu, X, Settings, Shield,
-  Wand2, Plus, Edit2, Trash2, Save, UserCog, LogOut
+  Wand2, Plus, Edit2, Trash2, Save, UserCog, LogOut, BarChart3, Filter, Download
 } from '../components/Icons';
 import { AuthProvider, useAuth } from '../components/AuthContext';
 import { DataProvider, useData } from '../components/DataContext';
 import { LoginForm } from '../components/LoginForm';
 import { ShiftTypeEditModal } from '../components/ShiftTypeEditModal';
+import { GanttView } from '../components/GanttView';
 
 // Main app component with authentication
 function AppContent() {
@@ -19,10 +20,7 @@ function AppContent() {
     addHospital, updateHospital, deleteHospital
   } = useData();
 
-  if (!isAuthenticated) {
-    return <LoginForm />;
-  }
-
+  // All hooks must be called before any early returns
   const [selectedHospital, setSelectedHospital] = useState(currentUser?.hospital || 'spital1');
   const [currentView, setCurrentView] = useState('calendar');
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -34,12 +32,7 @@ function AppContent() {
   const [editingHospital, setEditingHospital] = useState(null);
   const [editingShiftType, setEditingShiftType] = useState(null);
 
-  // Initialize shifts when hospital changes
-  useEffect(() => {
-    generateMockShifts();
-  }, [selectedHospital]);
-
-  const generateMockShifts = () => {
+  const generateMockShifts = useCallback(() => {
     const newShifts = {};
     const startDate = new Date(currentDate);
     startDate.setDate(1);
@@ -72,7 +65,18 @@ function AppContent() {
     }
 
     setShifts(newShifts);
-  };
+  }, [currentDate, shiftTypes, setShifts]);
+
+  // Initialize shifts when hospital changes
+  useEffect(() => {
+    if (isAuthenticated) {
+      generateMockShifts();
+    }
+  }, [selectedHospital, isAuthenticated, generateMockShifts]);
+
+  if (!isAuthenticated) {
+    return <LoginForm />;
+  }
 
   // Automatic shift generation function (for Manager)
   const generateAutomaticShifts = () => {
@@ -712,15 +716,15 @@ function AppContent() {
 
   // Staff Edit Modal
   const StaffEditModal = () => {
-    if (!editingStaff) return null;
-
     const [formData, setFormData] = useState({
-      name: editingStaff.name || '',
-      type: editingStaff.type || 'medic',
-      specialization: editingStaff.specialization || '',
-      hospital: editingStaff.hospital || selectedHospital,
-      role: editingStaff.role || 'staff'
+      name: editingStaff?.name || '',
+      type: editingStaff?.type || 'medic',
+      specialization: editingStaff?.specialization || '',
+      hospital: editingStaff?.hospital || selectedHospital,
+      role: editingStaff?.role || 'staff'
     });
+
+    if (!editingStaff) return null;
 
     const handleSubmit = () => {
       if (editingStaff.id) {
@@ -822,9 +826,9 @@ function AppContent() {
 
   // Hospital Edit Modal
   const HospitalEditModal = () => {
-    if (!editingHospital) return null;
+    const [name, setName] = useState(editingHospital?.name || '');
 
-    const [name, setName] = useState(editingHospital.name || '');
+    if (!editingHospital) return null;
 
     const handleSubmit = () => {
       if (editingHospital.id) {
@@ -1030,6 +1034,18 @@ function AppContent() {
               Personal
             </button>
             
+            <button
+              onClick={() => setCurrentView('gantt')}
+              className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
+                currentView === 'gantt'
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              <BarChart3 className="w-5 h-5 inline-block mr-2" />
+              Vizualizare Gantt
+            </button>
+            
             {/* Admin tab - visible only for admins */}
             {hasPermission('edit_system') && (
               <button
@@ -1067,6 +1083,13 @@ function AppContent() {
         {currentView === 'calendar' && <CalendarView />}
         {currentView === 'exchange' && <ShiftExchangeView />}
         {currentView === 'staff' && <StaffView />}
+        {currentView === 'gantt' && (
+          <GanttView 
+            selectedHospital={selectedHospital}
+            currentDate={currentDate}
+            onDateChange={setCurrentDate}
+          />
+        )}
         {currentView === 'admin' && <AdminPanel />}
         {currentView === 'shift-types' && <ShiftTypesPanel />}
       </main>

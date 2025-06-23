@@ -3,6 +3,7 @@
 @tailwind utilities;
 
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+@import './gantt.css';
 
 :root {
   --foreground-rgb: 0, 0, 0;
@@ -90,4 +91,26 @@ a {
   opacity: 0;
   transform: translateX(100%);
   transition: all 0.3s ease-in;
+}
+
+/* Disable unwanted text highlighting */
+.no-select {
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}
+
+/* Remove unwanted highlights */
+*:focus {
+  outline: none;
+}
+
+/* Custom focus styles for accessibility */
+button:focus,
+input:focus,
+select:focus,
+textarea:focus {
+  outline: 2px solid #3B82F6;
+  outline-offset: 2px;
 }
