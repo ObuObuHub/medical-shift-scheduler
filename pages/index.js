@@ -50,7 +50,7 @@ function AppContent() {
           id: `${dateKey}-zi`,
           type: shiftTypes.ZI,
           staffIds: [1, 3],
-          required: { medic: 1, asistent: 2, infirmier: 1 }
+          required: { medic: 1, asistent: 1 }
         });
       }
       
@@ -59,7 +59,7 @@ function AppContent() {
           id: `${dateKey}-noapte`,
           type: shiftTypes.NOAPTE,
           staffIds: [2, 4, 5],
-          required: { medic: 1, asistent: 1, infirmier: 1 }
+          required: { medic: 1, asistent: 1 }
         });
       }
     }
@@ -150,6 +150,14 @@ function AppContent() {
     newDate.setMonth(newDate.getMonth() + direction);
     setCurrentDate(newDate);
     generateMockShifts();
+  };
+
+  // Format month and year for display
+  const formatMonthYear = (date) => {
+    return date.toLocaleDateString('ro-RO', { 
+      month: 'long', 
+      year: 'numeric' 
+    });
   };
 
   // Get days for calendar display
@@ -798,7 +806,7 @@ function AppContent() {
                       {!validation.isValid && (
                         <div className="mb-3 p-2 bg-red-50 border border-red-200 rounded-lg flex items-center text-sm text-red-700">
                           <AlertCircle className="w-4 h-4 mr-2" />
-                          Personal insuficient! Necesar: {shift.required.medic} medici, {shift.required.asistent} asistenți, {shift.required.infirmier} infirmieri
+                          Personal insuficient! Necesar: {shift.required.medic} medici, {shift.required.asistent} asistenți
                         </div>
                       )}
 
@@ -907,7 +915,6 @@ function AppContent() {
               >
                 <option value="medic">Medic</option>
                 <option value="asistent">Asistent</option>
-                <option value="infirmier">Infirmier</option>
               </select>
             </div>
 
