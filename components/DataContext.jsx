@@ -61,7 +61,7 @@ export const DataProvider = ({ children }) => {
   const [shifts, setShifts] = useState({});
   const [notifications, setNotifications] = useState([]);
 
-  // Load data from localStorage on mount
+  // Load data from localStorage on mount - admin changes become hardcoded defaults
   useEffect(() => {
     try {
       const savedShiftTypes = localStorage.getItem('shiftTypes');
@@ -69,6 +69,7 @@ export const DataProvider = ({ children }) => {
       const savedStaff = localStorage.getItem('staff');
       const savedShifts = localStorage.getItem('shifts');
 
+      // Use hardcoded defaults that include admin changes for global application
       if (savedShiftTypes) {
         setShiftTypes(JSON.parse(savedShiftTypes));
       }

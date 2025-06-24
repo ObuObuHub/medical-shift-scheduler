@@ -12,7 +12,7 @@ export const MEDICAL_DEPARTMENTS = [
   'Ginecologie',
   'Oftalmologie',
   'ORL',
-  'Dermatologie',
+  'Laborator',
   'Psihiatrie'
 ] as const;
 

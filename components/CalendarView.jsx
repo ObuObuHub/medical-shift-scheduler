@@ -1,5 +1,5 @@
 import React from 'react';
-import { ChevronLeft, ChevronRight, Plus, Wand2, Save, Download } from './Icons';
+import { ChevronLeft, ChevronRight, Plus, Wand2, Save, Download, Trash2 } from './Icons';
 
 export const CalendarView = ({ 
   currentDate,
@@ -7,6 +7,7 @@ export const CalendarView = ({
   generateFairSchedule,
   saveTemplate,
   loadTemplate,
+  deleteTemplate,
   getDaysInMonth,
   handleCellClick,
   getStaffName,
@@ -25,16 +26,20 @@ export const CalendarView = ({
   return (
     <div className="bg-white rounded-xl shadow-lg p-6">
       <div className="flex items-center justify-between mb-6">
-        <h2 className="text-2xl font-bold text-gray-800">
-          {months[currentDate.getMonth()]} {currentDate.getFullYear()}
-        </h2>
+        <div className="flex items-center space-x-3">
+          <h2 className="text-2xl font-bold text-gray-800">
+            {months[currentDate.getMonth()]} {currentDate.getFullYear()}
+          </h2>
+          <div className="flex items-center space-x-1">
+            <button onClick={() => navigateMonth(-1)} className="p-2 hover:bg-gray-100 rounded-lg">
+              <ChevronLeft className="w-5 h-5" />
+            </button>
+            <button onClick={() => navigateMonth(1)} className="p-2 hover:bg-gray-100 rounded-lg">
+              <ChevronRight className="w-5 h-5" />
+            </button>
+          </div>
+        </div>
         <div className="flex items-center space-x-2">
-          <button onClick={() => navigateMonth(-1)} className="p-2 hover:bg-gray-100 rounded-lg">
-            <ChevronLeft className="w-5 h-5" />
-          </button>
-          <button onClick={() => navigateMonth(1)} className="p-2 hover:bg-gray-100 rounded-lg">
-            <ChevronRight className="w-5 h-5" />
-          </button>
           {hasPermission('generate_shifts') && (
             <>
               <button 
@@ -63,6 +68,15 @@ export const CalendarView = ({
                 >
                   <Download className="w-4 h-4 mr-1" />
                   Încarcă Șablon
+                </button>
+                
+                <button 
+                  onClick={deleteTemplate}
+                  className="px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 flex items-center text-sm"
+                  title="Șterge șablonul salvat"
+                >
+                  <Trash2 className="w-4 h-4 mr-1" />
+                  Sterge Șablon
                 </button>
               </div>
             </>

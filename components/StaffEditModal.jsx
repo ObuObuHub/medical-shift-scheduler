@@ -71,7 +71,7 @@ export const StaffEditModal = ({
     'Ortopedice',
     'Ginecologie',
     'Oftalmologie',
-    'Dermatologie'
+    'Laborator'
   ];
 
   if (!editingStaff) return null;

@@ -35,7 +35,7 @@ function AppContent() {
 
   // Core state
   const [selectedHospital, setSelectedHospital] = useState(currentUser?.hospital || 'spital1');
-  const [currentView, setCurrentView] = useState('calendar');
+  const [currentView, setCurrentView] = useState('matrix');
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedShift, setSelectedShift] = useState(null);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
@@ -81,6 +81,15 @@ function AppContent() {
     }
   };
 
+  const deleteTemplate = () => {
+    try {
+      localStorage.removeItem(`shift-template-${selectedHospital}`);
+      // Template deleted silently - no notification
+    } catch (error) {
+      // Error handled silently - no notification
+    }
+  };
+
   const handleCellClick = (date, dayShifts, e) => {
     if (!hasPermission('assign_staff')) return;
     
@@ -90,8 +99,8 @@ function AppContent() {
 
   // Menu items configuration
   const menuItems = [
-    { id: 'calendar', label: 'Calendar', icon: Calendar },
     { id: 'matrix', label: 'Planificare', icon: BarChart3 },
+    { id: 'calendar', label: 'Calendar', icon: Calendar },
     { id: 'staff', label: 'Personal', icon: Users },
     ...(hasPermission('edit_system') ? [{ id: 'admin', label: 'Administrare', icon: Settings }] : [])
   ];
@@ -116,6 +125,7 @@ function AppContent() {
             generateFairSchedule={generateFairSchedule}
             saveTemplate={saveTemplate}
             loadTemplate={loadTemplate}
+            deleteTemplate={deleteTemplate}
             getDaysInMonth={() => getDaysInMonth(currentDate)}
             handleCellClick={handleCellClick}
             getStaffName={(staffId) => getStaffName(staffId, staff)}
@@ -171,8 +181,8 @@ function AppContent() {
   return (
     <div className="min-h-screen bg-gray-50">
       <Head>
-        <title>Medical Shift Scheduler</title>
-        <meta name="description" content="Hospital Medical Shift Scheduling Application" />
+        <title>Planificare</title>
+        <meta name="description" content="Sistem de Planificare Ture Medicale" />
       </Head>
 
       {/* Header */}
@@ -181,7 +191,7 @@ function AppContent() {
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center">
               <div className="flex-shrink-0">
-                <h1 className="text-xl font-bold text-gray-900">Medical Scheduler</h1>
+                <h1 className="text-xl font-bold text-gray-900">Planificare</h1>
               </div>
             </div>
 
