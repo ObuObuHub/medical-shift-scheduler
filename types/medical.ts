@@ -13,7 +13,8 @@ export const MEDICAL_DEPARTMENTS = [
   'Oftalmologie',
   'ORL',
   'Laborator',
-  'Psihiatrie'
+  'Psihiatrie',
+  'Medicină Internă'
 ] as const;
 
 export type MedicalDepartment = typeof MEDICAL_DEPARTMENTS[number];
