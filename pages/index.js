@@ -189,6 +189,47 @@ function AppContent() {
     return person ? person.name.split(' ').slice(0, 2).join(' ') : 'Unknown';
   };
 
+  // Template system helper functions
+  const getNextTemplateNumber = () => {
+    const existing = Object.keys(localStorage).filter(key => 
+      key.startsWith(`template-${selectedHospital}-Sablon`)
+    ).length;
+    return existing + 1;
+  };
+
+  const saveTemplate = () => {
+    const templateNumber = getNextTemplateNumber();
+    const templateName = `Sablon ${templateNumber}`;
+    const templateKey = `template-${selectedHospital}-${templateName}`;
+    
+    try {
+      localStorage.setItem(templateKey, JSON.stringify(shifts));
+      addNotification(`${templateName} salvat cu succes!`, 'success');
+    } catch (error) {
+      addNotification('Eroare la salvarea șablonului', 'error');
+    }
+  };
+
+  const loadTemplate = () => {
+    const templateKeys = Object.keys(localStorage).filter(key => 
+      key.startsWith(`template-${selectedHospital}-Sablon`)
+    ).sort();
+    
+    if (templateKeys.length > 0) {
+      const latestTemplate = templateKeys[templateKeys.length - 1];
+      try {
+        const templateData = JSON.parse(localStorage.getItem(latestTemplate));
+        setShifts(templateData);
+        const templateName = latestTemplate.split('-').slice(2).join('-');
+        addNotification(`${templateName} încărcat cu succes!`, 'success');
+      } catch (error) {
+        addNotification('Eroare la încărcarea șablonului', 'error');
+      }
+    } else {
+      addNotification('Nu există șabloane salvate pentru acest spital', 'warning');
+    }
+  };
+
   // Get days for calendar display
   const getDaysInMonth = () => {
     const year = currentDate.getFullYear();
@@ -253,10 +294,33 @@ function AppContent() {
               <ChevronRight className="w-5 h-5" />
             </button>
             {hasPermission('generate_shifts') && (
-              <button onClick={generateAutomaticShifts} className="ml-4 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center">
-                <Wand2 className="w-4 h-4 mr-2" />
-                Generare Automată
-              </button>
+              <>
+                <button onClick={generateAutomaticShifts} className="ml-4 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center">
+                  <Wand2 className="w-4 h-4 mr-2" />
+                  Generare Automată
+                </button>
+                
+                {/* Template Controls - Manager Only */}
+                <div className="flex items-center space-x-2 ml-4">
+                  <button 
+                    onClick={saveTemplate}
+                    className="px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center text-sm"
+                    title="Salvează programul curent ca șablon"
+                  >
+                    <Save className="w-4 h-4 mr-1" />
+                    Salvează Șablon
+                  </button>
+                  
+                  <button 
+                    onClick={loadTemplate}
+                    className="px-3 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 flex items-center text-sm"
+                    title="Încarcă ultimul șablon salvat"
+                  >
+                    <Download className="w-4 h-4 mr-1" />
+                    Încarcă Șablon
+                  </button>
+                </div>
+              </>
             )}
           </div>
         </div>
@@ -337,40 +401,143 @@ function AppContent() {
             ))}
           </div>
         </div>
+
+        {/* Integrated Gantt View - Always visible for everyone */}
+        <div className="mt-8 border-t border-gray-200 pt-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-xl font-semibold text-gray-800 flex items-center">
+              <BarChart3 className="w-5 h-5 mr-2" />
+              Vizualizare Gantt - {formatMonthYear(currentDate)}
+            </h3>
+            <div className="text-sm text-gray-600">
+              Vizualizare cronologică a turelor per personal
+            </div>
+          </div>
+          
+          <GanttView 
+            selectedHospital={selectedHospital}
+            currentDate={currentDate}
+            onDateChange={setCurrentDate}
+          />
+        </div>
       </div>
     );
   };
 
   // Enhanced Shift Exchange View Component with department awareness
   const ShiftExchangeView = () => {
-    const [exchanges, setExchanges] = useState([
-      {
-        id: 1,
-        requester: 'Dr. Popescu Ion',
-        department: 'Urgențe',
-        requestDate: new Date(2025, 5, 20),
-        myShift: { date: '2025-06-20', type: shiftTypes.ZI },
-        wantedShift: { date: '2025-06-22', type: shiftTypes.ZI },
-        status: 'pending',
-        reason: 'Programare medicală personală'
+    const [exchanges, setExchanges] = useState(() => {
+      // Load exchanges from localStorage
+      try {
+        const savedExchanges = localStorage.getItem(`exchanges-${selectedHospital}`);
+        return savedExchanges ? JSON.parse(savedExchanges) : [
+          {
+            id: 1,
+            requester: 'Dr. Popescu Ion',
+            department: 'Urgențe',
+            requestDate: new Date(2025, 5, 20),
+            myShift: { date: '2025-06-20', type: shiftTypes.ZI },
+            wantedShift: { date: '2025-06-22', type: shiftTypes.ZI },
+            status: 'pending',
+            reason: 'Programare medicală personală'
+          }
+        ];
+      } catch (error) {
+        console.error('Error loading exchanges:', error);
+        return [];
       }
-    ]);
+    });
     const [showNewForm, setShowNewForm] = useState(false);
+
+    // Save exchanges to localStorage whenever they change
+    useEffect(() => {
+      try {
+        localStorage.setItem(`exchanges-${selectedHospital}`, JSON.stringify(exchanges));
+      } catch (error) {
+        console.error('Error saving exchanges:', error);
+      }
+    }, [exchanges, selectedHospital]);
 
     const canApprove = hasPermission('approve_exchanges');
     const canRequest = hasPermission('request_exchange');
 
     const handleApprove = (exchangeId) => {
-      setExchanges(prev => prev.map(ex => 
-        ex.id === exchangeId ? { ...ex, status: 'approved' } : ex
-      ));
       const exchange = exchanges.find(ex => ex.id === exchangeId);
-      addNotification(`Schimb aprobat cu ${exchange.requester}`, 'success');
+      if (!exchange) return;
+
+      // Perform the actual shift swap in the calendar
+      const updatedShifts = { ...shifts };
+      
+      // Find and swap staff assignments
+      const myShiftDate = exchange.myShift.date;
+      const wantedShiftDate = exchange.wantedShift.date;
+      
+      // Get the requester's staff ID from staff list
+      const requesterStaff = staff.find(s => s.name === exchange.requester);
+      if (!requesterStaff) {
+        addNotification('Nu s-a găsit personalul solicitant', 'error');
+        return;
+      }
+
+      // Find the shifts in the calendar and perform the swap
+      const myDayShifts = updatedShifts[myShiftDate] || [];
+      const wantedDayShifts = updatedShifts[wantedShiftDate] || [];
+
+      // Find the specific shifts to swap
+      const myShift = myDayShifts.find(s => 
+        s.type.id === exchange.myShift.type.id && 
+        s.staffIds.includes(requesterStaff.id)
+      );
+      const wantedShift = wantedDayShifts.find(s => 
+        s.type.id === exchange.wantedShift.type.id
+      );
+
+      if (myShift && wantedShift) {
+        // Find another staff member in the wanted shift to swap with
+        const otherStaffId = wantedShift.staffIds.find(id => id !== requesterStaff.id);
+        
+        if (otherStaffId) {
+          // Perform the swap
+          myShift.staffIds = myShift.staffIds.map(id => 
+            id === requesterStaff.id ? otherStaffId : id
+          );
+          wantedShift.staffIds = wantedShift.staffIds.map(id => 
+            id === otherStaffId ? requesterStaff.id : id
+          );
+          
+          // Update shifts in state
+          setShifts(updatedShifts);
+          
+          // Update exchange status
+          setExchanges(prev => prev.map(ex => 
+            ex.id === exchangeId ? { ...ex, status: 'approved', approvedDate: new Date() } : ex
+          ));
+          
+          addNotification(`Schimb aprobat! ${exchange.requester} va lucra ${exchange.wantedShift.date}`, 'success');
+        } else {
+          // Just move the requester to the wanted shift if no one to swap with
+          myShift.staffIds = myShift.staffIds.filter(id => id !== requesterStaff.id);
+          wantedShift.staffIds.push(requesterStaff.id);
+          
+          setShifts(updatedShifts);
+          setExchanges(prev => prev.map(ex => 
+            ex.id === exchangeId ? { ...ex, status: 'approved', approvedDate: new Date() } : ex
+          ));
+          
+          addNotification(`Schimb aprobat! ${exchange.requester} a fost mutat la noua tură`, 'success');
+        }
+      } else {
+        // Just update status if shifts can't be found
+        setExchanges(prev => prev.map(ex => 
+          ex.id === exchangeId ? { ...ex, status: 'approved', approvedDate: new Date() } : ex
+        ));
+        addNotification(`Schimb aprobat cu ${exchange.requester}`, 'success');
+      }
     };
 
     const handleReject = (exchangeId) => {
       setExchanges(prev => prev.map(ex => 
-        ex.id === exchangeId ? { ...ex, status: 'rejected' } : ex
+        ex.id === exchangeId ? { ...ex, status: 'rejected', rejectedDate: new Date() } : ex
       ));
       const exchange = exchanges.find(ex => ex.id === exchangeId);
       addNotification(`Schimb respins cu ${exchange.requester}`, 'warning');
@@ -472,24 +639,185 @@ function AppContent() {
         )}
 
         {showNewForm && (
-          <div className="mt-4 p-4 border border-gray-200 rounded-lg bg-gray-50">
-            <h3 className="font-semibold mb-3">Solicitare Schimb Tură</h3>
-            <p className="text-sm text-gray-600 mb-3">
-              Completează formularul pentru a solicita un schimb de tură cu un coleg din același departament.
-            </p>
-            <div className="text-center">
-              <button 
-                onClick={() => {
-                  setShowNewForm(false);
-                  addNotification('Funcționalitatea de solicitare va fi implementată în versiunea următoare', 'info');
-                }}
-                className="bg-gray-600 text-white px-4 py-2 rounded text-sm"
-              >
-                În curând disponibil
-              </button>
-            </div>
-          </div>
+          <ShiftExchangeForm 
+            onClose={() => setShowNewForm(false)}
+            onSubmit={(exchangeData) => {
+              // Add new exchange request
+              const newExchange = {
+                id: Date.now(),
+                requester: currentUser?.name || 'User',
+                department: currentUser?.specialization || 'General',
+                requestDate: new Date(),
+                myShift: exchangeData.myShift,
+                wantedShift: exchangeData.wantedShift,
+                status: 'pending',
+                reason: exchangeData.reason
+              };
+              setExchanges(prev => [...prev, newExchange]);
+              setShowNewForm(false);
+              addNotification('Cererea de schimb a fost trimisă!', 'success');
+            }}
+          />
         )}
+      </div>
+    );
+  };
+
+  // Shift Exchange Request Form Component
+  const ShiftExchangeForm = ({ onClose, onSubmit }) => {
+    const [formData, setFormData] = useState({
+      myShift: { date: '', type: null },
+      wantedShift: { date: '', type: null },
+      reason: ''
+    });
+
+    // Get user's assigned shifts for the current month
+    const userDepartment = currentUser?.specialization || 'General';
+    const userShifts = [];
+    
+    // Collect all shifts assigned to the current user
+    Object.keys(shifts).forEach(dateKey => {
+      const dayShifts = shifts[dateKey] || [];
+      dayShifts.forEach(shift => {
+        if (shift.staffIds.includes(currentUser?.id) && 
+            (!shift.department || shift.department === userDepartment)) {
+          userShifts.push({
+            date: dateKey,
+            type: shift.type,
+            displayDate: new Date(dateKey).toLocaleDateString('ro-RO', { 
+              day: 'numeric', 
+              month: 'long' 
+            })
+          });
+        }
+      });
+    });
+
+    // Get available shifts from same department (not assigned to user)
+    const availableShifts = [];
+    Object.keys(shifts).forEach(dateKey => {
+      const dayShifts = shifts[dateKey] || [];
+      dayShifts.forEach(shift => {
+        if (!shift.staffIds.includes(currentUser?.id) && 
+            (!shift.department || shift.department === userDepartment) &&
+            shift.staffIds.length > 0) { // Only shifts that have some staff assigned
+          availableShifts.push({
+            date: dateKey,
+            type: shift.type,
+            displayDate: new Date(dateKey).toLocaleDateString('ro-RO', { 
+              day: 'numeric', 
+              month: 'long' 
+            })
+          });
+        }
+      });
+    });
+
+    const handleSubmit = (e) => {
+      e.preventDefault();
+      if (!formData.myShift.date || !formData.wantedShift.date || !formData.reason.trim()) {
+        addNotification('Completează toate câmpurile', 'error');
+        return;
+      }
+      onSubmit(formData);
+    };
+
+    return (
+      <div className="mt-4 p-4 border border-gray-200 rounded-lg bg-white">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="font-semibold">Solicitare Schimb Tură</h3>
+          <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Tura mea pe care o ofer:
+            </label>
+            <select
+              value={formData.myShift.date || ''}
+              onChange={(e) => {
+                const selectedShift = userShifts.find(s => s.date === e.target.value);
+                setFormData(prev => ({
+                  ...prev,
+                  myShift: selectedShift || { date: '', type: null }
+                }));
+              }}
+              className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+              required
+            >
+              <option value="">Selectează tura ta...</option>
+              {userShifts.map((shift, index) => (
+                <option key={index} value={shift.date}>
+                  {shift.displayDate} - {shift.type.name} ({shift.type.start}-{shift.type.end})
+                </option>
+              ))}
+            </select>
+            {userShifts.length === 0 && (
+              <p className="text-sm text-gray-500 mt-1">Nu ai ture asignate în această lună</p>
+            )}
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Tura dorită (din același departament):
+            </label>
+            <select
+              value={formData.wantedShift.date || ''}
+              onChange={(e) => {
+                const selectedShift = availableShifts.find(s => s.date === e.target.value);
+                setFormData(prev => ({
+                  ...prev,
+                  wantedShift: selectedShift || { date: '', type: null }
+                }));
+              }}
+              className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+              required
+            >
+              <option value="">Selectează tura dorită...</option>
+              {availableShifts.map((shift, index) => (
+                <option key={index} value={shift.date}>
+                  {shift.displayDate} - {shift.type.name} ({shift.type.start}-{shift.type.end})
+                </option>
+              ))}
+            </select>
+            {availableShifts.length === 0 && (
+              <p className="text-sm text-gray-500 mt-1">Nu există ture disponibile pentru schimb în {userDepartment}</p>
+            )}
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Motivul schimbului:
+            </label>
+            <textarea
+              value={formData.reason}
+              onChange={(e) => setFormData(prev => ({ ...prev, reason: e.target.value }))}
+              placeholder="Explică motivul pentru care dorești să schimbi tura..."
+              className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 h-20 resize-none"
+              required
+            />
+          </div>
+
+          <div className="flex space-x-3">
+            <button
+              type="submit"
+              disabled={!formData.myShift.date || !formData.wantedShift.date || !formData.reason.trim()}
+              className="flex-1 bg-blue-600 text-white py-2 px-4 rounded-lg font-medium hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+            >
+              Trimite Cererea
+            </button>
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex-1 bg-gray-500 text-white py-2 px-4 rounded-lg font-medium hover:bg-gray-600 transition-colors"
+            >
+              Anulează
+            </button>
+          </div>
+        </form>
       </div>
     );
   };
@@ -681,57 +1009,6 @@ function AppContent() {
           </div>
         </div>
 
-        {/* Template Management */}
-        <div className="bg-white rounded-xl shadow-lg p-6">
-          <h3 className="text-xl font-bold text-gray-800 mb-4">Șabloane Schedule Lunare</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-3">
-              <h4 className="font-semibold text-gray-700">Salvare Șablon</h4>
-              <p className="text-sm text-gray-600">
-                Salvează programul curent ca șablon pentru a-l reutiliza în alte luni.
-              </p>
-              <button
-                onClick={() => {
-                  const templateName = `Șablon-${formatMonthYear(currentDate)}`;
-                  localStorage.setItem(`template-${selectedHospital}-${templateName}`, JSON.stringify(shifts));
-                  addNotification(`Șablon "${templateName}" salvat cu succes!`, 'success');
-                }}
-                className="w-full bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center"
-              >
-                <Save className="w-4 h-4 mr-2" />
-                Salvează ca Șablon
-              </button>
-            </div>
-            
-            <div className="space-y-3">
-              <h4 className="font-semibold text-gray-700">Încărcare Șablon</h4>
-              <p className="text-sm text-gray-600">
-                Încarcă un șablon salvat anterior pentru a popula luna curentă.
-              </p>
-              <button
-                onClick={() => {
-                  // Try to load a saved template
-                  const templateKeys = Object.keys(localStorage).filter(key => 
-                    key.startsWith(`template-${selectedHospital}-`)
-                  );
-                  
-                  if (templateKeys.length > 0) {
-                    const latestTemplate = templateKeys[templateKeys.length - 1];
-                    const templateData = JSON.parse(localStorage.getItem(latestTemplate));
-                    setShifts(templateData);
-                    addNotification('Șablon încărcat cu succes!', 'success');
-                  } else {
-                    addNotification('Nu există șabloane salvate pentru acest spital', 'warning');
-                  }
-                }}
-                className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center"
-              >
-                <Download className="w-4 h-4 mr-2" />
-                Încarcă Șablon
-              </button>
-            </div>
-          </div>
-        </div>
       </div>
     );
   };
@@ -1217,18 +1494,6 @@ function AppContent() {
               Personal
             </button>
             
-            <button
-              onClick={() => setCurrentView('gantt')}
-              className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
-                currentView === 'gantt'
-                  ? 'border-blue-500 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
-            >
-              <BarChart3 className="w-5 h-5 inline-block mr-2" />
-              Vizualizare Gantt
-            </button>
-            
             {/* Admin tab - visible only for admins */}
             {hasPermission('edit_system') && (
               <button
@@ -1266,13 +1531,6 @@ function AppContent() {
         {currentView === 'calendar' && <CalendarView />}
         {currentView === 'exchange' && <ShiftExchangeView />}
         {currentView === 'staff' && <StaffView />}
-        {currentView === 'gantt' && (
-          <GanttView 
-            selectedHospital={selectedHospital}
-            currentDate={currentDate}
-            onDateChange={setCurrentDate}
-          />
-        )}
         {currentView === 'admin' && <AdminPanel />}
         {currentView === 'shift-types' && <ShiftTypesPanel />}
       </main>
