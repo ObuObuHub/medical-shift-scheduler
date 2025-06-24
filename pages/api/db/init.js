@@ -1,4 +1,5 @@
 import { initializeTables, seedDefaultData } from '../../../lib/vercel-db';
+import { authMiddleware, requireRole, runMiddleware } from '../../../lib/auth';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -6,6 +7,12 @@ export default async function handler(req, res) {
   }
 
   try {
+    // Only allow database initialization in development or by admin users
+    if (process.env.NODE_ENV === 'production') {
+      await runMiddleware(req, res, authMiddleware);
+      await runMiddleware(req, res, requireRole(['admin']));
+    }
+
     // Initialize database tables
     await initializeTables();
     
@@ -14,16 +21,12 @@ export default async function handler(req, res) {
     
     res.status(200).json({ 
       message: 'Database initialized successfully',
-      credentials: {
-        admin: { username: 'admin', password: 'admin123' },
-        manager: { username: 'manager', password: 'manager123' }
-      }
+      note: 'Default admin credentials have been created with secure passwords'
     });
   } catch (error) {
     console.error('Database initialization error:', error);
     res.status(500).json({ 
-      error: 'Failed to initialize database',
-      details: error.message 
+      error: 'Failed to initialize database'
     });
   }
 }

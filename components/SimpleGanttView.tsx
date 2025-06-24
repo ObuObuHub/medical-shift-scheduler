@@ -51,7 +51,7 @@ export const SimpleGanttView: React.FC<SimpleGanttViewProps> = ({
 
   // Export functionality - human-readable text format
   const handleExport = (): void => {
-    const hospitalName = hospitals.find(h => h.id === selectedHospital)?.name;
+    const hospitalName = hospitals.find((h: any) => h.id === selectedHospital)?.name;
     const monthYear = currentDate.toLocaleDateString('ro-RO', { month: 'long', year: 'numeric' });
     
     let textContent = `RAPORT LUNAR TURE MEDICALE\n`;
@@ -61,7 +61,7 @@ export const SimpleGanttView: React.FC<SimpleGanttViewProps> = ({
     textContent += `Generat: ${new Date().toLocaleDateString('ro-RO')} ${new Date().toLocaleTimeString('ro-RO')}\n\n`;
     
     // Staff summary by department
-    const departments = [...new Set(hospitalStaff.map(s => s.specialization))].sort();
+    const departments = [...new Set(hospitalStaff.map((s: any) => s.specialization))].sort();
     textContent += `PERSONAL PE DEPARTAMENTE\n`;
     textContent += `========================\n\n`;
     

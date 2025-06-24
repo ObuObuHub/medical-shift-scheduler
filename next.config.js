@@ -1,7 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  swcMinify: true,
   // Optimization for Vercel deployment
   compress: true,
   poweredByHeader: false,

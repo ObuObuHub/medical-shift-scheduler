@@ -168,7 +168,7 @@ export const CustomGanttView: React.FC<CustomGanttViewProps> = ({
 
   // Export functionality - human-readable text format
   const handleExport = (): void => {
-    const hospitalName = hospitals.find(h => h.id === selectedHospital)?.name;
+    const hospitalName = hospitals.find((h: any) => h.id === selectedHospital)?.name;
     const period = `${dateRange[0].toLocaleDateString('ro-RO')} - ${dateRange[dateRange.length - 1].toLocaleDateString('ro-RO')}`;
     
     // Group tasks by department and date
@@ -316,7 +316,7 @@ export const CustomGanttView: React.FC<CustomGanttViewProps> = ({
             
             {/* Department filters */}
             <div className="flex flex-wrap gap-2">
-              {departments.map((dept: string) => (
+              {departments.map((dept: any) => (
                 <button
                   key={dept}
                   onClick={() => toggleDepartmentFilter(dept)}
@@ -338,7 +338,7 @@ export const CustomGanttView: React.FC<CustomGanttViewProps> = ({
             
             {/* Staff type filters */}
             <div className="flex flex-wrap gap-2">
-              {staffTypes.map((type: string) => (
+              {staffTypes.map((type: any) => (
                 <button
                   key={type}
                   onClick={() => toggleStaffTypeFilter(type)}

@@ -1,8 +1,6 @@
 import { sql } from '../../../lib/vercel-db';
 import bcrypt from 'bcryptjs';
-import jwt from 'jsonwebtoken';
-
-const JWT_SECRET = process.env.JWT_SECRET || 'medical-scheduler-secret-key';
+import { generateToken } from '../../../lib/auth';
 
 // Legacy SHA-256 password verification for existing users
 import crypto from 'crypto';
@@ -12,18 +10,6 @@ function verifyLegacyPassword(password, storedHash) {
   return hash === storedHash;
 }
 
-function generateToken(user) {
-  return jwt.sign(
-    { 
-      userId: user.id, 
-      username: user.username, 
-      role: user.role,
-      hospital: user.hospital 
-    },
-    JWT_SECRET,
-    { expiresIn: '7d' }
-  );
-}
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
