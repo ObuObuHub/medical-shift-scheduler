@@ -10,6 +10,7 @@ import { DataProvider, useData } from '../components/DataContext';
 import { LoginForm } from '../components/LoginForm';
 import { ShiftTypeEditModal } from '../components/ShiftTypeEditModal';
 import { GanttViewWrapper as GanttView } from '../components/GanttViewWrapper';
+import { AddShiftModal } from '../components/AddShiftModal';
 
 // Main app component with authentication
 function AppContent() {
@@ -17,7 +18,8 @@ function AppContent() {
   const { 
     shiftTypes, hospitals, staff, shifts, notifications, setShifts, 
     addNotification, addStaff, updateStaff, deleteStaff,
-    addHospital, updateHospital, deleteHospital
+    addHospital, updateHospital, deleteHospital,
+    validateDayCoverage, getCoverageForDate
   } = useData();
 
   // All hooks must be called before any early returns
@@ -31,6 +33,9 @@ function AppContent() {
   const [editingStaff, setEditingStaff] = useState(null);
   const [editingHospital, setEditingHospital] = useState(null);
   const [editingShiftType, setEditingShiftType] = useState(null);
+  
+  // Add shift modal state
+  const [addShiftModalData, setAddShiftModalData] = useState(null); // { date, editingShift }
 
   const generateMockShifts = useCallback(() => {
     const newShifts = {};
@@ -273,7 +278,57 @@ function AppContent() {
     );
   };
 
-  // Calendar View Component - simplified for space
+  // Coverage indicator helper
+  const getCoverageIndicator = (date) => {
+    if (!hasPermission('assign_staff')) return null;
+    
+    try {
+      const validation = validateDayCoverage(date, selectedHospital);
+      const colors = {
+        adequate: 'bg-green-100 border-green-300',
+        minimal: 'bg-yellow-100 border-yellow-300',
+        insufficient: 'bg-red-100 border-red-300',
+        critical: 'bg-red-200 border-red-400'
+      };
+      
+      const icons = {
+        adequate: '✓',
+        minimal: '⚠',
+        insufficient: '!',
+        critical: '⚠'
+      };
+      
+      return {
+        className: colors[validation.status] || colors.adequate,
+        icon: icons[validation.status] || '?',
+        score: validation.score,
+        warnings: validation.warnings
+      };
+    } catch (error) {
+      return null;
+    }
+  };
+
+  // Handle calendar cell clicks
+  const handleCellClick = (date, dayShifts, event) => {
+    if (!hasPermission('assign_staff')) return;
+    
+    // Check if clicking on existing shift
+    const clickedShift = event.target.closest('.shift-item');
+    if (clickedShift && clickedShift.dataset.shiftId) {
+      const shiftId = clickedShift.dataset.shiftId;
+      const editingShift = dayShifts.find(s => s.id === shiftId);
+      if (editingShift) {
+        setAddShiftModalData({ date, editingShift });
+        return;
+      }
+    }
+    
+    // Click on empty area - add new shift
+    setAddShiftModalData({ date, editingShift: null });
+  };
+
+  // Calendar View Component - enhanced with coverage indicators
   const CalendarView = () => {
     const days = getDaysInMonth();
     const months = ['Ianuarie', 'Februarie', 'Martie', 'Aprilie', 'Mai', 'Iunie',
@@ -335,36 +390,58 @@ function AppContent() {
             const dayShifts = shifts[dateKey] || [];
             const isCurrentMonth = date.getMonth() === currentDate.getMonth();
             const isToday = date.toDateString() === new Date().toDateString();
+            const coverageInfo = getCoverageIndicator(date);
             
             return (
               <div
                 key={index}
-                className={`min-h-[120px] p-2 border rounded-lg cursor-pointer transition-all calendar-cell
+                className={`min-h-[120px] p-2 border rounded-lg cursor-pointer transition-all calendar-cell relative
                   ${!isCurrentMonth ? 'bg-gray-50 opacity-50' : 'bg-white hover:shadow-md'}
-                  ${isToday ? 'ring-2 ring-blue-400' : 'border-gray-200'}`}
-                onClick={() => hasPermission('assign_staff') && setSelectedShift({ date, shifts: dayShifts })}
+                  ${isToday ? 'ring-2 ring-blue-400' : 'border-gray-200'}
+                  ${coverageInfo ? coverageInfo.className : ''}
+                  ${hasPermission('assign_staff') ? 'hover:ring-2 hover:ring-blue-200' : ''}`}
+                onClick={(e) => handleCellClick(date, dayShifts, e)}
+                title={coverageInfo ? `Acoperire: ${coverageInfo.score}% - ${coverageInfo.warnings.length} avertismente` : ''}
               >
-                <div className="font-semibold text-sm mb-1">{date.getDate()}</div>
+                {/* Coverage indicator */}
+                {coverageInfo && isCurrentMonth && (
+                  <div className="absolute top-1 right-1 w-6 h-6 rounded-full bg-white border-2 flex items-center justify-center text-xs font-bold"
+                       style={{ borderColor: coverageInfo.className.includes('green') ? '#10B981' : 
+                                             coverageInfo.className.includes('yellow') ? '#F59E0B' : '#EF4444' }}>
+                    {coverageInfo.icon}
+                  </div>
+                )}
+                
+                <div className="flex items-center justify-between mb-1">
+                  <div className="font-semibold text-sm">{date.getDate()}</div>
+                  {hasPermission('assign_staff') && isCurrentMonth && (
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setAddShiftModalData({ date, editingShift: null });
+                      }}
+                      className="w-5 h-5 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded flex items-center justify-center"
+                      title="Adaugă tură nouă"
+                    >
+                      <Plus className="w-3 h-3" />
+                    </button>
+                  )}
+                </div>
+                
                 <div className="space-y-1">
                   {dayShifts.slice(0, 2).map((shift) => {
                     const department = shift.department || (shift.staffIds.length > 0 ? 
                       staff.find(s => s.id === shift.staffIds[0])?.specialization : 'General');
                     return (
-                      <div key={shift.id} className="text-xs p-1 rounded flex flex-col"
-                        style={{ backgroundColor: shift.type.color + '20', borderLeft: `3px solid ${shift.type.color}` }}>
+                      <div 
+                        key={shift.id} 
+                        className="shift-item text-xs p-1 rounded flex flex-col hover:shadow-sm transition-shadow"
+                        style={{ backgroundColor: shift.type.color + '20', borderLeft: `3px solid ${shift.type.color}` }}
+                        data-shift-id={shift.id}
+                      >
                         <div className="flex items-center justify-between">
                           <span className="truncate font-medium">{shift.type.name.split(' ')[0]}</span>
-                          {hasPermission('assign_staff') && (
-                            <button 
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setSelectedShift({ date, shifts: dayShifts });
-                              }}
-                              className="w-4 h-4 text-blue-600 hover:text-blue-800"
-                            >
-                              <Plus className="w-3 h-3" />
-                            </button>
-                          )}
+                          <span className="text-xs text-gray-500">{shift.staffIds.length}</span>
                         </div>
                         <div className="text-gray-600 truncate text-xs mb-1">{department}</div>
                         {shift.staffIds.length > 0 && (
@@ -1543,6 +1620,17 @@ function AppContent() {
         <ShiftTypeEditModal 
           editingShiftType={editingShiftType}
           setEditingShiftType={setEditingShiftType}
+        />
+      )}
+      {addShiftModalData && (
+        <AddShiftModal
+          selectedDate={addShiftModalData.date}
+          editingShift={addShiftModalData.editingShift}
+          onClose={() => setAddShiftModalData(null)}
+          onSave={() => {
+            // Refresh data after saving
+            setAddShiftModalData(null);
+          }}
         />
       )}
     </div>

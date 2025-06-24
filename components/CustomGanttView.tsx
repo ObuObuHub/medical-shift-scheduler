@@ -134,16 +134,21 @@ export const CustomGanttView: React.FC<CustomGanttViewProps> = ({
   }, [ganttTasks]);
 
 
-  // Calculate style for task bars - simplified for day view
-  const getTaskStyle = (task: GanttTask) => {
-    return {
-      left: '2px',
-      right: '2px',
-      width: 'calc(100% - 4px)',
+  // Calculate style for task bars - full day view with proper sizing
+  const getTaskStyle = (task: GanttTask, index: number = 0) => {
+    // Make bars fill the entire cell with proper stacking
+    const baseStyle = {
+      left: '4px',
+      right: '4px',
+      width: 'calc(100% - 8px)',
       backgroundColor: task.shiftType.color,
-      borderLeft: `3px solid ${task.shiftType.color}`,
-      filter: 'brightness(0.9)'
+      border: `2px solid ${task.shiftType.color}`,
+      borderRadius: '6px',
+      filter: 'brightness(0.95)',
+      boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
     };
+    
+    return baseStyle;
   };
 
   // Navigation functions
@@ -379,26 +384,35 @@ export const CustomGanttView: React.FC<CustomGanttViewProps> = ({
       {/* Gantt Chart */}
       <div className="medical-gantt-content">
         <div className="bg-white border rounded-lg overflow-hidden">
-          {/* Header with dates and time grid */}
-          <div className="sticky top-0 bg-white border-b-2 border-gray-200 z-10">
-            {/* Date headers */}
-            <div className="flex border-b border-gray-200">
-              <div className="w-48 p-3 bg-gray-50 border-r border-gray-200 font-semibold text-gray-700">
-                Personal
-              </div>
-              {dateRange.map(date => (
-                <div key={date.toISOString()} className="flex-1 p-3 bg-gray-50 border-r border-gray-200 text-center">
-                  <div className="font-semibold text-gray-700">
-                    {date.toLocaleDateString('ro-RO', { weekday: 'short' })}
+          <div className="overflow-x-auto">
+            <div className="min-w-full">
+              {/* Header with dates */}
+              <div className="sticky top-0 bg-white border-b-2 border-gray-200 z-20">
+                <div className="flex">
+                  <div className="w-48 p-3 bg-gray-50 border-r border-gray-200 font-semibold text-gray-700 sticky left-0 z-30">
+                    Personal
                   </div>
-                  <div className="text-sm text-gray-600">
-                    {date.toLocaleDateString('ro-RO', { day: 'numeric', month: 'short' })}
-                  </div>
+                  {dateRange.map(date => {
+                    const isWeekend = date.getDay() === 0 || date.getDay() === 6;
+                    return (
+                      <div key={date.toISOString()} className={`flex-1 min-w-32 p-3 border-r border-gray-200 text-center ${
+                        isWeekend ? 'bg-blue-50' : 'bg-gray-50'
+                      }`}>
+                        <div className={`font-semibold ${
+                          isWeekend ? 'text-blue-700' : 'text-gray-700'
+                        }`}>
+                          {date.toLocaleDateString('ro-RO', { weekday: 'short' })}
+                        </div>
+                        <div className={`text-sm ${
+                          isWeekend ? 'text-blue-600' : 'text-gray-600'
+                        }`}>
+                          {date.toLocaleDateString('ro-RO', { day: 'numeric', month: 'short' })}
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
-              ))}
-            </div>
-
-          </div>
+              </div>
 
           {/* Staff rows with task bars */}
           <div className="max-h-96 overflow-y-auto">
@@ -410,8 +424,8 @@ export const CustomGanttView: React.FC<CustomGanttViewProps> = ({
             ) : (
               staffRows.map((staffMember) => (
                 <div key={staffMember.name} className="flex border-b border-gray-100 hover:bg-gray-50">
-                  {/* Staff info */}
-                  <div className="w-48 p-3 border-r border-gray-200">
+                  {/* Staff info - sticky column */}
+                  <div className="w-48 p-3 border-r border-gray-200 sticky left-0 bg-white z-10 shadow-sm">
                     <div className="font-medium text-gray-900">{staffMember.name}</div>
                     <div className="text-sm text-gray-600">
                       {staffMember.type} - {staffMember.department}
@@ -426,37 +440,56 @@ export const CustomGanttView: React.FC<CustomGanttViewProps> = ({
                     );
 
                     return (
-                      <div key={date.toISOString()} className="flex-1 border-r border-gray-200 relative h-16">
+                      <div key={date.toISOString()} className={`flex-1 border-r border-gray-200 relative h-20 ${
+                        date.getDay() === 0 || date.getDay() === 6 ? 'bg-gray-50' : 'bg-white'
+                      }`}>
                         {/* Task bars */}
                         {dayTasks.map((task, index) => {
-                          const style = getTaskStyle(task);
-                          const topOffset = 2 + (index * 20); // Stack multiple shifts vertically
-                          const barHeight = Math.min(12, 60 - topOffset); // Ensure bars fit within cell
+                          const style = getTaskStyle(task, index);
+                          const maxBarsPerDay = 3; // Maximum bars to show clearly
+                          const barHeight = Math.floor((76 - 8) / Math.min(dayTasks.length, maxBarsPerDay)); // Distribute available height
+                          const topOffset = 4 + (index * (barHeight + 2)); // Stack with spacing
+                          
+                          // Skip if too many shifts (would be too small to read)
+                          if (index >= maxBarsPerDay) return null;
 
                           return (
                             <div
                               key={task.id}
-                              className="absolute rounded cursor-pointer border border-gray-300 flex items-center px-2 shadow-sm hover:shadow-md transition-shadow"
+                              className="absolute cursor-pointer flex items-center justify-center px-2 transition-all duration-200 hover:scale-105 hover:z-10"
                               style={{
                                 ...style,
                                 top: `${topOffset}px`,
-                                height: `${barHeight}px`
+                                height: `${Math.max(barHeight, 18)}px`, // Minimum height for readability
+                                minHeight: '18px'
                               }}
                               onClick={() => handleTaskClick(task)}
-                              title={`${task.shiftType.name} - ${task.startTime.toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit' })} - ${task.endTime.toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit' })}`}
+                              title={`${task.staffName} - ${task.shiftType.name}\n${task.startTime.toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit' })} - ${task.endTime.toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit' })}\nDepartament: ${task.department}`}
                             >
-                              <div className="text-white text-xs font-medium truncate">
+                              <div className="text-white text-xs font-semibold truncate text-center leading-tight">
                                 {task.shiftType.name}
                               </div>
                             </div>
                           );
                         })}
+                        
+                        {/* Show overflow indicator if more than max bars */}
+                        {dayTasks.length > 3 && (
+                          <div 
+                            className="absolute bottom-1 right-1 bg-gray-600 text-white text-xs px-1 py-0.5 rounded"
+                            title={`+${dayTasks.length - 3} ture suplimentare`}
+                          >
+                            +{dayTasks.length - 3}
+                          </div>
+                        )}
                       </div>
                     );
                   })}
                 </div>
               ))
             )}
+              </div>
+            </div>
           </div>
         </div>
       </div>

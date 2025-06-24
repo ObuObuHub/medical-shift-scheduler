@@ -196,6 +196,190 @@ export const DataProvider = ({ children }) => {
     addNotification('Spital șters', 'success');
   };
 
+  // Coverage validation utilities
+  const getCoverageForDate = (date, hospitalId) => {
+    const dateKey = date.toISOString().split('T')[0];
+    const dayShifts = shifts[dateKey] || [];
+    const hospitalStaff = staff.filter(s => s.hospital === hospitalId);
+    
+    // Calculate coverage by time periods
+    const timeSlots = {
+      morning: { start: 6, end: 14, doctors: 0, nurses: 0, coverage: [] },
+      afternoon: { start: 14, end: 22, doctors: 0, nurses: 0, coverage: [] },
+      night: { start: 22, end: 6, doctors: 0, nurses: 0, coverage: [] }
+    };
+
+    dayShifts.forEach(shift => {
+      const assignedStaff = hospitalStaff.filter(s => shift.staffIds.includes(s.id));
+      const doctors = assignedStaff.filter(s => s.type === 'medic');
+      const nurses = assignedStaff.filter(s => s.type === 'asistent');
+      
+      const startHour = parseInt(shift.type.start.split(':')[0]);
+      const endHour = parseInt(shift.type.end.split(':')[0]);
+      
+      // Determine which time slots this shift covers
+      Object.keys(timeSlots).forEach(slot => {
+        const slotData = timeSlots[slot];
+        const coversSlot = (
+          (startHour <= slotData.start && endHour > slotData.start) ||
+          (startHour < slotData.end && endHour >= slotData.end) ||
+          (startHour >= slotData.start && endHour <= slotData.end) ||
+          (shift.type.duration >= 24) // 24-hour shifts cover all slots
+        );
+        
+        if (coversSlot) {
+          slotData.doctors += doctors.length;
+          slotData.nurses += nurses.length;
+          slotData.coverage.push({
+            shift,
+            doctors: doctors.length,
+            nurses: nurses.length,
+            department: shift.department || 'General'
+          });
+        }
+      });
+    });
+
+    return timeSlots;
+  };
+
+  const validateDayCoverage = (date, hospitalId) => {
+    const coverage = getCoverageForDate(date, hospitalId);
+    const isWeekend = date.getDay() === 0 || date.getDay() === 6;
+    const criticalDepartments = ['Urgențe', 'ATI', 'Chirurgie'];
+    
+    const validation = {
+      status: 'adequate', // adequate, minimal, insufficient, over_staffed
+      warnings: [],
+      recommendations: [],
+      coverage,
+      score: 0 // 0-100 coverage score
+    };
+
+    let totalScore = 0;
+    let maxScore = 0;
+
+    Object.keys(coverage).forEach(timeSlot => {
+      const slot = coverage[timeSlot];
+      let slotScore = 0;
+      const requiredDoctors = isWeekend ? 1 : 2;
+      const requiredNurses = isWeekend ? 2 : 3;
+
+      // Check minimum doctor coverage
+      maxScore += 40; // Max points for doctor coverage
+      if (slot.doctors >= requiredDoctors) {
+        slotScore += 40;
+      } else if (slot.doctors >= Math.floor(requiredDoctors / 2)) {
+        slotScore += 20;
+        validation.warnings.push(`Acoperire minimă medici în perioada ${timeSlot}: ${slot.doctors}/${requiredDoctors}`);
+      } else {
+        validation.warnings.push(`Acoperire insuficientă medici în perioada ${timeSlot}: ${slot.doctors}/${requiredDoctors}`);
+      }
+
+      // Check nurse coverage
+      maxScore += 30; // Max points for nurse coverage
+      if (slot.nurses >= requiredNurses) {
+        slotScore += 30;
+      } else if (slot.nurses >= Math.floor(requiredNurses / 2)) {
+        slotScore += 15;
+        validation.warnings.push(`Acoperire minimă asistenți în perioada ${timeSlot}: ${slot.nurses}/${requiredNurses}`);
+      } else {
+        validation.warnings.push(`Acoperire insuficientă asistenți în perioada ${timeSlot}: ${slot.nurses}/${requiredNurses}`);
+      }
+
+      // Check critical department coverage
+      maxScore += 30; // Max points for critical coverage
+      const criticalCoverage = slot.coverage.filter(c => 
+        criticalDepartments.includes(c.department) && c.doctors > 0
+      );
+      
+      if (criticalCoverage.length >= 2) {
+        slotScore += 30;
+      } else if (criticalCoverage.length >= 1) {
+        slotScore += 15;
+        validation.warnings.push(`Acoperire minimă departamente critice în perioada ${timeSlot}`);
+      } else {
+        validation.warnings.push(`Lipsă acoperire departamente critice în perioada ${timeSlot}`);
+      }
+
+      totalScore += slotScore;
+    });
+
+    validation.score = maxScore > 0 ? Math.round((totalScore / maxScore) * 100) : 0;
+
+    // Determine overall status
+    if (validation.score >= 90) {
+      validation.status = 'adequate';
+    } else if (validation.score >= 70) {
+      validation.status = 'minimal';
+    } else if (validation.score >= 50) {
+      validation.status = 'insufficient';
+    } else {
+      validation.status = 'critical';
+    }
+
+    // Add recommendations
+    if (validation.score < 80) {
+      validation.recommendations.push('Considerați adăugarea de ture suplimentare pentru acoperire optimă');
+    }
+    
+    if (isWeekend && validation.score < 70) {
+      validation.recommendations.push('Weekend: considerați ture de 12 ore pentru eficiență maximă');
+    }
+
+    return validation;
+  };
+
+  const getWeeklyCoverage = (startDate, hospitalId) => {
+    const weekCoverage = [];
+    for (let i = 0; i < 7; i++) {
+      const date = new Date(startDate);
+      date.setDate(date.getDate() + i);
+      const dayValidation = validateDayCoverage(date, hospitalId);
+      weekCoverage.push({
+        date,
+        validation: dayValidation
+      });
+    }
+    return weekCoverage;
+  };
+
+  const getDepartmentCoverage = (date, hospitalId, department) => {
+    const dateKey = date.toISOString().split('T')[0];
+    const dayShifts = shifts[dateKey] || [];
+    const deptShifts = dayShifts.filter(shift => 
+      shift.department === department || !shift.department
+    );
+    
+    const hospitalStaff = staff.filter(s => 
+      s.hospital === hospitalId && 
+      (s.specialization === department || !department)
+    );
+    
+    let totalDoctors = 0;
+    let totalNurses = 0;
+    let totalHours = 0;
+
+    deptShifts.forEach(shift => {
+      const assignedStaff = hospitalStaff.filter(s => shift.staffIds.includes(s.id));
+      const doctors = assignedStaff.filter(s => s.type === 'medic');
+      const nurses = assignedStaff.filter(s => s.type === 'asistent');
+      
+      totalDoctors += doctors.length;
+      totalNurses += nurses.length;
+      totalHours += shift.type.duration * assignedStaff.length;
+    });
+
+    return {
+      department,
+      shifts: deptShifts.length,
+      doctors: totalDoctors,
+      nurses: totalNurses,
+      totalHours,
+      adequateCoverage: totalDoctors >= 1 && totalNurses >= 1
+    };
+  };
+
   const value = {
     // Data
     shiftTypes,
@@ -219,7 +403,12 @@ export const DataProvider = ({ children }) => {
     // Hospitals
     addHospital,
     updateHospital,
-    deleteHospital
+    deleteHospital,
+    // Coverage validation
+    getCoverageForDate,
+    validateDayCoverage,
+    getWeeklyCoverage,
+    getDepartmentCoverage
   };
 
   return (
