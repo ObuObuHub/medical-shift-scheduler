@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import Head from 'next/head';
 import {
-  Calendar, Users, Bell, Building2, ArrowLeftRight, Clock, CheckCircle, XCircle,
+  Calendar, Users, Building2, ArrowLeftRight, Clock, CheckCircle, XCircle,
   AlertCircle, ChevronLeft, ChevronRight, Menu, X, Settings, Shield,
   Wand2, Plus, Edit2, Trash2, Save, UserCog, LogOut, BarChart3, Filter, Download
 } from '../components/Icons';
@@ -27,8 +27,8 @@ import { getStaffName } from '../utils/staffHelpers';
 function AppContent() {
   const { currentUser, logout, hasPermission, isAuthenticated } = useAuth();
   const { 
-    shiftTypes, hospitals, staff, shifts, notifications, setShifts, 
-    addNotification, addStaff, updateStaff, deleteStaff,
+    shiftTypes, hospitals, staff, shifts, setShifts, 
+    addStaff, updateStaff, deleteStaff,
     addHospital, updateHospital, deleteHospital,
     validateDayCoverage, getCoverageForDate, generateFairSchedule
   } = useData();
@@ -62,9 +62,9 @@ function AppContent() {
   const saveTemplate = () => {
     try {
       localStorage.setItem(`shift-template-${selectedHospital}`, JSON.stringify(shifts));
-      addNotification('Șablon salvat cu succes', 'success');
+      // Template saved silently - no notification
     } catch (error) {
-      addNotification('Eroare la salvarea șablonului', 'error');
+      // Error handled silently - no notification
     }
   };
 
@@ -73,12 +73,11 @@ function AppContent() {
       const template = localStorage.getItem(`shift-template-${selectedHospital}`);
       if (template) {
         setShifts(JSON.parse(template));
-        addNotification('Șablon încărcat cu succes', 'success');
-      } else {
-        addNotification('Nu există șablon salvat', 'warning');
+        // Template loaded silently - no notification
       }
+      // No template exists - handled silently
     } catch (error) {
-      addNotification('Eroare la încărcarea șablonului', 'error');
+      // Error handled silently - no notification
     }
   };
 
@@ -105,8 +104,7 @@ function AppContent() {
       staff,
       shifts,
       shiftTypes,
-      hasPermission,
-      addNotification
+      hasPermission
     };
 
     switch (currentView) {
@@ -219,16 +217,6 @@ function AppContent() {
                 ))}
               </select>
 
-              <div className="relative">
-                <button className="p-2 text-gray-600 hover:text-gray-900">
-                  <Bell className="w-5 h-5" />
-                  {notifications.length > 0 && (
-                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                      {notifications.length}
-                    </span>
-                  )}
-                </button>
-              </div>
 
               <div className="flex items-center space-x-2">
                 <span className="text-sm text-gray-700">{currentUser?.name}</span>
@@ -282,28 +270,7 @@ function AppContent() {
         {renderCurrentView()}
       </main>
 
-      {/* Notifications */}
-      <div className="fixed top-4 right-4 space-y-2 z-50">
-        {notifications.slice(0, 3).map(notification => (
-          <div
-            key={notification.id}
-            className={`p-4 rounded-lg shadow-lg max-w-sm ${
-              notification.type === 'success' ? 'bg-green-50 text-green-800 border border-green-200' :
-              notification.type === 'error' ? 'bg-red-50 text-red-800 border border-red-200' :
-              notification.type === 'warning' ? 'bg-yellow-50 text-yellow-800 border border-yellow-200' :
-              'bg-blue-50 text-blue-800 border border-blue-200'
-            }`}
-          >
-            <div className="flex items-center">
-              {notification.type === 'success' && <CheckCircle className="w-5 h-5 mr-2" />}
-              {notification.type === 'error' && <XCircle className="w-5 h-5 mr-2" />}
-              {notification.type === 'warning' && <AlertCircle className="w-5 h-5 mr-2" />}
-              {notification.type === 'info' && <Bell className="w-5 h-5 mr-2" />}
-              <span className="text-sm font-medium">{notification.message}</span>
-            </div>
-          </div>
-        ))}
-      </div>
+      {/* Notifications - DISABLED */}
 
       {/* Modals */}
       {addShiftModalData && (

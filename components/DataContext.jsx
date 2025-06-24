@@ -103,15 +103,10 @@ export const DataProvider = ({ children }) => {
     localStorage.setItem('shifts', JSON.stringify(shifts));
   }, [shifts]);
 
-  // Add notification
+  // Add notification - DISABLED
   const addNotification = (message, type = 'info') => {
-    const newNotification = {
-      id: Date.now(),
-      message,
-      type,
-      timestamp: new Date()
-    };
-    setNotifications(prev => [newNotification, ...prev].slice(0, 10));
+    // Notifications disabled - no action taken
+    return;
   };
 
   // Shift type management
@@ -119,7 +114,7 @@ export const DataProvider = ({ children }) => {
     const id = newShiftType.id || `shift_${Date.now()}`;
     const shiftTypeWithId = { ...newShiftType, id };
     setShiftTypes(prev => ({ ...prev, [id.toUpperCase()]: shiftTypeWithId }));
-    addNotification(`Tip tură adăugat: ${newShiftType.name}`, 'success');
+    // Shift type added silently
     return shiftTypeWithId;
   };
 
@@ -131,7 +126,7 @@ export const DataProvider = ({ children }) => {
       }
       return prev;
     });
-    addNotification('Tip tură actualizat', 'success');
+    // Shift type updated silently
   };
 
   const deleteShiftType = (id) => {
@@ -143,7 +138,7 @@ export const DataProvider = ({ children }) => {
       }
       return newShiftTypes;
     });
-    addNotification('Tip tură șters', 'success');
+    // Shift type deleted silently
   };
 
   // Staff management
@@ -154,17 +149,17 @@ export const DataProvider = ({ children }) => {
       role: newStaff.role || 'staff'
     };
     setStaff(prev => [...prev, staffMember]);
-    addNotification(`Personal adăugat: ${newStaff.name}`, 'success');
+    // Staff added silently
   };
 
   const updateStaff = (id, updates) => {
     setStaff(prev => prev.map(s => s.id === id ? { ...s, ...updates } : s));
-    addNotification('Personal actualizat', 'success');
+    // Staff updated silently
   };
 
   const deleteStaff = (id) => {
     setStaff(prev => prev.filter(s => s.id !== id));
-    addNotification('Personal șters', 'success');
+    // Staff deleted silently
   };
 
   // Hospital management
@@ -174,21 +169,21 @@ export const DataProvider = ({ children }) => {
       name
     };
     setHospitals(prev => [...prev, newHospital]);
-    addNotification(`Spital adăugat: ${name}`, 'success');
+    // Hospital added silently
   };
 
   const updateHospital = (id, name) => {
     setHospitals(prev => prev.map(h => h.id === id ? { ...h, name } : h));
-    addNotification('Spital actualizat', 'success');
+    // Hospital updated silently
   };
 
   const deleteHospital = (id) => {
     if (hospitals.length <= 1) {
-      addNotification('Nu puteți șterge ultimul spital', 'error');
+      // Cannot delete last hospital - handled silently
       return;
     }
     setHospitals(prev => prev.filter(h => h.id !== id));
-    addNotification('Spital șters', 'success');
+    // Hospital deleted silently
   };
 
   // Coverage validation utilities
@@ -345,7 +340,7 @@ export const DataProvider = ({ children }) => {
 
     const hospitalStaff = staff.filter(s => s.hospital === hospitalId);
     if (hospitalStaff.length === 0) {
-      addNotification('Nu există personal pentru acest spital', 'error');
+      // No staff available - handled silently
       return;
     }
 
@@ -358,7 +353,7 @@ export const DataProvider = ({ children }) => {
     // Update shifts state
     setShifts(newShifts);
     
-    addNotification(`Program echitabil generat pentru ${date.toLocaleDateString('ro-RO', { month: 'long', year: 'numeric' })} - O celulă = O acoperire completă`, 'success');
+    // Fair schedule generated silently
     
     return { days, shifts: newShifts };
   };
@@ -369,7 +364,7 @@ export const DataProvider = ({ children }) => {
         ? { ...s, unavailable: unavailableDates }
         : s
     ));
-    addNotification('Indisponibilitate actualizată', 'success');
+    // Staff unavailability updated silently
   };
 
   const value = {

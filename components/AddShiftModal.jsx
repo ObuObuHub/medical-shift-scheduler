@@ -9,7 +9,7 @@ export const AddShiftModal = ({
   onClose, 
   onSave 
 }) => {
-  const { shiftTypes, staff, shifts, setShifts, addNotification } = useData();
+  const { shiftTypes, staff, shifts, setShifts } = useData();
   const { hasPermission, currentUser } = useAuth();
   
   const [formData, setFormData] = useState({
@@ -167,17 +167,17 @@ export const AddShiftModal = ({
 
   const handleSave = () => {
     if (!hasPermission('assign_staff')) {
-      addNotification('Nu aveți permisiunea de a asigna personal', 'error');
+      // No permission - handled silently
       return;
     }
 
     if (!formData.shiftTypeId) {
-      addNotification('Selectați tipul de tură', 'error');
+      // No shift type selected - handled silently
       return;
     }
 
     if (formData.staffIds.length === 0) {
-      addNotification('Asignați cel puțin o persoană la tură', 'error');
+      // No staff assigned - handled silently
       return;
     }
 
@@ -219,8 +219,7 @@ export const AddShiftModal = ({
 
     setShifts(updatedShifts);
     
-    const action = editingShift ? 'actualizată' : 'adăugată';
-    addNotification(`Tura a fost ${action} cu succes!`, 'success');
+    // Shift saved silently
     
     if (onSave) onSave(shiftData);
     onClose();
