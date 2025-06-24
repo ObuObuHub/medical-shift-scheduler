@@ -14,7 +14,6 @@ import { AddShiftModal } from '../components/AddShiftModal';
 
 // Extracted View Components
 import { CalendarView } from '../components/CalendarView';
-import { ShiftExchangeView } from '../components/ShiftExchangeView';
 import { StaffView } from '../components/StaffView';
 import { AdminPanel } from '../components/AdminPanel';
 
@@ -187,7 +186,6 @@ function AppContent() {
   const menuItems = [
     { id: 'calendar', label: 'Calendar', icon: Calendar },
     { id: 'matrix', label: 'Planificare', icon: BarChart3 },
-    { id: 'exchanges', label: 'Schimburi', icon: ArrowLeftRight },
     { id: 'staff', label: 'Personal', icon: Users },
     ...(hasPermission('edit_system') ? [{ id: 'admin', label: 'Administrare', icon: Settings }] : [])
   ];
@@ -236,14 +234,6 @@ function AppContent() {
               onAddShift={(date, editingShift) => setAddShiftModalData({ date, editingShift })}
             />
           </div>
-        );
-      
-      case 'exchanges':
-        return (
-          <ShiftExchangeView
-            {...commonProps}
-            setShifts={setShifts}
-          />
         );
       
       case 'staff':
