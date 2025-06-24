@@ -5,8 +5,6 @@ A modern hospital shift scheduling application built with Next.js and Tailwind C
 ## 🚀 Current Features
 
 ### 🔐 Authentication & Access Control
-- **Manager Account**: `username: manager` | `password: manager123`
-- **Admin Account**: `username: admin` | `password: admin123`
 - **Role-Based Permissions**: Different access levels for staff, managers, and administrators
 
 ### 📅 Smart Shift Scheduling
