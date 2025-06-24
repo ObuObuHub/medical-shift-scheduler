@@ -49,108 +49,13 @@ function AppContent() {
     setCurrentDate(prev => addMonths(prev, direction));
   };
 
-  // Initialize shifts when hospital changes
-  const generateMockShifts = useCallback(() => {
-    const newShifts = {};
-    const startDate = new Date(currentDate);
-    startDate.setDate(1);
-
-    for (let i = 0; i < 31; i++) {
-      const date = new Date(startDate);
-      date.setDate(date.getDate() + i);
-      const dateKey = getDateKey(date);
-      
-      newShifts[dateKey] = [];
-      
-      // Random shift generation for each day - only 12h and 24h shifts
-      if (Math.random() > 0.3) {
-        newShifts[dateKey].push({
-          id: `${dateKey}-garda-zi`,
-          type: shiftTypes.GARDA_ZI,
-          staffIds: [1, 3]
-        });
-      }
-      
-      if (Math.random() > 0.5) {
-        newShifts[dateKey].push({
-          id: `${dateKey}-noapte`,
-          type: shiftTypes.NOAPTE,
-          staffIds: [2, 4, 5]
-        });
-      }
-    }
-
-    setShifts(newShifts);
-  }, [currentDate, shiftTypes, setShifts]);
-
-  useEffect(() => {
-    if (isAuthenticated) {
-      generateMockShifts();
-    }
-  }, [selectedHospital, isAuthenticated, generateMockShifts]);
+  // Auto-generation removed - shifts are only generated when clicking "Genereaza" button
 
   if (!isAuthenticated) {
     return <LoginForm />;
   }
 
-  // Business logic functions
-  const generateAutomaticShifts = () => {
-    if (!hasPermission('generate_shifts')) {
-      addNotification('Nu aveți permisiunea de a genera ture automat', 'error');
-      return;
-    }
-
-    const newShifts = {};
-    const startDate = new Date(currentDate);
-    startDate.setDate(1);
-    const endDate = new Date(currentDate);
-    endDate.setMonth(endDate.getMonth() + 1, 0);
-
-    const availableStaff = staff.filter(s => s.hospital === selectedHospital);
-    const departments = [...new Set(availableStaff.map(s => s.specialization))];
-
-    for (let date = new Date(startDate); date <= endDate; date.setDate(date.getDate() + 1)) {
-      const dateKey = getDateKey(date);
-      newShifts[dateKey] = [];
-
-      departments.forEach(department => {
-        const deptStaff = availableStaff.filter(s => s.specialization === department);
-        const doctors = deptStaff.filter(s => s.type === 'medic');
-        const nurses = deptStaff.filter(s => s.type === 'asistent');
-
-        if (doctors.length >= 1 && nurses.length >= 1) {
-          const selectedDoctors = doctors.slice(0, 1);
-          const selectedNurses = nurses.slice(0, 2);
-          const allStaffIds = [...selectedDoctors.map(s => s.id), ...selectedNurses.map(s => s.id)];
-
-          newShifts[dateKey].push({
-            id: `${dateKey}-${department.toLowerCase()}-zi`,
-            type: shiftTypes.GARDA_ZI,
-            department,
-            staffIds: allStaffIds,
-            requirements: { minDoctors: 1, minNurses: 1, specializations: [department] }
-          });
-
-          if (doctors.length >= 2 && nurses.length >= 2) {
-            const nightDoctors = doctors.slice(1, 2);
-            const nightNurses = nurses.slice(2, 4);
-            const nightStaffIds = [...nightDoctors.map(s => s.id), ...nightNurses.map(s => s.id)];
-
-            newShifts[dateKey].push({
-              id: `${dateKey}-${department.toLowerCase()}-noapte`,
-              type: shiftTypes.NOAPTE,
-              department,
-              staffIds: nightStaffIds,
-              requirements: { minDoctors: 1, minNurses: 1, specializations: [department] }
-            });
-          }
-        }
-      });
-    }
-
-    setShifts(newShifts);
-    addNotification(`Ture generate automat pentru ${formatMonthYear(currentDate)}`, 'success');
-  };
+  // Business logic functions - old auto-generation removed
 
   const saveTemplate = () => {
     try {
@@ -208,7 +113,6 @@ function AppContent() {
           <CalendarView
             {...commonProps}
             navigateMonth={navigateMonth}
-            generateAutomaticShifts={generateAutomaticShifts}
             generateFairSchedule={generateFairSchedule}
             saveTemplate={saveTemplate}
             loadTemplate={loadTemplate}

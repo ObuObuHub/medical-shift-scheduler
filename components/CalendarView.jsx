@@ -4,7 +4,6 @@ import { ChevronLeft, ChevronRight, Plus, Wand2, Save, Download } from './Icons'
 export const CalendarView = ({ 
   currentDate,
   navigateMonth,
-  generateAutomaticShifts,
   generateFairSchedule,
   saveTemplate,
   loadTemplate,
@@ -44,16 +43,7 @@ export const CalendarView = ({
                 title="Generează program echitabil cu distribuție corectă a turilor"
               >
                 <Wand2 className="w-4 h-4 mr-2" />
-                Program Echitabil
-              </button>
-              
-              <button 
-                onClick={generateAutomaticShifts} 
-                className="ml-2 px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 flex items-center"
-                title="Generare automată simplă (versiunea veche)"
-              >
-                <Wand2 className="w-4 h-4 mr-2" />
-                Simplu
+                Genereaza
               </button>
               
               <div className="flex items-center space-x-2 ml-4">
