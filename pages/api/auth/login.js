@@ -43,7 +43,7 @@ export default async function handler(req, res) {
       WHERE username = ${username.toLowerCase()} AND is_active = true;
     `;
 
-    let user = userResult.rows[0];
+    let user = userResult[0];
 
     // If user doesn't exist, check against legacy hardcoded users
     if (!user) {
@@ -78,7 +78,7 @@ export default async function handler(req, res) {
           RETURNING *;
         `;
         
-        user = newUserResult.rows[0];
+        user = newUserResult[0];
       }
     }
 

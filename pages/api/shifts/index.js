@@ -24,39 +24,43 @@ async function getShifts(req, res) {
   try {
     const { hospital, startDate, endDate } = req.query;
     
-    let whereConditions = ['is_active = true'];
-    let queryParams = [];
-    let paramIndex = 1;
+    let result;
     
-    if (hospital) {
-      whereConditions.push(`hospital = $${paramIndex}`);
-      queryParams.push(hospital);
-      paramIndex++;
+    if (hospital && startDate && endDate) {
+      result = await sql`
+        SELECT * FROM shifts 
+        WHERE is_active = true AND hospital = ${hospital} AND date >= ${startDate} AND date <= ${endDate}
+        ORDER BY date;
+      `;
+    } else if (hospital && startDate) {
+      result = await sql`
+        SELECT * FROM shifts 
+        WHERE is_active = true AND hospital = ${hospital} AND date >= ${startDate}
+        ORDER BY date;
+      `;
+    } else if (hospital) {
+      result = await sql`
+        SELECT * FROM shifts 
+        WHERE is_active = true AND hospital = ${hospital}
+        ORDER BY date;
+      `;
+    } else if (startDate && endDate) {
+      result = await sql`
+        SELECT * FROM shifts 
+        WHERE is_active = true AND date >= ${startDate} AND date <= ${endDate}
+        ORDER BY date;
+      `;
+    } else {
+      result = await sql`
+        SELECT * FROM shifts 
+        WHERE is_active = true
+        ORDER BY date;
+      `;
     }
-    
-    if (startDate) {
-      whereConditions.push(`date >= $${paramIndex}`);
-      queryParams.push(startDate);
-      paramIndex++;
-    }
-    
-    if (endDate) {
-      whereConditions.push(`date <= $${paramIndex}`);
-      queryParams.push(endDate);
-      paramIndex++;
-    }
-
-    const query = `
-      SELECT * FROM shifts 
-      WHERE ${whereConditions.join(' AND ')}
-      ORDER BY date;
-    `;
-
-    const result = await sql.query(query, queryParams);
     
     // Convert to legacy format grouped by date
     const groupedShifts = {};
-    result.rows.forEach(shift => {
+    result.forEach(shift => {
       const dateKey = shift.date.toISOString().split('T')[0];
       
       if (!groupedShifts[dateKey]) {
@@ -115,7 +119,7 @@ async function createShift(req, res) {
       RETURNING *;
     `;
 
-    const shift = result.rows[0];
+    const shift = result[0];
 
     const newShift = {
       id: shift.shift_id,

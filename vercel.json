@@ -1,12 +1,12 @@
 {
   "build": {
     "env": {
-      "POSTGRES_URL": "@postgres_url",
+      "DATABASE_URL": "@database_url",
       "JWT_SECRET": "@jwt_secret"
     }
   },
   "env": {
-    "POSTGRES_URL": "@postgres_url",
+    "DATABASE_URL": "@database_url", 
     "JWT_SECRET": "@jwt_secret"
   },
   "functions": {

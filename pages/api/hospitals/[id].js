@@ -37,11 +37,11 @@ async function updateHospital(req, res, id) {
       RETURNING *;
     `;
 
-    if (result.rows.length === 0) {
+    if (result.length === 0) {
       return res.status(404).json({ error: 'Hospital not found' });
     }
 
-    const hospital = result.rows[0];
+    const hospital = result[0];
 
     const updatedHospital = {
       id: hospital.hospital_id,
@@ -62,7 +62,7 @@ async function deleteHospital(req, res, id) {
       SELECT COUNT(*) as count FROM hospitals WHERE is_active = true;
     `;
     
-    if (activeHospitalsResult.rows[0].count <= 1) {
+    if (activeHospitalsResult[0].count <= 1) {
       return res.status(400).json({ error: 'Cannot delete the last hospital' });
     }
 
@@ -73,7 +73,7 @@ async function deleteHospital(req, res, id) {
       RETURNING id;
     `;
 
-    if (result.rows.length === 0) {
+    if (result.length === 0) {
       return res.status(404).json({ error: 'Hospital not found' });
     }
 

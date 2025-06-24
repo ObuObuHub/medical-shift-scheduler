@@ -27,7 +27,7 @@ async function getHospitals(req, res) {
     `;
     
     // Convert to legacy format for compatibility
-    const legacyHospitals = result.rows.map(h => ({
+    const legacyHospitals = result.map(h => ({
       id: h.hospital_id,
       name: h.name
     }));
@@ -56,7 +56,7 @@ async function createHospital(req, res) {
       RETURNING *;
     `;
 
-    const hospital = result.rows[0];
+    const hospital = result[0];
 
     const newHospital = {
       id: hospital.hospital_id,

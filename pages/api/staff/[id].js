@@ -31,40 +31,28 @@ async function updateStaff(req, res, id) {
       SELECT * FROM staff WHERE id = ${id} AND is_active = true;
     `;
     
-    if (staffResult.rows.length === 0) {
+    if (staffResult.length === 0) {
       return res.status(404).json({ error: 'Staff member not found' });
     }
 
-    // Build update query dynamically
-    const updateFields = [];
-    const updateValues = [];
-    
-    const allowedFields = ['name', 'type', 'specialization', 'hospital', 'role', 'unavailable'];
-    allowedFields.forEach(field => {
-      if (updates[field] !== undefined) {
-        updateFields.push(`${field} = $${updateValues.length + 1}`);
-        updateValues.push(field === 'unavailable' ? JSON.stringify(updates[field]) : updates[field]);
-      }
-    });
-
-    if (updateFields.length === 0) {
-      return res.status(400).json({ error: 'No valid fields to update' });
-    }
-
-    updateValues.push(new Date().toISOString()); // updated_at
-    updateValues.push(id); // WHERE condition
-
-    const updateQuery = `
+    // Simple update approach for Neon
+    const updatedStaff = await sql`
       UPDATE staff 
-      SET ${updateFields.join(', ')}, updated_at = $${updateValues.length - 1}
-      WHERE id = $${updateValues.length}
+      SET 
+        name = ${updates.name || staffResult[0].name},
+        type = ${updates.type || staffResult[0].type},
+        specialization = ${updates.specialization || staffResult[0].specialization},
+        hospital = ${updates.hospital || staffResult[0].hospital},
+        role = ${updates.role || staffResult[0].role},
+        unavailable = ${JSON.stringify(updates.unavailable || staffResult[0].unavailable)},
+        updated_at = CURRENT_TIMESTAMP
+      WHERE id = ${id}
       RETURNING *;
     `;
 
-    const result = await sql.query(updateQuery, updateValues);
-    const staff = result.rows[0];
+    const staff = updatedStaff[0];
 
-    const updatedStaff = {
+    const updatedStaffResult = {
       id: staff.id,
       name: staff.name,
       type: staff.type,
@@ -74,7 +62,7 @@ async function updateStaff(req, res, id) {
       unavailable: staff.unavailable || []
     };
 
-    res.status(200).json(updatedStaff);
+    res.status(200).json(updatedStaffResult);
   } catch (error) {
     console.error('Update staff error:', error);
     res.status(500).json({ error: 'Failed to update staff member' });
@@ -90,7 +78,7 @@ async function deleteStaff(req, res, id) {
       RETURNING id;
     `;
 
-    if (result.rows.length === 0) {
+    if (result.length === 0) {
       return res.status(404).json({ error: 'Staff member not found' });
     }
 

@@ -24,18 +24,15 @@ async function getStaff(req, res) {
   try {
     const { hospital } = req.query;
     
-    let query = sql`SELECT * FROM staff WHERE is_active = true`;
-    
+    let result;
     if (hospital) {
-      query = sql`SELECT * FROM staff WHERE is_active = true AND hospital = ${hospital}`;
+      result = await sql`SELECT * FROM staff WHERE is_active = true AND hospital = ${hospital} ORDER BY name`;
+    } else {
+      result = await sql`SELECT * FROM staff WHERE is_active = true ORDER BY name`;
     }
     
-    query = sql`${query} ORDER BY name`;
-    
-    const result = await query;
-    
     // Convert to legacy format for compatibility
-    const legacyStaff = result.rows.map(s => ({
+    const legacyStaff = result.map(s => ({
       id: s.id,
       name: s.name,
       type: s.type,
@@ -66,7 +63,7 @@ async function createStaff(req, res) {
       RETURNING *;
     `;
 
-    const staff = result.rows[0];
+    const staff = result[0];
 
     const newStaff = {
       id: staff.id,
