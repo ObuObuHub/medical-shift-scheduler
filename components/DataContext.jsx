@@ -1,11 +1,9 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 
-// Default data
+// Default data - Only 12-hour and 24-hour shifts
 const DEFAULT_SHIFT_TYPES = {
-  ZI: { id: 'zi', name: 'Tură de Zi', start: '08:00', end: '15:00', color: '#3B82F6', duration: 7 },
-  DUPA_AMIAZA: { id: 'dupa_amiaza', name: 'Tură După-Amiază', start: '10:00', end: '17:00', color: '#8B5CF6', duration: 7 },
-  GARDA_ZI: { id: 'garda_zi', name: 'Gardă de Zi', start: '08:00', end: '20:00', color: '#10B981', duration: 12 },
-  NOAPTE: { id: 'noapte', name: 'Tură de Noapte', start: '20:00', end: '08:00', color: '#F59E0B', duration: 12 },
+  GARDA_ZI: { id: 'garda_zi', name: 'Gardă de Zi (12h)', start: '08:00', end: '20:00', color: '#10B981', duration: 12 },
+  NOAPTE: { id: 'noapte', name: 'Tură de Noapte (12h)', start: '20:00', end: '08:00', color: '#F59E0B', duration: 12 },
   GARDA_24: { id: 'garda_24', name: 'Gardă 24 ore', start: '08:00', end: '08:00', color: '#EF4444', duration: 24 }
 };
 

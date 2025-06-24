@@ -49,11 +49,11 @@ function AppContent() {
       
       newShifts[dateKey] = [];
       
-      // Random shift generation for each day
+      // Random shift generation for each day - only 12h and 24h shifts
       if (Math.random() > 0.3) {
         newShifts[dateKey].push({
-          id: `${dateKey}-zi`,
-          type: shiftTypes.ZI,
+          id: `${dateKey}-garda-zi`,
+          type: shiftTypes.GARDA_ZI,
           staffIds: [1, 3]
         });
       }
@@ -131,8 +131,8 @@ function AppContent() {
           }
           
           newShifts[dateKey].push({
-            id: `${dateKey}-zi-${department.toLowerCase()}`,
-            type: shiftTypes.ZI,
+            id: `${dateKey}-garda-zi-${department.toLowerCase()}`,
+            type: shiftTypes.GARDA_ZI,
             department: department,
             staffIds: selectedStaff
           });
