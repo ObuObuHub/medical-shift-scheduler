@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect } from 'react';
+import apiClient from '../lib/apiClient';
 
 // Default users with hashed passwords (demo purposes - use proper auth in production)
 const DEFAULT_USERS = {
@@ -36,14 +37,17 @@ export const AuthProvider = ({ children }) => {
 
   // Check for existing session on mount
   useEffect(() => {
+    const token = apiClient.getToken();
     const savedUser = localStorage.getItem('currentUser');
-    if (savedUser) {
+    
+    if (token && savedUser) {
       try {
         const user = JSON.parse(savedUser);
         setCurrentUser(user);
       } catch (error) {
         console.error('Error parsing saved user:', error);
         localStorage.removeItem('currentUser');
+        apiClient.logout();
       }
     }
     setIsLoading(false);
@@ -69,27 +73,30 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (username, password) => {
     try {
-      const passwordHash = await hashPassword(password);
-      const user = Object.values(DEFAULT_USERS).find(
-        u => u.username === username && u.passwordHash === passwordHash
-      );
-
-      if (user) {
-        const { passwordHash: _, ...userWithoutPassword } = user;
-        setCurrentUser(userWithoutPassword);
-        return { success: true, user: userWithoutPassword };
-      }
-
-      return { success: false, error: 'Utilizator sau parolă incorectă' };
+      const response = await apiClient.login(username, password);
+      
+      const userSession = {
+        id: response.user.id,
+        username: response.user.username,
+        name: response.user.name,
+        role: response.user.role,
+        hospital: response.user.hospital,
+        type: response.user.type,
+        specialization: response.user.specialization
+      };
+      
+      setCurrentUser(userSession);
+      return { success: true, user: userSession };
     } catch (error) {
       console.error('Login error:', error);
-      return { success: false, error: 'Eroare la autentificare' };
+      return { success: false, error: error.message || 'Eroare la autentificare' };
     }
   };
 
   const logout = () => {
     setCurrentUser(null);
     localStorage.removeItem('currentUser');
+    apiClient.logout();
   };
 
   // Permission checking

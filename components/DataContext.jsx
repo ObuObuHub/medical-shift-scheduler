@@ -1,7 +1,8 @@
 import { createContext, useContext, useState, useEffect } from 'react';
+import apiClient from '../lib/apiClient';
 import { generateSchedule, generateDaysForMonth, calculateFairQuotas, convertScheduleToShifts } from '../utils/shiftEngine';
 
-// Default data - Only 12-hour and 24-hour shifts
+// Default fallback data (used only when API is not available)
 const DEFAULT_SHIFT_TYPES = {
   GARDA_ZI: { id: 'garda_zi', name: 'Gardă de Zi (12h)', start: '08:00', end: '20:00', color: '#10B981', duration: 12 },
   NOAPTE: { id: 'noapte', name: 'Tură de Noapte (12h)', start: '20:00', end: '08:00', color: '#F59E0B', duration: 12 },
@@ -60,49 +61,56 @@ export const DataProvider = ({ children }) => {
   const [staff, setStaff] = useState(DEFAULT_STAFF);
   const [shifts, setShifts] = useState({});
   const [notifications, setNotifications] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isOffline, setIsOffline] = useState(false);
 
-  // Load data from localStorage on mount - admin changes become hardcoded defaults
+  // Load initial data from API
   useEffect(() => {
-    try {
-      const savedShiftTypes = localStorage.getItem('shiftTypes');
-      const savedHospitals = localStorage.getItem('hospitals');
-      const savedStaff = localStorage.getItem('staff');
-      const savedShifts = localStorage.getItem('shifts');
-
-      // Use hardcoded defaults that include admin changes for global application
-      if (savedShiftTypes) {
-        setShiftTypes(JSON.parse(savedShiftTypes));
-      }
-      if (savedHospitals) {
-        setHospitals(JSON.parse(savedHospitals));
-      }
-      if (savedStaff) {
-        setStaff(JSON.parse(savedStaff));
-      }
-      if (savedShifts) {
-        setShifts(JSON.parse(savedShifts));
-      }
-    } catch (error) {
-      console.error('Error loading data from localStorage:', error);
-    }
+    loadInitialData();
   }, []);
 
-  // Save data to localStorage when state changes
-  useEffect(() => {
-    localStorage.setItem('shiftTypes', JSON.stringify(shiftTypes));
-  }, [shiftTypes]);
+  const loadInitialData = async () => {
+    try {
+      setIsLoading(true);
+      
+      // Try to load data from API
+      const [hospitalsData, staffData, shiftsData] = await Promise.allSettled([
+        apiClient.getHospitals(),
+        apiClient.getStaff(),
+        apiClient.getShifts()
+      ]);
 
-  useEffect(() => {
-    localStorage.setItem('hospitals', JSON.stringify(hospitals));
-  }, [hospitals]);
+      if (hospitalsData.status === 'fulfilled') {
+        setHospitals(hospitalsData.value);
+        setIsOffline(false);
+      } else {
+        console.warn('Failed to load hospitals from API, using defaults');
+        setIsOffline(true);
+      }
 
-  useEffect(() => {
-    localStorage.setItem('staff', JSON.stringify(staff));
-  }, [staff]);
+      if (staffData.status === 'fulfilled') {
+        setStaff(staffData.value);
+        setIsOffline(false);
+      } else {
+        console.warn('Failed to load staff from API, using defaults');
+        setIsOffline(true);
+      }
 
-  useEffect(() => {
-    localStorage.setItem('shifts', JSON.stringify(shifts));
-  }, [shifts]);
+      if (shiftsData.status === 'fulfilled') {
+        setShifts(shiftsData.value);
+        setIsOffline(false);
+      } else {
+        console.warn('Failed to load shifts from API, using defaults');
+        setIsOffline(true);
+      }
+
+    } catch (error) {
+      console.error('Error loading initial data:', error);
+      setIsOffline(true);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   // Add notification - DISABLED
   const addNotification = (message, type = 'info') => {
@@ -111,15 +119,33 @@ export const DataProvider = ({ children }) => {
   };
 
   // Shift type management
-  const addShiftType = (newShiftType) => {
+  const addShiftType = async (newShiftType) => {
     const id = newShiftType.id || `shift_${Date.now()}`;
     const shiftTypeWithId = { ...newShiftType, id };
+    
+    if (!isOffline) {
+      try {
+        // TODO: Add API endpoint for shift types
+        console.warn('Shift type API not implemented yet, using local state');
+      } catch (error) {
+        console.error('Failed to create shift type:', error);
+      }
+    }
+    
     setShiftTypes(prev => ({ ...prev, [id.toUpperCase()]: shiftTypeWithId }));
-    // Shift type added silently
     return shiftTypeWithId;
   };
 
-  const updateShiftType = (id, updates) => {
+  const updateShiftType = async (id, updates) => {
+    if (!isOffline) {
+      try {
+        // TODO: Add API endpoint for shift types
+        console.warn('Shift type API not implemented yet, using local state');
+      } catch (error) {
+        console.error('Failed to update shift type:', error);
+      }
+    }
+    
     setShiftTypes(prev => {
       const key = Object.keys(prev).find(k => prev[k].id === id);
       if (key) {
@@ -127,10 +153,18 @@ export const DataProvider = ({ children }) => {
       }
       return prev;
     });
-    // Shift type updated silently
   };
 
-  const deleteShiftType = (id) => {
+  const deleteShiftType = async (id) => {
+    if (!isOffline) {
+      try {
+        // TODO: Add API endpoint for shift types
+        console.warn('Shift type API not implemented yet, using local state');
+      } catch (error) {
+        console.error('Failed to delete shift type:', error);
+      }
+    }
+    
     setShiftTypes(prev => {
       const newShiftTypes = { ...prev };
       const key = Object.keys(newShiftTypes).find(k => newShiftTypes[k].id === id);
@@ -139,55 +173,138 @@ export const DataProvider = ({ children }) => {
       }
       return newShiftTypes;
     });
-    // Shift type deleted silently
   };
 
-  // Staff management
-  const addStaff = (newStaff) => {
-    const staffMember = {
-      id: Date.now(),
-      ...newStaff,
-      role: newStaff.role || 'staff'
-    };
-    setStaff(prev => [...prev, staffMember]);
-    // Staff added silently
+  // Staff management with API integration
+  const addStaff = async (newStaff) => {
+    try {
+      if (!isOffline) {
+        const createdStaff = await apiClient.createStaff(newStaff);
+        setStaff(prev => [...prev, createdStaff]);
+        return createdStaff;
+      } else {
+        // Fallback to local state when offline
+        const staffMember = {
+          id: Date.now(),
+          ...newStaff,
+          role: newStaff.role || 'staff'
+        };
+        setStaff(prev => [...prev, staffMember]);
+        return staffMember;
+      }
+    } catch (error) {
+      console.error('Failed to add staff:', error);
+      // Fallback to local state on error
+      const staffMember = {
+        id: Date.now(),
+        ...newStaff,
+        role: newStaff.role || 'staff'
+      };
+      setStaff(prev => [...prev, staffMember]);
+      return staffMember;
+    }
   };
 
-  const updateStaff = (id, updates) => {
-    setStaff(prev => prev.map(s => s.id === id ? { ...s, ...updates } : s));
-    // Staff updated silently
+  const updateStaff = async (id, updates) => {
+    try {
+      if (!isOffline) {
+        const updatedStaff = await apiClient.updateStaff(id, updates);
+        setStaff(prev => prev.map(s => s.id === id ? updatedStaff : s));
+        return updatedStaff;
+      } else {
+        // Fallback to local state when offline
+        setStaff(prev => prev.map(s => s.id === id ? { ...s, ...updates } : s));
+      }
+    } catch (error) {
+      console.error('Failed to update staff:', error);
+      // Fallback to local state on error
+      setStaff(prev => prev.map(s => s.id === id ? { ...s, ...updates } : s));
+    }
   };
 
-  const deleteStaff = (id) => {
-    setStaff(prev => prev.filter(s => s.id !== id));
-    // Staff deleted silently
+  const deleteStaff = async (id) => {
+    try {
+      if (!isOffline) {
+        await apiClient.deleteStaff(id);
+        setStaff(prev => prev.filter(s => s.id !== id));
+      } else {
+        // Fallback to local state when offline
+        setStaff(prev => prev.filter(s => s.id !== id));
+      }
+    } catch (error) {
+      console.error('Failed to delete staff:', error);
+      // Fallback to local state on error
+      setStaff(prev => prev.filter(s => s.id !== id));
+    }
   };
 
-  // Hospital management
-  const addHospital = (name) => {
-    const newHospital = {
-      id: `spital${Date.now()}`,
-      name
-    };
-    setHospitals(prev => [...prev, newHospital]);
-    // Hospital added silently
+  // Hospital management with API integration
+  const addHospital = async (name) => {
+    try {
+      if (!isOffline) {
+        const newHospital = await apiClient.createHospital({ name });
+        setHospitals(prev => [...prev, newHospital]);
+        return newHospital;
+      } else {
+        // Fallback to local state when offline
+        const newHospital = {
+          id: `spital${Date.now()}`,
+          name
+        };
+        setHospitals(prev => [...prev, newHospital]);
+        return newHospital;
+      }
+    } catch (error) {
+      console.error('Failed to add hospital:', error);
+      // Fallback to local state on error
+      const newHospital = {
+        id: `spital${Date.now()}`,
+        name
+      };
+      setHospitals(prev => [...prev, newHospital]);
+      return newHospital;
+    }
   };
 
-  const updateHospital = (id, name) => {
-    setHospitals(prev => prev.map(h => h.id === id ? { ...h, name } : h));
-    // Hospital updated silently
+  const updateHospital = async (id, name) => {
+    try {
+      if (!isOffline) {
+        const updatedHospital = await apiClient.updateHospital(id, { name });
+        setHospitals(prev => prev.map(h => h.id === id ? updatedHospital : h));
+        return updatedHospital;
+      } else {
+        // Fallback to local state when offline
+        setHospitals(prev => prev.map(h => h.id === id ? { ...h, name } : h));
+      }
+    } catch (error) {
+      console.error('Failed to update hospital:', error);
+      // Fallback to local state on error
+      setHospitals(prev => prev.map(h => h.id === id ? { ...h, name } : h));
+    }
   };
 
-  const deleteHospital = (id) => {
+  const deleteHospital = async (id) => {
     if (hospitals.length <= 1) {
-      // Cannot delete last hospital - handled silently
+      console.warn('Cannot delete last hospital');
       return;
     }
-    setHospitals(prev => prev.filter(h => h.id !== id));
-    // Hospital deleted silently
+
+    try {
+      if (!isOffline) {
+        await apiClient.deleteHospital(id);
+        setHospitals(prev => prev.filter(h => h.id !== id));
+      } else {
+        // Fallback to local state when offline
+        setHospitals(prev => prev.filter(h => h.id !== id));
+      }
+    } catch (error) {
+      console.error('Failed to delete hospital:', error);
+      // Fallback to local state on error
+      setHospitals(prev => prev.filter(h => h.id !== id));
+    }
   };
 
-  // Coverage validation utilities
+  // Coverage validation utilities (unchanged)
   const getCoverageForDate = (date, hospitalId) => {
     const dateKey = date.toISOString().split('T')[0];
     const dayShifts = shifts[dateKey] || [];
@@ -360,12 +477,7 @@ export const DataProvider = ({ children }) => {
   };
 
   const setStaffUnavailability = (staffId, unavailableDates) => {
-    setStaff(prev => prev.map(s => 
-      s.id === staffId 
-        ? { ...s, unavailable: unavailableDates }
-        : s
-    ));
-    // Staff unavailability updated silently
+    updateStaff(staffId, { unavailable: unavailableDates });
   };
 
   const value = {
@@ -375,6 +487,8 @@ export const DataProvider = ({ children }) => {
     staff,
     shifts,
     notifications,
+    isLoading,
+    isOffline,
     // Setters
     setShifts,
     setNotifications,
@@ -399,7 +513,9 @@ export const DataProvider = ({ children }) => {
     getDepartmentCoverage,
     // Fair scheduling
     generateFairSchedule,
-    setStaffUnavailability
+    setStaffUnavailability,
+    // Utility
+    loadInitialData
   };
 
   return (
