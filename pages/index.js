@@ -9,7 +9,7 @@ import { AuthProvider, useAuth } from '../components/AuthContext';
 import { DataProvider, useData } from '../components/DataContext';
 import { LoginForm } from '../components/LoginForm';
 import { ShiftTypeEditModal } from '../components/ShiftTypeEditModal';
-import { GanttViewWrapper as GanttView } from '../components/GanttViewWrapper';
+import { MatrixView } from '../components/MatrixView';
 import { AddShiftModal } from '../components/AddShiftModal';
 
 // Main app component with authentication
@@ -479,22 +479,22 @@ function AppContent() {
           </div>
         </div>
 
-        {/* Integrated Gantt View - Always visible for everyone */}
+        {/* Matrix View - Staff x Calendar visualization */}
         <div className="mt-8 border-t border-gray-200 pt-6">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-xl font-semibold text-gray-800 flex items-center">
               <BarChart3 className="w-5 h-5 mr-2" />
-              Vizualizare Gantt - {formatMonthYear(currentDate)}
+              Planificare Personal - {formatMonthYear(currentDate)}
             </h3>
             <div className="text-sm text-gray-600">
-              Vizualizare cronologică a turelor per personal
+              Vizualizare matricială a turelor per personal
             </div>
           </div>
           
-          <GanttView 
+          <MatrixView 
             selectedHospital={selectedHospital}
             currentDate={currentDate}
-            onDateChange={setCurrentDate}
+            onAddShift={(date, editingShift) => setAddShiftModalData({ date, editingShift })}
           />
         </div>
       </div>
