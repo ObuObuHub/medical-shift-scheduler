@@ -28,7 +28,7 @@ function AppContent() {
     shiftTypes, hospitals, staff, shifts, notifications, setShifts, 
     addNotification, addStaff, updateStaff, deleteStaff,
     addHospital, updateHospital, deleteHospital,
-    validateDayCoverage, getCoverageForDate
+    validateDayCoverage, getCoverageForDate, generateFairSchedule
   } = useData();
 
   // Core state
@@ -209,6 +209,7 @@ function AppContent() {
             {...commonProps}
             navigateMonth={navigateMonth}
             generateAutomaticShifts={generateAutomaticShifts}
+            generateFairSchedule={generateFairSchedule}
             saveTemplate={saveTemplate}
             loadTemplate={loadTemplate}
             getDaysInMonth={() => getDaysInMonth(currentDate)}

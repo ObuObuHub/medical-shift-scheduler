@@ -1,5 +1,6 @@
-import React from 'react';
-import { UserCog, Shield } from './Icons';
+import React, { useState } from 'react';
+import { UserCog, Shield, Calendar } from './Icons';
+import { StaffUnavailabilityModal } from './StaffUnavailabilityModal';
 
 export const StaffView = ({ 
   staff, 
@@ -7,6 +8,7 @@ export const StaffView = ({
   formatMonthYear, 
   currentDate 
 }) => {
+  const [selectedStaff, setSelectedStaff] = useState(null);
   const hospitalStaff = staff.filter(s => s.hospital === selectedHospital && s.type === 'medic'); // Only doctors
   const departments = [...new Set(hospitalStaff.map(s => s.specialization))].sort();
   
@@ -46,8 +48,19 @@ export const StaffView = ({
                     )}
                   </div>
                   <div className="mt-3 flex justify-between text-sm">
-                    <span className="text-gray-500">Ture luna aceasta: 12</span>
-                    <button className="text-blue-600 hover:text-blue-700">Detalii</button>
+                    <span className="text-gray-500">
+                      Indisponibil: {person.unavailable?.length || 0} zile
+                    </span>
+                    <div className="flex space-x-2">
+                      <button 
+                        onClick={() => setSelectedStaff(person)}
+                        className="text-blue-600 hover:text-blue-700 flex items-center"
+                        title="Gestionează indisponibilitate"
+                      >
+                        <Calendar className="w-3 h-3 mr-1" />
+                        Calendar
+                      </button>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -55,6 +68,14 @@ export const StaffView = ({
           </div>
         );
       })}
+      
+      {/* Unavailability Modal */}
+      {selectedStaff && (
+        <StaffUnavailabilityModal 
+          staffMember={selectedStaff}
+          onClose={() => setSelectedStaff(null)}
+        />
+      )}
     </div>
   );
 };

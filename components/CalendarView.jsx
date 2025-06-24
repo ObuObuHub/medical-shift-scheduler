@@ -5,6 +5,7 @@ export const CalendarView = ({
   currentDate,
   navigateMonth,
   generateAutomaticShifts,
+  generateFairSchedule,
   saveTemplate,
   loadTemplate,
   getDaysInMonth,
@@ -14,7 +15,8 @@ export const CalendarView = ({
   staff,
   shifts,
   getCoverageForDate,
-  setAddShiftModalData
+  setAddShiftModalData,
+  selectedHospital
 }) => {
   const months = ['Ianuarie', 'Februarie', 'Martie', 'Aprilie', 'Mai', 'Iunie',
                   'Iulie', 'August', 'Septembrie', 'Octombrie', 'Noiembrie', 'Decembrie'];
@@ -36,9 +38,22 @@ export const CalendarView = ({
           </button>
           {hasPermission('generate_shifts') && (
             <>
-              <button onClick={generateAutomaticShifts} className="ml-4 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center">
+              <button 
+                onClick={() => generateFairSchedule(selectedHospital, currentDate)} 
+                className="ml-4 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center"
+                title="Generează program echitabil cu distribuție corectă a turilor"
+              >
                 <Wand2 className="w-4 h-4 mr-2" />
-                Generare Automată
+                Program Echitabil
+              </button>
+              
+              <button 
+                onClick={generateAutomaticShifts} 
+                className="ml-2 px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 flex items-center"
+                title="Generare automată simplă (versiunea veche)"
+              >
+                <Wand2 className="w-4 h-4 mr-2" />
+                Simplu
               </button>
               
               <div className="flex items-center space-x-2 ml-4">

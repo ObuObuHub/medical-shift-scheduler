@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect } from 'react';
+import { generateSchedule, generateDaysForMonth, calculateFairQuotas, convertScheduleToShifts } from '../utils/shiftEngine';
 
 // Default data - Only 12-hour and 24-hour shifts
 const DEFAULT_SHIFT_TYPES = {
@@ -15,32 +16,32 @@ const DEFAULT_HOSPITALS = [
 
 const DEFAULT_STAFF = [
   // Urgențe
-  { id: 1, name: 'Dr. Popescu Ion', type: 'medic', specialization: 'Urgențe', hospital: 'spital1', role: 'manager' },
-  { id: 2, name: 'Dr. Stanescu Mihai', type: 'medic', specialization: 'Urgențe', hospital: 'spital1', role: 'staff' },
-  { id: 3, name: 'Dr. Popa Stefan', type: 'medic', specialization: 'Urgențe', hospital: 'spital1', role: 'staff' },
+  { id: 1, name: 'Dr. Popescu Ion', type: 'medic', specialization: 'Urgențe', hospital: 'spital1', role: 'manager', unavailable: [] },
+  { id: 2, name: 'Dr. Stanescu Mihai', type: 'medic', specialization: 'Urgențe', hospital: 'spital1', role: 'staff', unavailable: [] },
+  { id: 3, name: 'Dr. Popa Stefan', type: 'medic', specialization: 'Urgențe', hospital: 'spital1', role: 'staff', unavailable: [] },
   
   // Chirurgie
-  { id: 5, name: 'Dr. Ionescu Maria', type: 'medic', specialization: 'Chirurgie', hospital: 'spital1', role: 'manager' },
-  { id: 6, name: 'Dr. Dumitrescu Paul', type: 'medic', specialization: 'Chirurgie', hospital: 'spital1', role: 'staff' },
-  { id: 7, name: 'Dr. Vlad Carmen', type: 'medic', specialization: 'Chirurgie', hospital: 'spital1', role: 'staff' },
+  { id: 5, name: 'Dr. Ionescu Maria', type: 'medic', specialization: 'Chirurgie', hospital: 'spital1', role: 'manager', unavailable: [] },
+  { id: 6, name: 'Dr. Dumitrescu Paul', type: 'medic', specialization: 'Chirurgie', hospital: 'spital1', role: 'staff', unavailable: [] },
+  { id: 7, name: 'Dr. Vlad Carmen', type: 'medic', specialization: 'Chirurgie', hospital: 'spital1', role: 'staff', unavailable: [] },
   
   // ATI
-  { id: 9, name: 'Dr. Radulescu Alex', type: 'medic', specialization: 'ATI', hospital: 'spital1', role: 'staff' },
-  { id: 10, name: 'Dr. Constantinescu Ioana', type: 'medic', specialization: 'ATI', hospital: 'spital1', role: 'staff' },
-  { id: 11, name: 'Dr. Radu Ana', type: 'medic', specialization: 'ATI', hospital: 'spital1', role: 'staff' },
+  { id: 9, name: 'Dr. Radulescu Alex', type: 'medic', specialization: 'ATI', hospital: 'spital1', role: 'staff', unavailable: [] },
+  { id: 10, name: 'Dr. Constantinescu Ioana', type: 'medic', specialization: 'ATI', hospital: 'spital1', role: 'staff', unavailable: [] },
+  { id: 11, name: 'Dr. Radu Ana', type: 'medic', specialization: 'ATI', hospital: 'spital1', role: 'staff', unavailable: [] },
   
   // Pediatrie
-  { id: 13, name: 'Dr. Gheorghe Andrei', type: 'medic', specialization: 'Pediatrie', hospital: 'spital2', role: 'manager' },
-  { id: 14, name: 'Dr. Moraru Elena', type: 'medic', specialization: 'Pediatrie', hospital: 'spital2', role: 'staff' },
-  { id: 15, name: 'Dr. Neagu Raluca', type: 'medic', specialization: 'Pediatrie', hospital: 'spital2', role: 'staff' },
+  { id: 13, name: 'Dr. Gheorghe Andrei', type: 'medic', specialization: 'Pediatrie', hospital: 'spital2', role: 'manager', unavailable: [] },
+  { id: 14, name: 'Dr. Moraru Elena', type: 'medic', specialization: 'Pediatrie', hospital: 'spital2', role: 'staff', unavailable: [] },
+  { id: 15, name: 'Dr. Neagu Raluca', type: 'medic', specialization: 'Pediatrie', hospital: 'spital2', role: 'staff', unavailable: [] },
   
   // Cardiologie
-  { id: 17, name: 'Dr. Georgescu Radu', type: 'medic', specialization: 'Cardiologie', hospital: 'spital1', role: 'staff' },
-  { id: 18, name: 'Dr. Cristea Adriana', type: 'medic', specialization: 'Cardiologie', hospital: 'spital1', role: 'staff' },
+  { id: 17, name: 'Dr. Georgescu Radu', type: 'medic', specialization: 'Cardiologie', hospital: 'spital1', role: 'staff', unavailable: [] },
+  { id: 18, name: 'Dr. Cristea Adriana', type: 'medic', specialization: 'Cardiologie', hospital: 'spital1', role: 'staff', unavailable: [] },
   
   // Neurologie
-  { id: 19, name: 'Dr. Petrescu Dana', type: 'medic', specialization: 'Neurologie', hospital: 'spital1', role: 'staff' },
-  { id: 20, name: 'Dr. Enache Monica', type: 'medic', specialization: 'Neurologie', hospital: 'spital1', role: 'staff' }
+  { id: 19, name: 'Dr. Petrescu Dana', type: 'medic', specialization: 'Neurologie', hospital: 'spital1', role: 'staff', unavailable: [] },
+  { id: 20, name: 'Dr. Enache Monica', type: 'medic', specialization: 'Neurologie', hospital: 'spital1', role: 'staff', unavailable: [] }
 ];
 
 const DataContext = createContext();
@@ -338,6 +339,45 @@ export const DataProvider = ({ children }) => {
     };
   };
 
+  // Fair scheduling engine methods
+  const generateFairSchedule = (hospitalId, date) => {
+    if (!hospitalId || !date) return;
+
+    const hospitalStaff = staff.filter(s => s.hospital === hospitalId);
+    if (hospitalStaff.length === 0) {
+      addNotification('Nu există personal pentru acest spital', 'error');
+      return;
+    }
+
+    // Generate days for the month
+    const days = generateDaysForMonth(date);
+    
+    // Calculate fair quotas for staff
+    const staffWithQuotas = calculateFairQuotas(hospitalStaff, days);
+    
+    // Generate fair schedule
+    const schedule = generateSchedule(staffWithQuotas, days);
+    
+    // Convert to shifts format
+    const newShifts = convertScheduleToShifts(schedule, shiftTypes);
+    
+    // Update shifts state
+    setShifts(newShifts);
+    
+    addNotification(`Program echitabil generat pentru ${date.toLocaleDateString('ro-RO', { month: 'long', year: 'numeric' })}`, 'success');
+    
+    return { schedule, shifts: newShifts };
+  };
+
+  const setStaffUnavailability = (staffId, unavailableDates) => {
+    setStaff(prev => prev.map(s => 
+      s.id === staffId 
+        ? { ...s, unavailable: unavailableDates }
+        : s
+    ));
+    addNotification('Indisponibilitate actualizată', 'success');
+  };
+
   const value = {
     // Data
     shiftTypes,
@@ -366,7 +406,10 @@ export const DataProvider = ({ children }) => {
     getCoverageForDate,
     validateDayCoverage,
     getWeeklyCoverage,
-    getDepartmentCoverage
+    getDepartmentCoverage,
+    // Fair scheduling
+    generateFairSchedule,
+    setStaffUnavailability
   };
 
   return (
