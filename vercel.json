@@ -1,3 +1,17 @@
 {
-  "framework": "nextjs"
+  "build": {
+    "env": {
+      "POSTGRES_URL": "@postgres_url",
+      "JWT_SECRET": "@jwt_secret"
+    }
+  },
+  "env": {
+    "POSTGRES_URL": "@postgres_url",
+    "JWT_SECRET": "@jwt_secret"
+  },
+  "functions": {
+    "pages/api/**/*.js": {
+      "maxDuration": 10
+    }
+  }
 }

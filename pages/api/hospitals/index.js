@@ -1,22 +1,8 @@
-import connectToDatabase from '../../../lib/mongodb';
-import Hospital from '../../../models/Hospital';
-import { authMiddleware, requireRole } from '../../../lib/auth';
-
-// Helper to run middleware
-function runMiddleware(req, res, fn) {
-  return new Promise((resolve, reject) => {
-    fn(req, res, (result) => {
-      if (result instanceof Error) {
-        return reject(result);
-      }
-      return resolve(result);
-    });
-  });
-}
+import { sql } from '../../../lib/vercel-db';
+import { authMiddleware, requireRole, runMiddleware } from '../../../lib/auth';
 
 export default async function handler(req, res) {
   try {
-    await connectToDatabase();
     await runMiddleware(req, res, authMiddleware);
 
     switch (req.method) {
@@ -36,11 +22,13 @@ export default async function handler(req, res) {
 
 async function getHospitals(req, res) {
   try {
-    const hospitals = await Hospital.find({ isActive: true }).sort({ name: 1 });
+    const result = await sql`
+      SELECT * FROM hospitals WHERE is_active = true ORDER BY name;
+    `;
     
     // Convert to legacy format for compatibility
-    const legacyHospitals = hospitals.map(h => ({
-      id: h.id,
+    const legacyHospitals = result.rows.map(h => ({
+      id: h.hospital_id,
       name: h.name
     }));
 
@@ -62,17 +50,16 @@ async function createHospital(req, res) {
     // Generate unique ID
     const hospitalId = `spital${Date.now()}`;
 
-    const hospital = new Hospital({
-      id: hospitalId,
-      name: name.trim(),
-      address: address?.trim(),
-      createdBy: req.user._id
-    });
+    const result = await sql`
+      INSERT INTO hospitals (hospital_id, name, address, created_by)
+      VALUES (${hospitalId}, ${name.trim()}, ${address?.trim() || null}, ${req.user.id})
+      RETURNING *;
+    `;
 
-    await hospital.save();
+    const hospital = result.rows[0];
 
     const newHospital = {
-      id: hospital.id,
+      id: hospital.hospital_id,
       name: hospital.name
     };
 

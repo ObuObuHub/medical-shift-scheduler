@@ -1,6 +1,29 @@
-import connectToDatabase from '../../../lib/mongodb';
-import User from '../../../models/User';
-import { generateToken, verifyLegacyPassword } from '../../../lib/auth';
+import { sql } from '../../../lib/vercel-db';
+import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
+
+const JWT_SECRET = process.env.JWT_SECRET || 'medical-scheduler-secret-key';
+
+// Legacy SHA-256 password verification for existing users
+import crypto from 'crypto';
+
+function verifyLegacyPassword(password, storedHash) {
+  const hash = crypto.createHash('sha256').update(password).digest('hex');
+  return hash === storedHash;
+}
+
+function generateToken(user) {
+  return jwt.sign(
+    { 
+      userId: user.id, 
+      username: user.username, 
+      role: user.role,
+      hospital: user.hospital 
+    },
+    JWT_SECRET,
+    { expiresIn: '7d' }
+  );
+}
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -8,8 +31,6 @@ export default async function handler(req, res) {
   }
 
   try {
-    await connectToDatabase();
-
     const { username, password } = req.body;
 
     if (!username || !password) {
@@ -17,7 +38,12 @@ export default async function handler(req, res) {
     }
 
     // First try to find user in database
-    let user = await User.findOne({ username: username.toLowerCase() });
+    const userResult = await sql`
+      SELECT * FROM users 
+      WHERE username = ${username.toLowerCase()} AND is_active = true;
+    `;
+
+    let user = userResult.rows[0];
 
     // If user doesn't exist, check against legacy hardcoded users
     if (!user) {
@@ -25,7 +51,7 @@ export default async function handler(req, res) {
         { 
           username: 'admin', 
           passwordHash: '8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918',
-          name: 'Administrator',
+          name: 'Administrator Principal',
           role: 'admin',
           hospital: 'spital1',
           type: 'medic'
@@ -33,7 +59,7 @@ export default async function handler(req, res) {
         { 
           username: 'manager', 
           passwordHash: '866485796cfa8d7c0cf7111640205b83076433547577511d81f8030ae99ecea5',
-          name: 'Manager',
+          name: 'Manager Spital',
           role: 'manager',
           hospital: 'spital1',
           type: 'medic'
@@ -44,18 +70,15 @@ export default async function handler(req, res) {
       
       if (legacyUser && verifyLegacyPassword(password, legacyUser.passwordHash)) {
         // Migrate legacy user to database
-        user = new User({
-          name: legacyUser.name,
-          username: legacyUser.username,
-          passwordHash: password, // Will be hashed by pre-save hook
-          role: legacyUser.role,
-          hospital: legacyUser.hospital,
-          type: legacyUser.type
-        });
-        await user.save();
+        const hashedPassword = await bcrypt.hash(password, 10);
         
-        // Reload user to get hashed password
-        user = await User.findOne({ username: username.toLowerCase() });
+        const newUserResult = await sql`
+          INSERT INTO users (name, username, password_hash, role, hospital, type)
+          VALUES (${legacyUser.name}, ${legacyUser.username}, ${hashedPassword}, ${legacyUser.role}, ${legacyUser.hospital}, ${legacyUser.type})
+          RETURNING *;
+        `;
+        
+        user = newUserResult.rows[0];
       }
     }
 
@@ -64,13 +87,9 @@ export default async function handler(req, res) {
     }
 
     // Verify password
-    const isValid = await user.comparePassword(password);
+    const isValid = await bcrypt.compare(password, user.password_hash);
     if (!isValid) {
       return res.status(401).json({ error: 'Invalid credentials' });
-    }
-
-    if (!user.isActive) {
-      return res.status(401).json({ error: 'Account is inactive' });
     }
 
     const token = generateToken(user);
@@ -78,7 +97,7 @@ export default async function handler(req, res) {
     res.status(200).json({
       token,
       user: {
-        id: user._id,
+        id: user.id,
         name: user.name,
         username: user.username,
         role: user.role,

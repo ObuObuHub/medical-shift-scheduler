@@ -1,22 +1,8 @@
-import connectToDatabase from '../../../lib/mongodb';
-import Hospital from '../../../models/Hospital';
-import { authMiddleware, requireRole } from '../../../lib/auth';
-
-// Helper to run middleware
-function runMiddleware(req, res, fn) {
-  return new Promise((resolve, reject) => {
-    fn(req, res, (result) => {
-      if (result instanceof Error) {
-        return reject(result);
-      }
-      return resolve(result);
-    });
-  });
-}
+import { sql } from '../../../lib/vercel-db';
+import { authMiddleware, requireRole, runMiddleware } from '../../../lib/auth';
 
 export default async function handler(req, res) {
   try {
-    await connectToDatabase();
     await runMiddleware(req, res, authMiddleware);
     await runMiddleware(req, res, requireRole(['admin']));
 
@@ -44,20 +30,21 @@ async function updateHospital(req, res, id) {
       return res.status(400).json({ error: 'Hospital name is required' });
     }
 
-    const hospital = await Hospital.findOne({ id, isActive: true });
-    if (!hospital) {
+    const result = await sql`
+      UPDATE hospitals 
+      SET name = ${name.trim()}, address = ${address?.trim() || null}, updated_at = CURRENT_TIMESTAMP
+      WHERE hospital_id = ${id} AND is_active = true
+      RETURNING *;
+    `;
+
+    if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Hospital not found' });
     }
 
-    hospital.name = name.trim();
-    if (address !== undefined) {
-      hospital.address = address?.trim();
-    }
-
-    await hospital.save();
+    const hospital = result.rows[0];
 
     const updatedHospital = {
-      id: hospital.id,
+      id: hospital.hospital_id,
       name: hospital.name
     };
 
@@ -70,20 +57,25 @@ async function updateHospital(req, res, id) {
 
 async function deleteHospital(req, res, id) {
   try {
-    const hospital = await Hospital.findOne({ id, isActive: true });
-    if (!hospital) {
-      return res.status(404).json({ error: 'Hospital not found' });
-    }
-
     // Check if there are other active hospitals
-    const activeHospitalsCount = await Hospital.countDocuments({ isActive: true });
-    if (activeHospitalsCount <= 1) {
+    const activeHospitalsResult = await sql`
+      SELECT COUNT(*) as count FROM hospitals WHERE is_active = true;
+    `;
+    
+    if (activeHospitalsResult.rows[0].count <= 1) {
       return res.status(400).json({ error: 'Cannot delete the last hospital' });
     }
 
-    // Soft delete
-    hospital.isActive = false;
-    await hospital.save();
+    const result = await sql`
+      UPDATE hospitals 
+      SET is_active = false, updated_at = CURRENT_TIMESTAMP
+      WHERE hospital_id = ${id} AND is_active = true
+      RETURNING id;
+    `;
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Hospital not found' });
+    }
 
     res.status(200).json({ message: 'Hospital deleted successfully' });
   } catch (error) {

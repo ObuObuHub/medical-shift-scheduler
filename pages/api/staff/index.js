@@ -1,22 +1,8 @@
-import connectToDatabase from '../../../lib/mongodb';
-import Staff from '../../../models/Staff';
-import { authMiddleware, requireRole } from '../../../lib/auth';
-
-// Helper to run middleware
-function runMiddleware(req, res, fn) {
-  return new Promise((resolve, reject) => {
-    fn(req, res, (result) => {
-      if (result instanceof Error) {
-        return reject(result);
-      }
-      return resolve(result);
-    });
-  });
-}
+import { sql } from '../../../lib/vercel-db';
+import { authMiddleware, requireRole, runMiddleware } from '../../../lib/auth';
 
 export default async function handler(req, res) {
   try {
-    await connectToDatabase();
     await runMiddleware(req, res, authMiddleware);
 
     switch (req.method) {
@@ -38,16 +24,19 @@ async function getStaff(req, res) {
   try {
     const { hospital } = req.query;
     
-    let query = { isActive: true };
+    let query = sql`SELECT * FROM staff WHERE is_active = true`;
+    
     if (hospital) {
-      query.hospital = hospital;
+      query = sql`SELECT * FROM staff WHERE is_active = true AND hospital = ${hospital}`;
     }
-
-    const staff = await Staff.find(query).sort({ name: 1 });
+    
+    query = sql`${query} ORDER BY name`;
+    
+    const result = await query;
     
     // Convert to legacy format for compatibility
-    const legacyStaff = staff.map(s => ({
-      id: s._id.toString(),
+    const legacyStaff = result.rows.map(s => ({
+      id: s.id,
       name: s.name,
       type: s.type,
       specialization: s.specialization,
@@ -71,20 +60,16 @@ async function createStaff(req, res) {
       return res.status(400).json({ error: 'Name, specialization, and hospital are required' });
     }
 
-    const staff = new Staff({
-      name: name.trim(),
-      type: type || 'medic',
-      specialization,
-      hospital,
-      role: role || 'staff',
-      unavailable: [],
-      createdBy: req.user._id
-    });
+    const result = await sql`
+      INSERT INTO staff (name, type, specialization, hospital, role, created_by)
+      VALUES (${name.trim()}, ${type || 'medic'}, ${specialization}, ${hospital}, ${role || 'staff'}, ${req.user.id})
+      RETURNING *;
+    `;
 
-    await staff.save();
+    const staff = result.rows[0];
 
     const newStaff = {
-      id: staff._id.toString(),
+      id: staff.id,
       name: staff.name,
       type: staff.type,
       specialization: staff.specialization,

@@ -1,22 +1,8 @@
-import connectToDatabase from '../../../lib/mongodb';
-import Shift from '../../../models/Shift';
-import { authMiddleware, requireRole } from '../../../lib/auth';
-
-// Helper to run middleware
-function runMiddleware(req, res, fn) {
-  return new Promise((resolve, reject) => {
-    fn(req, res, (result) => {
-      if (result instanceof Error) {
-        return reject(result);
-      }
-      return resolve(result);
-    });
-  });
-}
+import { sql } from '../../../lib/vercel-db';
+import { authMiddleware, requireRole, runMiddleware } from '../../../lib/auth';
 
 export default async function handler(req, res) {
   try {
-    await connectToDatabase();
     await runMiddleware(req, res, authMiddleware);
 
     switch (req.method) {
@@ -38,23 +24,39 @@ async function getShifts(req, res) {
   try {
     const { hospital, startDate, endDate } = req.query;
     
-    let query = { isActive: true };
+    let whereConditions = ['is_active = true'];
+    let queryParams = [];
+    let paramIndex = 1;
     
     if (hospital) {
-      query.hospital = hospital;
+      whereConditions.push(`hospital = $${paramIndex}`);
+      queryParams.push(hospital);
+      paramIndex++;
     }
     
-    if (startDate || endDate) {
-      query.date = {};
-      if (startDate) query.date.$gte = new Date(startDate);
-      if (endDate) query.date.$lte = new Date(endDate);
+    if (startDate) {
+      whereConditions.push(`date >= $${paramIndex}`);
+      queryParams.push(startDate);
+      paramIndex++;
+    }
+    
+    if (endDate) {
+      whereConditions.push(`date <= $${paramIndex}`);
+      queryParams.push(endDate);
+      paramIndex++;
     }
 
-    const shifts = await Shift.find(query).sort({ date: 1 });
+    const query = `
+      SELECT * FROM shifts 
+      WHERE ${whereConditions.join(' AND ')}
+      ORDER BY date;
+    `;
+
+    const result = await sql.query(query, queryParams);
     
     // Convert to legacy format grouped by date
     const groupedShifts = {};
-    shifts.forEach(shift => {
+    result.rows.forEach(shift => {
       const dateKey = shift.date.toISOString().split('T')[0];
       
       if (!groupedShifts[dateKey]) {
@@ -62,9 +64,9 @@ async function getShifts(req, res) {
       }
       
       groupedShifts[dateKey].push({
-        id: shift.id,
-        type: shift.type,
-        staffIds: shift.staffIds,
+        id: shift.shift_id,
+        type: shift.shift_type,
+        staffIds: shift.staff_ids,
         department: shift.department,
         requirements: shift.requirements,
         coverage: shift.coverage
@@ -97,24 +99,28 @@ async function createShift(req, res) {
       });
     }
 
-    const shift = new Shift({
-      id,
-      date: new Date(date),
-      type,
-      staffIds,
-      department,
-      requirements: requirements || { minDoctors: 1, specializations: [] },
-      coverage: coverage || { adequate: false, warnings: [], recommendations: [], staffBreakdown: { doctors: 0, total: 0 } },
-      hospital,
-      createdBy: req.user._id
-    });
+    const result = await sql`
+      INSERT INTO shifts (shift_id, date, shift_type, staff_ids, department, requirements, coverage, hospital, created_by)
+      VALUES (
+        ${id},
+        ${date},
+        ${JSON.stringify(type)},
+        ${JSON.stringify(staffIds)},
+        ${department || null},
+        ${JSON.stringify(requirements || { minDoctors: 1, specializations: [] })},
+        ${JSON.stringify(coverage || { adequate: false, warnings: [], recommendations: [], staffBreakdown: { doctors: 0, total: 0 } })},
+        ${hospital},
+        ${req.user.id}
+      )
+      RETURNING *;
+    `;
 
-    await shift.save();
+    const shift = result.rows[0];
 
     const newShift = {
-      id: shift.id,
-      type: shift.type,
-      staffIds: shift.staffIds,
+      id: shift.shift_id,
+      type: shift.shift_type,
+      staffIds: shift.staff_ids,
       department: shift.department,
       requirements: shift.requirements,
       coverage: shift.coverage

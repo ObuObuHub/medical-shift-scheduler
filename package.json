@@ -6,17 +6,17 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
-    "seed": "node scripts/seedDatabase.js"
+    "lint": "next lint"
   },
   "dependencies": {
+    "@vercel/kv": "^3.0.0",
+    "@vercel/postgres": "^0.10.0",
     "bcryptjs": "^3.0.2",
     "cors": "^2.8.5",
     "date-fns": "^4.1.0",
     "dotenv": "^16.5.0",
     "frappe-gantt": "^1.0.3",
     "jsonwebtoken": "^9.0.2",
-    "mongoose": "^8.16.0",
     "next": "^13.5.0",
     "react": "^18.2.0",
     "react-beautiful-dnd": "^13.1.1",

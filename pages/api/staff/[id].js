@@ -1,22 +1,8 @@
-import connectToDatabase from '../../../lib/mongodb';
-import Staff from '../../../models/Staff';
-import { authMiddleware, requireRole } from '../../../lib/auth';
-
-// Helper to run middleware
-function runMiddleware(req, res, fn) {
-  return new Promise((resolve, reject) => {
-    fn(req, res, (result) => {
-      if (result instanceof Error) {
-        return reject(result);
-      }
-      return resolve(result);
-    });
-  });
-}
+import { sql } from '../../../lib/vercel-db';
+import { authMiddleware, requireRole, runMiddleware } from '../../../lib/auth';
 
 export default async function handler(req, res) {
   try {
-    await connectToDatabase();
     await runMiddleware(req, res, authMiddleware);
 
     const { id } = req.query;
@@ -41,23 +27,45 @@ async function updateStaff(req, res, id) {
   try {
     const updates = req.body;
     
-    const staff = await Staff.findById(id);
-    if (!staff) {
+    const staffResult = await sql`
+      SELECT * FROM staff WHERE id = ${id} AND is_active = true;
+    `;
+    
+    if (staffResult.rows.length === 0) {
       return res.status(404).json({ error: 'Staff member not found' });
     }
 
-    // Update allowed fields
+    // Build update query dynamically
+    const updateFields = [];
+    const updateValues = [];
+    
     const allowedFields = ['name', 'type', 'specialization', 'hospital', 'role', 'unavailable'];
     allowedFields.forEach(field => {
       if (updates[field] !== undefined) {
-        staff[field] = updates[field];
+        updateFields.push(`${field} = $${updateValues.length + 1}`);
+        updateValues.push(field === 'unavailable' ? JSON.stringify(updates[field]) : updates[field]);
       }
     });
 
-    await staff.save();
+    if (updateFields.length === 0) {
+      return res.status(400).json({ error: 'No valid fields to update' });
+    }
+
+    updateValues.push(new Date().toISOString()); // updated_at
+    updateValues.push(id); // WHERE condition
+
+    const updateQuery = `
+      UPDATE staff 
+      SET ${updateFields.join(', ')}, updated_at = $${updateValues.length - 1}
+      WHERE id = $${updateValues.length}
+      RETURNING *;
+    `;
+
+    const result = await sql.query(updateQuery, updateValues);
+    const staff = result.rows[0];
 
     const updatedStaff = {
-      id: staff._id.toString(),
+      id: staff.id,
       name: staff.name,
       type: staff.type,
       specialization: staff.specialization,
@@ -75,14 +83,16 @@ async function updateStaff(req, res, id) {
 
 async function deleteStaff(req, res, id) {
   try {
-    const staff = await Staff.findById(id);
-    if (!staff) {
+    const result = await sql`
+      UPDATE staff 
+      SET is_active = false, updated_at = CURRENT_TIMESTAMP
+      WHERE id = ${id} AND is_active = true
+      RETURNING id;
+    `;
+
+    if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Staff member not found' });
     }
-
-    // Soft delete
-    staff.isActive = false;
-    await staff.save();
 
     res.status(200).json({ message: 'Staff member deleted successfully' });
   } catch (error) {
