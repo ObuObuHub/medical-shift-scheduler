@@ -49,8 +49,7 @@ function AppContent() {
         newShifts[dateKey].push({
           id: `${dateKey}-zi`,
           type: shiftTypes.ZI,
-          staffIds: [1, 3],
-          required: { medic: 1, asistent: 1 }
+          staffIds: [1, 3]
         });
       }
       
@@ -58,8 +57,7 @@ function AppContent() {
         newShifts[dateKey].push({
           id: `${dateKey}-noapte`,
           type: shiftTypes.NOAPTE,
-          staffIds: [2, 4, 5],
-          required: { medic: 1, asistent: 1 }
+          staffIds: [2, 4, 5]
         });
       }
     }
@@ -107,40 +105,65 @@ function AppContent() {
         const medici = deptStaff.filter(s => s.type === 'medic');
         const asistenti = deptStaff.filter(s => s.type === 'asistent');
 
-        // Skip if department doesn't have minimum required staff
-        if (medici.length === 0 || asistenti.length === 0) return;
+        // Skip if department has no staff at all
+        if (deptStaff.length === 0) return;
 
         // Day shift - weekdays for most departments, emergency always
         if (dayOfWeek !== 0 && dayOfWeek !== 6 || department === 'Urgențe') {
-          const selectedMedic = medici[Math.floor(Math.random() * medici.length)];
-          const selectedAsistent = asistenti[Math.floor(Math.random() * asistenti.length)];
+          const selectedStaff = [];
+          
+          // Add random staff from department (any type)
+          if (deptStaff.length > 0) {
+            const randomStaff = deptStaff[Math.floor(Math.random() * deptStaff.length)];
+            selectedStaff.push(randomStaff.id);
+            
+            // Add another staff member if available
+            const remainingStaff = deptStaff.filter(s => s.id !== randomStaff.id);
+            if (remainingStaff.length > 0) {
+              const secondStaff = remainingStaff[Math.floor(Math.random() * remainingStaff.length)];
+              selectedStaff.push(secondStaff.id);
+            }
+          }
           
           newShifts[dateKey].push({
             id: `${dateKey}-zi-${department.toLowerCase()}`,
             type: shiftTypes.ZI,
             department: department,
-            staffIds: [selectedMedic?.id, selectedAsistent?.id].filter(Boolean),
-            required: { medic: 1, asistent: 1 }
+            staffIds: selectedStaff
           });
         }
 
         // Night shift - critical departments only (Urgențe, ATI, Chirurgie)
         if (['Urgențe', 'ATI', 'Chirurgie'].includes(department)) {
-          const nightMedic = medici[Math.floor(Math.random() * medici.length)];
-          const nightAsistent = asistenti[Math.floor(Math.random() * asistenti.length)];
+          const nightStaff = [];
+          
+          // Add random staff from department for night shift
+          if (deptStaff.length > 0) {
+            const randomNightStaff = deptStaff[Math.floor(Math.random() * deptStaff.length)];
+            nightStaff.push(randomNightStaff.id);
+            
+            // Add another staff member if available
+            const remainingNightStaff = deptStaff.filter(s => s.id !== randomNightStaff.id);
+            if (remainingNightStaff.length > 0) {
+              const secondNightStaff = remainingNightStaff[Math.floor(Math.random() * remainingNightStaff.length)];
+              nightStaff.push(secondNightStaff.id);
+            }
+          }
           
           newShifts[dateKey].push({
             id: `${dateKey}-noapte-${department.toLowerCase()}`,
             type: shiftTypes.NOAPTE,
             department: department,
-            staffIds: [nightMedic?.id, nightAsistent?.id].filter(Boolean),
-            required: { medic: 1, asistent: 1 }
+            staffIds: nightStaff
           });
         }
       });
     }
 
-    setShifts(newShifts);
+    setShifts(prevShifts => ({
+      ...prevShifts,
+      ...newShifts
+    }));
     addNotification(`Ture generate automat pentru ${departments.length} departamente!`, 'success');
   };
 
@@ -158,6 +181,12 @@ function AppContent() {
       month: 'long', 
       year: 'numeric' 
     });
+  };
+
+  // Helper function to get staff name by ID
+  const getStaffName = (staffId) => {
+    const person = staff.find(s => s.id === staffId);
+    return person ? person.name.split(' ').slice(0, 2).join(' ') : 'Unknown';
   };
 
   // Get days for calendar display
@@ -180,23 +209,6 @@ function AppContent() {
     return days;
   };
 
-  // Check minimum staff requirements - simplified to 1 doctor + 1 assistant
-  const checkMinimumStaff = (shift) => {
-    const assignedStaff = staff.filter(s => shift.staffIds.includes(s.id));
-    const counts = {
-      medic: assignedStaff.filter(s => s.type === 'medic').length,
-      asistent: assignedStaff.filter(s => s.type === 'asistent').length
-    };
-
-    const required = shift.required || { medic: 1, asistent: 1 };
-    return {
-      isValid: counts.medic >= required.medic && counts.asistent >= required.asistent,
-      counts,
-      message: counts.medic < required.medic ? 'Lipsește medic' : 
-               counts.asistent < required.asistent ? 'Lipsește asistent' : 
-               'Echipă completă'
-    };
-  };
 
   // User info component with logout
   const UserInfo = () => {
@@ -271,7 +283,6 @@ function AppContent() {
                 <div className="font-semibold text-sm mb-1">{date.getDate()}</div>
                 <div className="space-y-1">
                   {dayShifts.slice(0, 2).map((shift) => {
-                    const validation = checkMinimumStaff(shift);
                     const department = shift.department || (shift.staffIds.length > 0 ? 
                       staff.find(s => s.id === shift.staffIds[0])?.specialization : 'General');
                     return (
@@ -279,9 +290,31 @@ function AppContent() {
                         style={{ backgroundColor: shift.type.color + '20', borderLeft: `3px solid ${shift.type.color}` }}>
                         <div className="flex items-center justify-between">
                           <span className="truncate font-medium">{shift.type.name.split(' ')[0]}</span>
-                          {!validation.isValid && <AlertCircle className="w-3 h-3 text-red-500 flex-shrink-0 ml-1" />}
+                          {hasPermission('assign_staff') && (
+                            <button 
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedShift({ date, shifts: dayShifts });
+                              }}
+                              className="w-4 h-4 text-blue-600 hover:text-blue-800"
+                            >
+                              <Plus className="w-3 h-3" />
+                            </button>
+                          )}
                         </div>
-                        <span className="text-gray-600 truncate text-xs">{department}</span>
+                        <div className="text-gray-600 truncate text-xs mb-1">{department}</div>
+                        {shift.staffIds.length > 0 && (
+                          <div className="text-xs text-gray-500">
+                            {shift.staffIds.slice(0, 2).map(staffId => (
+                              <div key={staffId} className="truncate">
+                                {getStaffName(staffId)}
+                              </div>
+                            ))}
+                            {shift.staffIds.length > 2 && (
+                              <div className="text-xs text-gray-400">+{shift.staffIds.length - 2} alții</div>
+                            )}
+                          </div>
+                        )}
                       </div>
                     );
                   })}
@@ -708,11 +741,14 @@ function AppContent() {
     if (!selectedShift) return null;
 
     const canEdit = hasPermission('assign_staff');
-    const availableStaff = staff.filter(s => 
-      s.hospital === selectedHospital && !selectedShift.shifts.some(shift => 
-        shift.staffIds.includes(s.id)
-      )
-    );
+    // Get available staff for each shift (department-specific)
+    const getAvailableStaffForShift = (shift) => {
+      return staff.filter(s => 
+        s.hospital === selectedHospital && 
+        (!shift.department || s.specialization === shift.department) &&
+        !shift.staffIds.includes(s.id)
+      );
+    };
 
     const handleAddStaffToShift = (shiftId, staffId) => {
       if (!canEdit) return;
@@ -784,7 +820,6 @@ function AppContent() {
             ) : (
               <div className="space-y-4">
                 {selectedShift.shifts.map(shift => {
-                  const validation = checkMinimumStaff(shift);
                   const assignedStaff = staff.filter(s => shift.staffIds.includes(s.id));
                   
                   return (
@@ -802,13 +837,6 @@ function AppContent() {
                           <span>{shift.type.start} - {shift.type.end}</span>
                         </div>
                       </div>
-
-                      {!validation.isValid && (
-                        <div className="mb-3 p-2 bg-red-50 border border-red-200 rounded-lg flex items-center text-sm text-red-700">
-                          <AlertCircle className="w-4 h-4 mr-2" />
-                          Personal insuficient! Necesar: {shift.required.medic} medici, {shift.required.asistent} asistenți
-                        </div>
-                      )}
 
                       <div className="space-y-2">
                         <p className="text-sm font-medium text-gray-700">Personal asignat:</p>
@@ -838,12 +866,15 @@ function AppContent() {
                             }}
                             className="w-full p-2 border border-gray-300 rounded-lg text-sm"
                           >
-                            <option value="">Adaugă personal...</option>
-                            {availableStaff.map(person => (
+                            <option value="">Adaugă personal din {shift.department || 'toate departamentele'}...</option>
+                            {getAvailableStaffForShift(shift).map(person => (
                               <option key={person.id} value={person.id}>
                                 {person.name} - {person.type} ({person.specialization})
                               </option>
                             ))}
+                            {getAvailableStaffForShift(shift).length === 0 && (
+                              <option disabled>Nu există personal disponibil</option>
+                            )}
                           </select>
                         </div>
                       )}

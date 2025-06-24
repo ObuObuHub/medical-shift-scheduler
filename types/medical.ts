@@ -45,11 +45,7 @@ export interface Shift {
   id: string;
   type: ShiftType;
   staffIds: number[];
-  department: string;
-  required: {
-    medic: 1;
-    asistent: 1;
-  };
+  department?: string;
 }
 
 export interface User {
