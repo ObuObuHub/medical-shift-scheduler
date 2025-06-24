@@ -349,24 +349,18 @@ export const DataProvider = ({ children }) => {
       return;
     }
 
-    // Generate days for the month
+    // Generate days with logical coverage types
     const days = generateDaysForMonth(date);
     
-    // Calculate fair quotas for staff
-    const staffWithQuotas = calculateFairQuotas(hospitalStaff, days);
-    
-    // Generate fair schedule
-    const schedule = generateSchedule(staffWithQuotas, days);
-    
-    // Convert to shifts format
-    const newShifts = convertScheduleToShifts(schedule, shiftTypes);
+    // Convert to shifts format with logical calendar organization
+    const newShifts = convertScheduleToShifts(days, hospitalStaff, shiftTypes);
     
     // Update shifts state
     setShifts(newShifts);
     
-    addNotification(`Program echitabil generat pentru ${date.toLocaleDateString('ro-RO', { month: 'long', year: 'numeric' })}`, 'success');
+    addNotification(`Program echitabil generat pentru ${date.toLocaleDateString('ro-RO', { month: 'long', year: 'numeric' })} - O celulă = O acoperire completă`, 'success');
     
-    return { schedule, shifts: newShifts };
+    return { days, shifts: newShifts };
   };
 
   const setStaffUnavailability = (staffId, unavailableDates) => {

@@ -92,9 +92,10 @@ function totalWorked(currentStaff, originalStaff) {
 }
 
 /**
- * Generate days array for a given month with shift types
+ * Generate days array for a given month with logical shift coverage
+ * Each day gets either: 1 x 24h shift OR 2 x 12h shifts (day + night)
  * @param {Date} date - Month to generate schedule for
- * @returns {Array} Array of day objects with types
+ * @returns {Array} Array of day objects with coverage types
  */
 export function generateDaysForMonth(date) {
   const year = date.getFullYear();
@@ -107,22 +108,22 @@ export function generateDaysForMonth(date) {
     const dateString = currentDate.toISOString().split('T')[0];
     const dayOfWeek = currentDate.getDay();
     
-    // Determine shift type
-    let type = "D"; // Default to day shift
+    // Determine coverage type based on calendar logic:
+    // - Weekends: prefer 24h shifts for efficiency
+    // - Weekdays: prefer day+night 12h shifts for better work-life balance
+    let coverageType;
     
-    // Weekend days (Saturday = 6, Sunday = 0)
     if (dayOfWeek === 0 || dayOfWeek === 6) {
-      type = "W";
-    }
-    
-    // Add night shifts - every 3rd day approximately
-    if (day % 3 === 0 && type !== "W") {
-      type = "N";
+      // Weekend: 24-hour shifts for minimal staff
+      coverageType = "FULL_DAY";
+    } else {
+      // Weekday: day + night shifts for better rotation
+      coverageType = "DAY_NIGHT";
     }
 
     days.push({
       date: dateString,
-      type: type,
+      coverageType: coverageType,
       dayOfWeek: dayOfWeek
     });
   }
@@ -159,44 +160,55 @@ export function calculateFairQuotas(staff, days) {
 }
 
 /**
- * Convert schedule result to shifts format used by the app
- * @param {Array} schedule - Generated schedule
+ * Convert schedule result to shifts format with logical calendar organization
+ * @param {Array} days - Days with coverage types
+ * @param {Array} staff - Available staff
  * @param {Object} shiftTypes - Available shift types
- * @returns {Object} Shifts object keyed by date
+ * @returns {Object} Shifts object keyed by date with logical coverage
  */
-export function convertScheduleToShifts(schedule, shiftTypes) {
+export function convertScheduleToShifts(days, staff, shiftTypes) {
   const shifts = {};
+  const availableStaff = [...staff];
+  let staffIndex = 0;
 
-  schedule.forEach(day => {
-    if (!day.assigneeId) return; // Skip unfilled shifts
-
-    // Map shift type to actual shift type object
-    let shiftType;
-    switch (day.type) {
-      case "D":
-        shiftType = shiftTypes.GARDA_ZI;
-        break;
-      case "N":
-        shiftType = shiftTypes.NOAPTE;
-        break;
-      case "W":
-        shiftType = shiftTypes.GARDA_24; // Weekend gets 24h shift
-        break;
-      default:
-        shiftType = shiftTypes.GARDA_ZI;
-    }
-
+  days.forEach(day => {
     if (!shifts[day.date]) {
       shifts[day.date] = [];
     }
 
-    shifts[day.date].push({
-      id: `${day.date}-${day.type}-${day.assigneeId}`,
-      type: shiftType,
-      staffIds: [day.assigneeId],
-      requirements: { minDoctors: 1, specializations: [] },
-      generated: true // Mark as auto-generated
-    });
+    // Get next staff member for assignment (simple rotation)
+    const assignedStaff = availableStaff[staffIndex % availableStaff.length];
+    const nextStaff = availableStaff[(staffIndex + 1) % availableStaff.length];
+
+    if (day.coverageType === "FULL_DAY") {
+      // One 24-hour shift for full day coverage
+      shifts[day.date].push({
+        id: `${day.date}-24h-${assignedStaff.id}`,
+        type: shiftTypes.GARDA_24,
+        staffIds: [assignedStaff.id],
+        requirements: { minDoctors: 1, specializations: [] },
+        generated: true
+      });
+      staffIndex += 1;
+    } else if (day.coverageType === "DAY_NIGHT") {
+      // Two 12-hour shifts for day + night coverage
+      shifts[day.date].push({
+        id: `${day.date}-day-${assignedStaff.id}`,
+        type: shiftTypes.GARDA_ZI,
+        staffIds: [assignedStaff.id],
+        requirements: { minDoctors: 1, specializations: [] },
+        generated: true
+      });
+      
+      shifts[day.date].push({
+        id: `${day.date}-night-${nextStaff.id}`,
+        type: shiftTypes.NOAPTE,
+        staffIds: [nextStaff.id],
+        requirements: { minDoctors: 1, specializations: [] },
+        generated: true
+      });
+      staffIndex += 2;
+    }
   });
 
   return shifts;

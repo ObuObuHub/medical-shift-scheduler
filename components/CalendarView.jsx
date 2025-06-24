@@ -143,39 +143,76 @@ export const CalendarView = ({
               </div>
               
               <div className="space-y-1">
-                {dayShifts.slice(0, 2).map((shift) => {
-                  const department = shift.department || (shift.staffIds.length > 0 ? 
-                    staff.find(s => s.id === shift.staffIds[0])?.specialization : 'General');
-                  return (
-                    <div 
-                      key={shift.id} 
-                      className="shift-item text-xs p-1 rounded flex flex-col hover:shadow-sm transition-shadow"
-                      style={{ backgroundColor: shift.type.color + '20', borderLeft: `3px solid ${shift.type.color}` }}
-                      data-shift-id={shift.id}
-                    >
-                      <div className="flex items-center justify-between">
-                        <span className="truncate font-medium">{shift.type.name.split(' ')[0]}</span>
-                        <span className="text-xs text-gray-500">{shift.staffIds.length}</span>
-                      </div>
-                      <div className="text-gray-600 truncate text-xs mb-1">{department}</div>
-                      {shift.staffIds.length > 0 && (
-                        <div className="text-xs text-gray-500">
-                          {shift.staffIds.slice(0, 2).map(staffId => (
-                            <div key={staffId} className="truncate">
-                              {getStaffName(staffId)}
-                            </div>
-                          ))}
-                          {shift.staffIds.length > 2 && (
-                            <div className="text-xs text-gray-400">+{shift.staffIds.length - 2} alții</div>
-                          )}
+                {(() => {
+                  // Group shifts logically: One cell = One logical shift
+                  const dayShift = dayShifts.find(s => s.type.duration === 12 && s.type.start === '08:00');
+                  const nightShift = dayShifts.find(s => s.type.duration === 12 && s.type.start === '20:00');
+                  const fullDayShift = dayShifts.find(s => s.type.duration === 24);
+                  
+                  // Priority: 24h shift > combined 12h shifts > individual shifts
+                  if (fullDayShift) {
+                    // Show single 24-hour shift
+                    return (
+                      <div 
+                        key={fullDayShift.id} 
+                        className="shift-item text-xs p-1 rounded flex flex-col hover:shadow-sm transition-shadow border-2"
+                        style={{ 
+                          backgroundColor: fullDayShift.type.color + '30', 
+                          borderColor: fullDayShift.type.color 
+                        }}
+                        data-shift-id={fullDayShift.id}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="truncate font-medium">24h Gardă</span>
+                          <span className="text-xs text-gray-600">{fullDayShift.staffIds.length}👨‍⚕️</span>
                         </div>
-                      )}
-                    </div>
-                  );
-                })}
-                {dayShifts.length > 2 && (
-                  <div className="text-xs text-gray-500 text-center">+{dayShifts.length - 2} altele</div>
-                )}
+                        <span className="text-xs text-gray-500">Acoperire completă</span>
+                      </div>
+                    );
+                  } else if (dayShift && nightShift) {
+                    // Show combined day + night shifts as one logical unit
+                    const totalStaff = new Set([...dayShift.staffIds, ...nightShift.staffIds]).size;
+                    return (
+                      <div className="space-y-0.5">
+                        <div 
+                          className="shift-item text-xs p-1 rounded flex flex-col hover:shadow-sm transition-shadow border-l-4"
+                          style={{ 
+                            backgroundColor: '#10B981' + '20', 
+                            borderLeftColor: '#10B981' 
+                          }}
+                        >
+                          <div className="flex items-center justify-between">
+                            <span className="truncate font-medium">Zi + Noapte</span>
+                            <span className="text-xs text-gray-600">{totalStaff}👨‍⚕️</span>
+                          </div>
+                          <span className="text-xs text-gray-500">12h + 12h</span>
+                        </div>
+                      </div>
+                    );
+                  } else {
+                    // Show individual shifts (partial coverage)
+                    return dayShifts.slice(0, 2).map((shift) => {
+                      const isPartial = dayShifts.length === 1;
+                      return (
+                        <div 
+                          key={shift.id} 
+                          className="shift-item text-xs p-1 rounded flex flex-col hover:shadow-sm transition-shadow border-l-4"
+                          style={{ 
+                            backgroundColor: shift.type.color + '20', 
+                            borderLeftColor: shift.type.color 
+                          }}
+                          data-shift-id={shift.id}
+                        >
+                          <div className="flex items-center justify-between">
+                            <span className="truncate font-medium">{shift.type.name.split(' ')[0]}</span>
+                            <span className="text-xs text-gray-600">{shift.staffIds.length}👨‍⚕️</span>
+                          </div>
+                          {isPartial && <span className="text-xs text-orange-500">Parțial</span>}
+                        </div>
+                      );
+                    });
+                  }
+                })()}
               </div>
             </div>
           );

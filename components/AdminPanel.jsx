@@ -171,46 +171,6 @@ export const AdminPanel = ({
         </div>
       </div>
 
-      {/* System Settings */}
-      <div className="bg-white rounded-xl shadow-lg p-6">
-        <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center">
-          <Settings className="w-5 h-5 mr-2" />
-          Setări Sistem
-        </h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div>
-            <h4 className="font-semibold text-gray-700 mb-2">Configurări Generale</h4>
-            <div className="space-y-2">
-              <label className="flex items-center">
-                <input type="checkbox" className="mr-2" defaultChecked />
-                <span className="text-sm">Notificări email</span>
-              </label>
-              <label className="flex items-center">
-                <input type="checkbox" className="mr-2" defaultChecked />
-                <span className="text-sm">Validare automată acoperire</span>
-              </label>
-              <label className="flex items-center">
-                <input type="checkbox" className="mr-2" />
-                <span className="text-sm">Mod debug</span>
-              </label>
-            </div>
-          </div>
-          <div>
-            <h4 className="font-semibold text-gray-700 mb-2">Backup & Export</h4>
-            <div className="space-y-2">
-              <button className="w-full px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 text-sm">
-                Export Date Personal
-              </button>
-              <button className="w-full px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 text-sm">
-                Export Planificare
-              </button>
-              <button className="w-full px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm">
-                Reset Sistem
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
     </div>
   );
 };

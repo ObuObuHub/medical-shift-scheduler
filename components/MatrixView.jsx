@@ -125,9 +125,11 @@ export const MatrixView = ({
   };
   
   const getCellBackgroundColor = (shift) => {
-    if (!shift) return '';
+    if (!shift) return {}; // Return empty object instead of empty string
     
     const shiftType = shift.type;
+    if (!shiftType || !shiftType.color) return {};
+    
     const baseColor = shiftType.color;
     
     // Convert hex to RGB for opacity
