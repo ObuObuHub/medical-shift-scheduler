@@ -9,6 +9,8 @@ import { AuthProvider, useAuth } from '../components/AuthContext';
 import { DataProvider, useData } from '../components/DataContext';
 import { LoginForm } from '../components/LoginForm';
 import { ShiftTypeEditModal } from '../components/ShiftTypeEditModal';
+import { StaffEditModal } from '../components/StaffEditModal';
+import { HospitalEditModal } from '../components/HospitalEditModal';
 import { MatrixView } from '../components/MatrixView';
 import { AddShiftModal } from '../components/AddShiftModal';
 
@@ -317,6 +319,20 @@ function AppContent() {
         <ShiftTypeEditModal
           shiftType={editingShiftType}
           onClose={() => setEditingShiftType(null)}
+        />
+      )}
+
+      {editingStaff && (
+        <StaffEditModal
+          staff={editingStaff}
+          onClose={() => setEditingStaff(null)}
+        />
+      )}
+
+      {editingHospital && (
+        <HospitalEditModal
+          hospital={editingHospital}
+          onClose={() => setEditingHospital(null)}
         />
       )}
     </div>

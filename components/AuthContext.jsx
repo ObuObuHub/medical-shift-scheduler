@@ -13,7 +13,7 @@ const DEFAULT_USERS = {
   manager: {
     id: 'manager',
     username: 'manager', 
-    passwordHash: '6ca13d52ca70c883e0f0bb101e425a89e8624de51db2d2392593af6a84118090', // sha256('manager123')
+    passwordHash: '866485796cfa8d7c0cf7111640205b83076433547577511d81f8030ae99ecea5', // sha256('manager123')
     name: 'Manager Spital',
     role: 'manager',
     hospital: 'spital1'
