@@ -36,8 +36,8 @@ export const CustomGanttView: React.FC<CustomGanttViewProps> = ({
 
   // Get hospital staff
   const hospitalStaff = staff.filter((s: any) => s.hospital === selectedHospital);
-  const departments = [...new Set(hospitalStaff.map((s: any) => s.specialization))];
-  const staffTypes = [...new Set(hospitalStaff.map((s: any) => s.type))];
+  const departments = Array.from(new Set(hospitalStaff.map((s: any) => s.specialization as string)));
+  const staffTypes = Array.from(new Set(hospitalStaff.map((s: any) => s.type as string)));
 
   // Generate date range based on view mode
   const dateRange = useMemo(() => {
@@ -316,7 +316,7 @@ export const CustomGanttView: React.FC<CustomGanttViewProps> = ({
             
             {/* Department filters */}
             <div className="flex flex-wrap gap-2">
-              {departments.map(dept => (
+              {departments.map((dept: string) => (
                 <button
                   key={dept}
                   onClick={() => toggleDepartmentFilter(dept)}
@@ -338,7 +338,7 @@ export const CustomGanttView: React.FC<CustomGanttViewProps> = ({
             
             {/* Staff type filters */}
             <div className="flex flex-wrap gap-2">
-              {staffTypes.map(type => (
+              {staffTypes.map((type: string) => (
                 <button
                   key={type}
                   onClick={() => toggleStaffTypeFilter(type)}

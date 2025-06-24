@@ -1,19 +1,19 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 
-// Default users with passwords
+// Default users with hashed passwords (demo purposes - use proper auth in production)
 const DEFAULT_USERS = {
   admin: {
     id: 'admin',
     username: 'admin',
-    password: 'admin123',
+    passwordHash: '240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9', // sha256('admin123')
     name: 'Administrator Principal',
     role: 'admin',
     hospital: 'spital1'
   },
   manager: {
     id: 'manager',
-    username: 'manager',
-    password: 'manager123',
+    username: 'manager', 
+    passwordHash: '6ca13d52ca70c883e0f0bb101e425a89e8624de51db2d2392593af6a84118090', // sha256('manager123')
     name: 'Manager Spital',
     role: 'manager',
     hospital: 'spital1'
@@ -58,18 +58,33 @@ export const AuthProvider = ({ children }) => {
     }
   }, [currentUser]);
 
-  const login = (username, password) => {
-    const user = Object.values(DEFAULT_USERS).find(
-      u => u.username === username && u.password === password
-    );
+  // Simple hash function for demo purposes (use proper crypto in production)
+  const hashPassword = async (password) => {
+    const encoder = new TextEncoder();
+    const data = encoder.encode(password);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+  };
 
-    if (user) {
-      const { password: _, ...userWithoutPassword } = user;
-      setCurrentUser(userWithoutPassword);
-      return { success: true, user: userWithoutPassword };
+  const login = async (username, password) => {
+    try {
+      const passwordHash = await hashPassword(password);
+      const user = Object.values(DEFAULT_USERS).find(
+        u => u.username === username && u.passwordHash === passwordHash
+      );
+
+      if (user) {
+        const { passwordHash: _, ...userWithoutPassword } = user;
+        setCurrentUser(userWithoutPassword);
+        return { success: true, user: userWithoutPassword };
+      }
+
+      return { success: false, error: 'Utilizator sau parolă incorectă' };
+    } catch (error) {
+      console.error('Login error:', error);
+      return { success: false, error: 'Eroare la autentificare' };
     }
-
-    return { success: false, error: 'Utilizator sau parolă incorectă' };
   };
 
   const logout = () => {

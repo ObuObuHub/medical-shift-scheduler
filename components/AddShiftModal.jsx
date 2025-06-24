@@ -54,111 +54,104 @@ export const AddShiftModal = ({
   // Analyze coverage when shift data changes
   useEffect(() => {
     if (formData.shiftTypeId && formData.staffIds.length > 0) {
-      analyzeCoverage();
+      const selectedShiftType = Object.values(shiftTypes).find(st => st.id === formData.shiftTypeId);
+      if (!selectedShiftType) return;
+
+      const assignedStaff = staff.filter(s => formData.staffIds.includes(s.id));
+      const doctors = assignedStaff.filter(s => s.type === 'medic');
+      const nurses = assignedStaff.filter(s => s.type === 'asistent');
+
+      const analysis = {
+        adequate: true,
+        warnings: [],
+        recommendations: [],
+        staffBreakdown: {
+          doctors: doctors.length,
+          nurses: nurses.length,
+          total: assignedStaff.length
+        }
+      };
+
+      // Check minimum requirements
+      if (doctors.length < formData.requirements.minDoctors) {
+        analysis.adequate = false;
+        analysis.warnings.push(`Necesari minim ${formData.requirements.minDoctors} medici (asignați: ${doctors.length})`);
+      }
+
+      if (nurses.length < formData.requirements.minNurses) {
+        analysis.adequate = false;
+        analysis.warnings.push(`Necesari minim ${formData.requirements.minNurses} asistenți (asignați: ${nurses.length})`);
+      }
+
+      // Check for critical departments
+      const criticalDepts = ['Urgențe', 'ATI', 'Chirurgie'];
+      if (criticalDepts.includes(formData.department)) {
+        if (selectedShiftType.duration >= 12 && doctors.length < 2) {
+          analysis.warnings.push('Departament critic: recomandat minim 2 medici pentru ture de peste 12 ore');
+        }
+      }
+
+      // Check shift duration vs staffing
+      if (selectedShiftType.duration >= 24 && assignedStaff.length < 3) {
+        analysis.recommendations.push('Pentru ture de 24 ore se recomandă minim 3 persoane pentru acoperire optimă');
+      }
+
+      setCoverageAnalysis(analysis);
     }
-  }, [formData.shiftTypeId, formData.staffIds, formData.department]);
+  }, [formData.shiftTypeId, formData.staffIds, formData.department, formData.requirements, shiftTypes, staff]);
 
   // Check for conflicts when staff selection changes
   useEffect(() => {
     if (formData.staffIds.length > 0) {
-      checkConflicts();
-    }
-  }, [formData.staffIds, selectedDate]);
+      const dateKey = selectedDate.toISOString().split('T')[0];
+      const dayShifts = shifts[dateKey] || [];
+      const conflictList = [];
 
-  const analyzeCoverage = () => {
-    const selectedShiftType = Object.values(shiftTypes).find(st => st.id === formData.shiftTypeId);
-    if (!selectedShiftType) return;
+      formData.staffIds.forEach(staffId => {
+        const staffMember = staff.find(s => s.id === staffId);
+        if (!staffMember) return;
 
-    const assignedStaff = staff.filter(s => formData.staffIds.includes(s.id));
-    const doctors = assignedStaff.filter(s => s.type === 'medic');
-    const nurses = assignedStaff.filter(s => s.type === 'asistent');
-
-    const analysis = {
-      adequate: true,
-      warnings: [],
-      recommendations: [],
-      staffBreakdown: {
-        doctors: doctors.length,
-        nurses: nurses.length,
-        total: assignedStaff.length
-      }
-    };
-
-    // Check minimum requirements
-    if (doctors.length < formData.requirements.minDoctors) {
-      analysis.adequate = false;
-      analysis.warnings.push(`Necesari minim ${formData.requirements.minDoctors} medici (asignați: ${doctors.length})`);
-    }
-
-    if (nurses.length < formData.requirements.minNurses) {
-      analysis.adequate = false;
-      analysis.warnings.push(`Necesari minim ${formData.requirements.minNurses} asistenți (asignați: ${nurses.length})`);
-    }
-
-    // Check for critical departments
-    const criticalDepts = ['Urgențe', 'ATI', 'Chirurgie'];
-    if (criticalDepts.includes(formData.department)) {
-      if (selectedShiftType.duration >= 12 && doctors.length < 2) {
-        analysis.warnings.push('Departament critic: recomandat minim 2 medici pentru ture de peste 12 ore');
-      }
-    }
-
-    // Check shift duration vs staffing
-    if (selectedShiftType.duration >= 24 && assignedStaff.length < 3) {
-      analysis.recommendations.push('Pentru ture de 24 ore se recomandă minim 3 persoane pentru acoperire optimă');
-    }
-
-    setCoverageAnalysis(analysis);
-  };
-
-  const checkConflicts = () => {
-    const dateKey = selectedDate.toISOString().split('T')[0];
-    const dayShifts = shifts[dateKey] || [];
-    const conflictList = [];
-
-    formData.staffIds.forEach(staffId => {
-      const staffMember = staff.find(s => s.id === staffId);
-      if (!staffMember) return;
-
-      // Check if already assigned to another shift this day (excluding current editing shift)
-      const existingAssignments = dayShifts.filter(shift => 
-        shift.id !== editingShift?.id && shift.staffIds.includes(staffId)
-      );
-
-      if (existingAssignments.length > 0) {
-        conflictList.push({
-          staffName: staffMember.name,
-          type: 'double_booking',
-          message: `${staffMember.name} este deja asignat la ${existingAssignments.length} tură/ture în această zi`
-        });
-      }
-
-      // Check for insufficient rest (simplified - would need more complex logic for real implementation)
-      const selectedShiftType = Object.values(shiftTypes).find(st => st.id === formData.shiftTypeId);
-      if (selectedShiftType && selectedShiftType.start === '08:00') {
-        // Check if staff worked night shift day before
-        const previousDay = new Date(selectedDate);
-        previousDay.setDate(previousDay.getDate() - 1);
-        const prevDayKey = previousDay.toISOString().split('T')[0];
-        const prevDayShifts = shifts[prevDayKey] || [];
-        
-        const nightShift = prevDayShifts.find(shift => 
-          shift.staffIds.includes(staffId) && 
-          shift.type.start >= '20:00'
+        // Check if already assigned to another shift this day (excluding current editing shift)
+        const existingAssignments = dayShifts.filter(shift => 
+          shift.id !== editingShift?.id && shift.staffIds.includes(staffId)
         );
-        
-        if (nightShift) {
+
+        if (existingAssignments.length > 0) {
           conflictList.push({
             staffName: staffMember.name,
-            type: 'insufficient_rest',
-            message: `${staffMember.name} a lucrat tura de noapte în ziua precedentă - risc de oboseală`
+            type: 'double_booking',
+            message: `${staffMember.name} este deja asignat la ${existingAssignments.length} tură/ture în această zi`
           });
         }
-      }
-    });
 
-    setConflicts(conflictList);
-  };
+        // Check for insufficient rest (simplified - would need more complex logic for real implementation)
+        const selectedShiftType = Object.values(shiftTypes).find(st => st.id === formData.shiftTypeId);
+        if (selectedShiftType && selectedShiftType.start === '08:00') {
+          // Check if staff worked night shift day before
+          const previousDay = new Date(selectedDate);
+          previousDay.setDate(previousDay.getDate() - 1);
+          const prevDayKey = previousDay.toISOString().split('T')[0];
+          const prevDayShifts = shifts[prevDayKey] || [];
+          
+          const nightShift = prevDayShifts.find(shift => 
+            shift.staffIds.includes(staffId) && 
+            shift.type.start >= '20:00'
+          );
+          
+          if (nightShift) {
+            conflictList.push({
+              staffName: staffMember.name,
+              type: 'insufficient_rest',
+              message: `${staffMember.name} a lucrat tura de noapte în ziua precedentă - risc de oboseală`
+            });
+          }
+        }
+      });
+
+      setConflicts(conflictList);
+    }
+  }, [formData.staffIds, formData.shiftTypeId, selectedDate, shifts, staff, editingShift, shiftTypes]);
+
 
   const handleStaffToggle = (staffId) => {
     setFormData(prev => ({

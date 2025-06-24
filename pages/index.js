@@ -533,7 +533,7 @@ function AppContent() {
       } catch (error) {
         console.error('Error saving exchanges:', error);
       }
-    }, [exchanges, selectedHospital]);
+    }, [exchanges]);
 
     const canApprove = hasPermission('approve_exchanges');
     const canRequest = hasPermission('request_exchange');
