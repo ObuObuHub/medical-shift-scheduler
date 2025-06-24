@@ -133,34 +133,13 @@ export const CustomGanttView: React.FC<CustomGanttViewProps> = ({
     return Array.from(uniqueStaff.values()).sort((a, b) => a.name.localeCompare(b.name));
   }, [ganttTasks]);
 
-  // Time slots for grid (24 hours)
-  const timeSlots = useMemo(() => {
-    const slots = [];
-    for (let hour = 0; hour < 24; hour++) {
-      slots.push(hour);
-    }
-    return slots;
-  }, []);
 
-  // Calculate position and width for task bars
-  const getTaskStyle = (task: GanttTask, date: Date) => {
-    const dayStart = new Date(date);
-    dayStart.setHours(0, 0, 0, 0);
-    const dayEnd = new Date(date);
-    dayEnd.setHours(23, 59, 59, 999);
-    
-    const taskStart = new Date(Math.max(task.startTime.getTime(), dayStart.getTime()));
-    const taskEnd = new Date(Math.min(task.endTime.getTime(), dayEnd.getTime()));
-    
-    if (taskStart >= taskEnd) return null;
-    
-    const startPercent = ((taskStart.getHours() + taskStart.getMinutes() / 60) / 24) * 100;
-    const duration = (taskEnd.getTime() - taskStart.getTime()) / (1000 * 60 * 60); // hours
-    const widthPercent = (duration / 24) * 100;
-    
+  // Calculate style for task bars - simplified for day view
+  const getTaskStyle = (task: GanttTask) => {
     return {
-      left: `${startPercent}%`,
-      width: `${widthPercent}%`,
+      left: '2px',
+      right: '2px',
+      width: 'calc(100% - 4px)',
       backgroundColor: task.shiftType.color,
       borderLeft: `3px solid ${task.shiftType.color}`,
       filter: 'brightness(0.9)'
@@ -419,21 +398,6 @@ export const CustomGanttView: React.FC<CustomGanttViewProps> = ({
               ))}
             </div>
 
-            {/* Time grid headers */}
-            <div className="flex">
-              <div className="w-48 p-2 bg-gray-50 border-r border-gray-200"></div>
-              {dateRange.map(date => (
-                <div key={date.toISOString()} className="flex-1 border-r border-gray-200 bg-gray-50">
-                  <div className="flex text-xs">
-                    {timeSlots.filter((_, i) => i % 6 === 0).map(hour => (
-                      <div key={hour} className="flex-1 p-1 text-center text-gray-500 border-r border-gray-100">
-                        {hour.toString().padStart(2, '0')}:00
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
           </div>
 
           {/* Staff rows with task bars */}
@@ -463,23 +427,21 @@ export const CustomGanttView: React.FC<CustomGanttViewProps> = ({
 
                     return (
                       <div key={date.toISOString()} className="flex-1 border-r border-gray-200 relative h-16">
-                        {/* Time grid background */}
-                        <div className="absolute inset-0 flex">
-                          {timeSlots.map(hour => (
-                            <div key={hour} className="flex-1 border-r border-gray-50"></div>
-                          ))}
-                        </div>
-
                         {/* Task bars */}
-                        {dayTasks.map(task => {
-                          const style = getTaskStyle(task, date);
-                          if (!style) return null;
+                        {dayTasks.map((task, index) => {
+                          const style = getTaskStyle(task);
+                          const topOffset = 2 + (index * 20); // Stack multiple shifts vertically
+                          const barHeight = Math.min(12, 60 - topOffset); // Ensure bars fit within cell
 
                           return (
                             <div
                               key={task.id}
-                              className="absolute top-1 h-14 rounded cursor-pointer border border-gray-300 flex items-center px-2 shadow-sm hover:shadow-md transition-shadow"
-                              style={style}
+                              className="absolute rounded cursor-pointer border border-gray-300 flex items-center px-2 shadow-sm hover:shadow-md transition-shadow"
+                              style={{
+                                ...style,
+                                top: `${topOffset}px`,
+                                height: `${barHeight}px`
+                              }}
                               onClick={() => handleTaskClick(task)}
                               title={`${task.shiftType.name} - ${task.startTime.toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit' })} - ${task.endTime.toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit' })}`}
                             >
