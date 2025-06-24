@@ -15,56 +15,87 @@ export const MatrixView = ({
   
   // Generate date range for current month
   const dateRange = useMemo(() => {
-    const start = new Date(currentDate);
-    start.setDate(1);
-    const end = new Date(currentDate);
-    end.setMonth(end.getMonth() + 1, 0);
-    
-    const dates = [];
-    for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-      dates.push(new Date(d));
+    try {
+      const start = new Date(currentDate);
+      start.setDate(1);
+      const end = new Date(currentDate);
+      end.setMonth(end.getMonth() + 1, 0);
+      
+      const dates = [];
+      for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+        dates.push(new Date(d));
+      }
+      return dates;
+    } catch (error) {
+      console.error('Error generating date range:', error);
+      return [];
     }
-    return dates;
   }, [currentDate]);
   
   // Filter staff by hospital and department - doctors only
   const filteredStaff = useMemo(() => {
-    let hospitalStaff = staff.filter(s => s.hospital === selectedHospital && s.type === 'medic'); // Only doctors
-    if (selectedDepartment) {
-      hospitalStaff = hospitalStaff.filter(s => s.specialization === selectedDepartment);
-    }
-    return hospitalStaff.sort((a, b) => {
-      // Sort by specialization first, then by name
-      if (a.specialization !== b.specialization) {
-        return a.specialization.localeCompare(b.specialization);
+    try {
+      let hospitalStaff = staff.filter(s => s.hospital === selectedHospital && s.type === 'medic'); // Only doctors
+      if (selectedDepartment) {
+        hospitalStaff = hospitalStaff.filter(s => s.specialization === selectedDepartment);
       }
-      return a.name.localeCompare(b.name);
-    });
+      return hospitalStaff.sort((a, b) => {
+        // Sort by specialization first, then by name
+        if (a.specialization !== b.specialization) {
+          return a.specialization.localeCompare(b.specialization);
+        }
+        return a.name.localeCompare(b.name);
+      });
+    } catch (error) {
+      console.error('Error filtering staff:', error);
+      return [];
+    }
   }, [staff, selectedHospital, selectedDepartment]);
   
   // Get departments for filter - doctors only
   const departments = useMemo(() => {
-    const hospitalStaff = staff.filter(s => s.hospital === selectedHospital && s.type === 'medic'); // Only doctors
-    return [...new Set(hospitalStaff.map(s => s.specialization))].sort();
+    try {
+      const hospitalStaff = staff.filter(s => s.hospital === selectedHospital && s.type === 'medic'); // Only doctors
+      return [...new Set(hospitalStaff.map(s => s.specialization))].sort();
+    } catch (error) {
+      console.error('Error getting departments:', error);
+      return [];
+    }
   }, [staff, selectedHospital]);
   
   // Get shift for specific staff member and date
   const getShiftForStaffAndDate = (staffId, date) => {
-    const dateKey = date.toISOString().split('T')[0];
-    const dayShifts = shifts[dateKey] || [];
-    return dayShifts.find(shift => shift.staffIds.includes(staffId));
+    try {
+      if (!date || !staffId) return null;
+      const dateKey = date.toISOString().split('T')[0];
+      const dayShifts = shifts[dateKey] || [];
+      return dayShifts.find(shift => shift && shift.staffIds && shift.staffIds.includes(staffId));
+    } catch (error) {
+      console.error('Error getting shift for staff and date:', error);
+      return null;
+    }
   };
   
   // Get coverage status for date - simplified for doctors only
   const getCoverageStatus = (date) => {
-    const coverage = getCoverageForDate(date, selectedHospital);
-    const totalDoctors = Object.values(coverage).reduce((sum, slot) => sum + slot.doctors, 0);
-    
-    // Simplified logic: 1 doctor per time slot = 3 doctors total for excellent
-    if (totalDoctors >= 3) return 'excellent'; // All time slots covered
-    if (totalDoctors >= 2) return 'good';      // Most slots covered
-    if (totalDoctors >= 1) return 'minimal';   // Some coverage
-    return 'insufficient';                     // No coverage
+    try {
+      if (!date || !getCoverageForDate) return 'insufficient';
+      const coverage = getCoverageForDate(date, selectedHospital);
+      if (!coverage) return 'insufficient';
+      
+      const totalDoctors = Object.values(coverage).reduce((sum, slot) => {
+        return sum + (slot && slot.doctors ? slot.doctors : 0);
+      }, 0);
+      
+      // Simplified logic: 1 doctor per time slot = 3 doctors total for excellent
+      if (totalDoctors >= 3) return 'excellent'; // All time slots covered
+      if (totalDoctors >= 2) return 'good';      // Most slots covered
+      if (totalDoctors >= 1) return 'minimal';   // Some coverage
+      return 'insufficient';                     // No coverage
+    } catch (error) {
+      console.error('Error getting coverage status:', error);
+      return 'insufficient';
+    }
   };
   
   // Handle cell click for adding shifts
@@ -124,6 +155,23 @@ export const MatrixView = ({
     
     return classes;
   };
+
+  // Add safety checks after all hooks
+  if (!currentDate) {
+    return <div className="p-4 text-red-600">Error: No date provided</div>;
+  }
+
+  if (!staff || !Array.isArray(staff)) {
+    return <div className="p-4 text-red-600">Error: Staff data not loaded</div>;
+  }
+
+  if (!shifts) {
+    return <div className="p-4 text-red-600">Error: Shifts data not loaded</div>;
+  }
+
+  if (!shiftTypes) {
+    return <div className="p-4 text-red-600">Error: Shift types not loaded</div>;
+  }
 
   return (
     <div className="bg-white rounded-lg shadow-sm border border-gray-200">
