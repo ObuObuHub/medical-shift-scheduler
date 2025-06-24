@@ -17,34 +17,30 @@ const DEFAULT_STAFF = [
   // Urgențe
   { id: 1, name: 'Dr. Popescu Ion', type: 'medic', specialization: 'Urgențe', hospital: 'spital1', role: 'manager' },
   { id: 2, name: 'Dr. Stanescu Mihai', type: 'medic', specialization: 'Urgențe', hospital: 'spital1', role: 'staff' },
-  { id: 3, name: 'As. Popa Elena', type: 'asistent', specialization: 'Urgențe', hospital: 'spital1', role: 'staff' },
-  { id: 4, name: 'As. Marinescu Ana', type: 'asistent', specialization: 'Urgențe', hospital: 'spital1', role: 'staff' },
+  { id: 3, name: 'Dr. Popa Stefan', type: 'medic', specialization: 'Urgențe', hospital: 'spital1', role: 'staff' },
   
   // Chirurgie
   { id: 5, name: 'Dr. Ionescu Maria', type: 'medic', specialization: 'Chirurgie', hospital: 'spital1', role: 'manager' },
   { id: 6, name: 'Dr. Dumitrescu Paul', type: 'medic', specialization: 'Chirurgie', hospital: 'spital1', role: 'staff' },
-  { id: 7, name: 'As. Vlad Carmen', type: 'asistent', specialization: 'Chirurgie', hospital: 'spital1', role: 'staff' },
-  { id: 8, name: 'As. Tudor Diana', type: 'asistent', specialization: 'Chirurgie', hospital: 'spital1', role: 'staff' },
+  { id: 7, name: 'Dr. Vlad Carmen', type: 'medic', specialization: 'Chirurgie', hospital: 'spital1', role: 'staff' },
   
   // ATI
   { id: 9, name: 'Dr. Radulescu Alex', type: 'medic', specialization: 'ATI', hospital: 'spital1', role: 'staff' },
   { id: 10, name: 'Dr. Constantinescu Ioana', type: 'medic', specialization: 'ATI', hospital: 'spital1', role: 'staff' },
-  { id: 11, name: 'As. Radu Ana', type: 'asistent', specialization: 'ATI', hospital: 'spital1', role: 'staff' },
-  { id: 12, name: 'As. Barbu Cristina', type: 'asistent', specialization: 'ATI', hospital: 'spital1', role: 'staff' },
+  { id: 11, name: 'Dr. Radu Ana', type: 'medic', specialization: 'ATI', hospital: 'spital1', role: 'staff' },
   
   // Pediatrie
   { id: 13, name: 'Dr. Gheorghe Andrei', type: 'medic', specialization: 'Pediatrie', hospital: 'spital2', role: 'manager' },
   { id: 14, name: 'Dr. Moraru Elena', type: 'medic', specialization: 'Pediatrie', hospital: 'spital2', role: 'staff' },
-  { id: 15, name: 'As. Neagu Raluca', type: 'asistent', specialization: 'Pediatrie', hospital: 'spital2', role: 'staff' },
-  { id: 16, name: 'As. Marin Gabriela', type: 'asistent', specialization: 'Pediatrie', hospital: 'spital2', role: 'staff' },
+  { id: 15, name: 'Dr. Neagu Raluca', type: 'medic', specialization: 'Pediatrie', hospital: 'spital2', role: 'staff' },
   
   // Cardiologie
   { id: 17, name: 'Dr. Georgescu Radu', type: 'medic', specialization: 'Cardiologie', hospital: 'spital1', role: 'staff' },
-  { id: 18, name: 'As. Cristea Adriana', type: 'asistent', specialization: 'Cardiologie', hospital: 'spital1', role: 'staff' },
+  { id: 18, name: 'Dr. Cristea Adriana', type: 'medic', specialization: 'Cardiologie', hospital: 'spital1', role: 'staff' },
   
   // Neurologie
   { id: 19, name: 'Dr. Petrescu Dana', type: 'medic', specialization: 'Neurologie', hospital: 'spital1', role: 'staff' },
-  { id: 20, name: 'As. Enache Monica', type: 'asistent', specialization: 'Neurologie', hospital: 'spital1', role: 'staff' }
+  { id: 20, name: 'Dr. Enache Monica', type: 'medic', specialization: 'Neurologie', hospital: 'spital1', role: 'staff' }
 ];
 
 const DataContext = createContext();
@@ -200,17 +196,16 @@ export const DataProvider = ({ children }) => {
     const dayShifts = shifts[dateKey] || [];
     const hospitalStaff = staff.filter(s => s.hospital === hospitalId);
     
-    // Calculate coverage by time periods
+    // Calculate coverage by time periods - simplified for doctors only
     const timeSlots = {
-      morning: { start: 6, end: 14, doctors: 0, nurses: 0, coverage: [] },
-      afternoon: { start: 14, end: 22, doctors: 0, nurses: 0, coverage: [] },
-      night: { start: 22, end: 6, doctors: 0, nurses: 0, coverage: [] }
+      morning: { start: 6, end: 14, doctors: 0, coverage: [] },
+      afternoon: { start: 14, end: 22, doctors: 0, coverage: [] },
+      night: { start: 22, end: 6, doctors: 0, coverage: [] }
     };
 
     dayShifts.forEach(shift => {
       const assignedStaff = hospitalStaff.filter(s => shift.staffIds.includes(s.id));
-      const doctors = assignedStaff.filter(s => s.type === 'medic');
-      const nurses = assignedStaff.filter(s => s.type === 'asistent');
+      const doctors = assignedStaff.filter(s => s.type === 'medic'); // Only doctors now
       
       const startHour = parseInt(shift.type.start.split(':')[0]);
       const endHour = parseInt(shift.type.end.split(':')[0]);
@@ -227,11 +222,9 @@ export const DataProvider = ({ children }) => {
         
         if (coversSlot) {
           slotData.doctors += doctors.length;
-          slotData.nurses += nurses.length;
           slotData.coverage.push({
             shift,
             doctors: doctors.length,
-            nurses: nurses.length,
             department: shift.department || 'General'
           });
         }
@@ -260,44 +253,15 @@ export const DataProvider = ({ children }) => {
     Object.keys(coverage).forEach(timeSlot => {
       const slot = coverage[timeSlot];
       let slotScore = 0;
-      const requiredDoctors = isWeekend ? 1 : 2;
-      const requiredNurses = isWeekend ? 2 : 3;
+      const requiredDoctors = 1; // Simplified: always require 1 doctor per time slot
 
-      // Check minimum doctor coverage
-      maxScore += 40; // Max points for doctor coverage
+      // Check doctor coverage - simplified to 100 points per slot
+      maxScore += 100;
       if (slot.doctors >= requiredDoctors) {
-        slotScore += 40;
-      } else if (slot.doctors >= Math.floor(requiredDoctors / 2)) {
-        slotScore += 20;
-        validation.warnings.push(`Acoperire minimă medici în perioada ${timeSlot}: ${slot.doctors}/${requiredDoctors}`);
+        slotScore += 100; // Full coverage
       } else {
-        validation.warnings.push(`Acoperire insuficientă medici în perioada ${timeSlot}: ${slot.doctors}/${requiredDoctors}`);
-      }
-
-      // Check nurse coverage
-      maxScore += 30; // Max points for nurse coverage
-      if (slot.nurses >= requiredNurses) {
-        slotScore += 30;
-      } else if (slot.nurses >= Math.floor(requiredNurses / 2)) {
-        slotScore += 15;
-        validation.warnings.push(`Acoperire minimă asistenți în perioada ${timeSlot}: ${slot.nurses}/${requiredNurses}`);
-      } else {
-        validation.warnings.push(`Acoperire insuficientă asistenți în perioada ${timeSlot}: ${slot.nurses}/${requiredNurses}`);
-      }
-
-      // Check critical department coverage
-      maxScore += 30; // Max points for critical coverage
-      const criticalCoverage = slot.coverage.filter(c => 
-        criticalDepartments.includes(c.department) && c.doctors > 0
-      );
-      
-      if (criticalCoverage.length >= 2) {
-        slotScore += 30;
-      } else if (criticalCoverage.length >= 1) {
-        slotScore += 15;
-        validation.warnings.push(`Acoperire minimă departamente critice în perioada ${timeSlot}`);
-      } else {
-        validation.warnings.push(`Lipsă acoperire departamente critice în perioada ${timeSlot}`);
+        validation.warnings.push(`Lipsă medic în perioada ${timeSlot}`);
+        slotScore += 0; // No partial credit - either covered or not
       }
 
       totalScore += slotScore;
@@ -355,26 +319,22 @@ export const DataProvider = ({ children }) => {
     );
     
     let totalDoctors = 0;
-    let totalNurses = 0;
     let totalHours = 0;
 
     deptShifts.forEach(shift => {
       const assignedStaff = hospitalStaff.filter(s => shift.staffIds.includes(s.id));
-      const doctors = assignedStaff.filter(s => s.type === 'medic');
-      const nurses = assignedStaff.filter(s => s.type === 'asistent');
+      const doctors = assignedStaff.filter(s => s.type === 'medic'); // Only doctors
       
       totalDoctors += doctors.length;
-      totalNurses += nurses.length;
-      totalHours += shift.type.duration * assignedStaff.length;
+      totalHours += shift.type.duration * doctors.length; // Only count doctor hours
     });
 
     return {
       department,
       shifts: deptShifts.length,
       doctors: totalDoctors,
-      nurses: totalNurses,
       totalHours,
-      adequateCoverage: totalDoctors >= 1 && totalNurses >= 1
+      adequateCoverage: totalDoctors >= 1 // Simplified: only need 1+ doctors
     };
   };
 

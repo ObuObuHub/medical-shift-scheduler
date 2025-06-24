@@ -7,7 +7,7 @@ export const StaffView = ({
   formatMonthYear, 
   currentDate 
 }) => {
-  const hospitalStaff = staff.filter(s => s.hospital === selectedHospital);
+  const hospitalStaff = staff.filter(s => s.hospital === selectedHospital && s.type === 'medic'); // Only doctors
   const departments = [...new Set(hospitalStaff.map(s => s.specialization))].sort();
   
   return (
@@ -21,7 +21,7 @@ export const StaffView = ({
         return (
           <div key={department} className="mb-8">
             <h3 className="text-lg font-semibold text-gray-700 mb-4 border-b border-gray-200 pb-2">
-              {department} ({departmentStaff.length} personal)
+              {department} ({departmentStaff.length} medici)
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {departmentStaff.map(person => (
@@ -29,7 +29,7 @@ export const StaffView = ({
                   <div className="flex items-start justify-between">
                     <div>
                       <h4 className="font-semibold">{person.name}</h4>
-                      <p className="text-sm text-gray-600">{person.type}</p>
+                      <p className="text-sm text-gray-600">Medic</p>
                       <span className={`inline-block mt-2 px-2 py-1 rounded-full text-xs font-semibold ${
                         person.role === 'admin' ? 'bg-purple-100 text-purple-800' :
                         person.role === 'manager' ? 'bg-blue-100 text-blue-800' :

@@ -18,7 +18,6 @@ export const AddShiftModal = ({
     staffIds: editingShift?.staffIds || [],
     requirements: editingShift?.requirements || {
       minDoctors: 1,
-      minNurses: 1,
       specializations: []
     }
   });
@@ -58,8 +57,7 @@ export const AddShiftModal = ({
       if (!selectedShiftType) return;
 
       const assignedStaff = staff.filter(s => formData.staffIds.includes(s.id));
-      const doctors = assignedStaff.filter(s => s.type === 'medic');
-      const nurses = assignedStaff.filter(s => s.type === 'asistent');
+      const doctors = assignedStaff.filter(s => s.type === 'medic'); // Only doctors
 
       const analysis = {
         adequate: true,
@@ -67,33 +65,22 @@ export const AddShiftModal = ({
         recommendations: [],
         staffBreakdown: {
           doctors: doctors.length,
-          nurses: nurses.length,
-          total: assignedStaff.length
+          total: doctors.length // Only doctors count
         }
       };
 
-      // Check minimum requirements
+      // Check minimum requirements - simplified to 1 doctor
       if (doctors.length < formData.requirements.minDoctors) {
         analysis.adequate = false;
         analysis.warnings.push(`Necesari minim ${formData.requirements.minDoctors} medici (asignați: ${doctors.length})`);
       }
 
-      if (nurses.length < formData.requirements.minNurses) {
+      // Simplified validation: just ensure we have exactly 1 doctor
+      if (doctors.length === 0) {
         analysis.adequate = false;
-        analysis.warnings.push(`Necesari minim ${formData.requirements.minNurses} asistenți (asignați: ${nurses.length})`);
-      }
-
-      // Check for critical departments
-      const criticalDepts = ['Urgențe', 'ATI', 'Chirurgie'];
-      if (criticalDepts.includes(formData.department)) {
-        if (selectedShiftType.duration >= 12 && doctors.length < 2) {
-          analysis.warnings.push('Departament critic: recomandat minim 2 medici pentru ture de peste 12 ore');
-        }
-      }
-
-      // Check shift duration vs staffing
-      if (selectedShiftType.duration >= 24 && assignedStaff.length < 3) {
-        analysis.recommendations.push('Pentru ture de 24 ore se recomandă minim 3 persoane pentru acoperire optimă');
+        analysis.warnings.push('Este necesar să asignați un medic la această tură');
+      } else if (doctors.length > 1) {
+        analysis.warnings.push('Se recomandă un singur medic per tură pentru eficiență optimă');
       }
 
       setCoverageAnalysis(analysis);
@@ -165,16 +152,10 @@ export const AddShiftModal = ({
   const handleShiftTypeChange = (shiftTypeId) => {
     const selectedShiftType = Object.values(shiftTypes).find(st => st.id === shiftTypeId);
     
-    // Auto-set requirements based on shift type
+    // Auto-set requirements based on shift type - simplified to 1 doctor always
     let requirements = { ...formData.requirements };
     if (selectedShiftType) {
-      if (selectedShiftType.duration >= 24) {
-        requirements = { minDoctors: 2, minNurses: 2, specializations: [] };
-      } else if (selectedShiftType.duration >= 12) {
-        requirements = { minDoctors: 1, minNurses: 2, specializations: [] };
-      } else {
-        requirements = { minDoctors: 1, minNurses: 1, specializations: [] };
-      }
+      requirements = { minDoctors: 1, specializations: [] }; // Always 1 doctor, regardless of shift type
     }
 
     setFormData(prev => ({
@@ -348,40 +329,19 @@ export const AddShiftModal = ({
                 <label className="block text-sm font-medium text-gray-700 mb-3">
                   Cerințe Minimale
                 </label>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-4">
                   <div>
-                    <label className="block text-xs text-gray-600 mb-1">Medici</label>
+                    <label className="block text-xs text-gray-600 mb-1">Medici necesari</label>
                     <input
                       type="number"
-                      min="0"
-                      max="10"
+                      min="1"
+                      max="1"
                       value={formData.requirements.minDoctors}
-                      onChange={(e) => setFormData(prev => ({
-                        ...prev,
-                        requirements: {
-                          ...prev.requirements,
-                          minDoctors: parseInt(e.target.value) || 0
-                        }
-                      }))}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                      readOnly
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-600"
+                      title="Întotdeauna este necesar un medic pe tură"
                     />
-                  </div>
-                  <div>
-                    <label className="block text-xs text-gray-600 mb-1">Asistenți</label>
-                    <input
-                      type="number"
-                      min="0"
-                      max="10"
-                      value={formData.requirements.minNurses}
-                      onChange={(e) => setFormData(prev => ({
-                        ...prev,
-                        requirements: {
-                          ...prev.requirements,
-                          minNurses: parseInt(e.target.value) || 0
-                        }
-                      }))}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                    />
+                    <p className="text-xs text-gray-500 mt-1">Un medic per tură (fix)</p>
                   </div>
                 </div>
               </div>
@@ -445,7 +405,7 @@ export const AddShiftModal = ({
                   </div>
                   
                   <div className="text-sm text-gray-600 mb-2">
-                    Personal asignat: {coverageAnalysis.staffBreakdown.doctors} medici, {coverageAnalysis.staffBreakdown.nurses} asistenți
+                    Personal asignat: {coverageAnalysis.staffBreakdown.doctors} medici
                   </div>
 
                   {coverageAnalysis.warnings.length > 0 && (

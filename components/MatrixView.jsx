@@ -27,27 +27,24 @@ export const MatrixView = ({
     return dates;
   }, [currentDate]);
   
-  // Filter staff by hospital and department
+  // Filter staff by hospital and department - doctors only
   const filteredStaff = useMemo(() => {
-    let hospitalStaff = staff.filter(s => s.hospital === selectedHospital);
+    let hospitalStaff = staff.filter(s => s.hospital === selectedHospital && s.type === 'medic'); // Only doctors
     if (selectedDepartment) {
       hospitalStaff = hospitalStaff.filter(s => s.specialization === selectedDepartment);
     }
     return hospitalStaff.sort((a, b) => {
-      // Sort by specialization first, then by type (doctors first), then by name
+      // Sort by specialization first, then by name
       if (a.specialization !== b.specialization) {
         return a.specialization.localeCompare(b.specialization);
-      }
-      if (a.type !== b.type) {
-        return a.type === 'medic' ? -1 : 1;
       }
       return a.name.localeCompare(b.name);
     });
   }, [staff, selectedHospital, selectedDepartment]);
   
-  // Get departments for filter
+  // Get departments for filter - doctors only
   const departments = useMemo(() => {
-    const hospitalStaff = staff.filter(s => s.hospital === selectedHospital);
+    const hospitalStaff = staff.filter(s => s.hospital === selectedHospital && s.type === 'medic'); // Only doctors
     return [...new Set(hospitalStaff.map(s => s.specialization))].sort();
   }, [staff, selectedHospital]);
   
@@ -58,16 +55,16 @@ export const MatrixView = ({
     return dayShifts.find(shift => shift.staffIds.includes(staffId));
   };
   
-  // Get coverage status for date
+  // Get coverage status for date - simplified for doctors only
   const getCoverageStatus = (date) => {
     const coverage = getCoverageForDate(date, selectedHospital);
     const totalDoctors = Object.values(coverage).reduce((sum, slot) => sum + slot.doctors, 0);
-    const totalNurses = Object.values(coverage).reduce((sum, slot) => sum + slot.nurses, 0);
     
-    if (totalDoctors >= 3 && totalNurses >= 6) return 'excellent';
-    if (totalDoctors >= 2 && totalNurses >= 4) return 'good';
-    if (totalDoctors >= 1 && totalNurses >= 2) return 'minimal';
-    return 'insufficient';
+    // Simplified logic: 1 doctor per time slot = 3 doctors total for excellent
+    if (totalDoctors >= 3) return 'excellent'; // All time slots covered
+    if (totalDoctors >= 2) return 'good';      // Most slots covered
+    if (totalDoctors >= 1) return 'minimal';   // Some coverage
+    return 'insufficient';                     // No coverage
   };
   
   // Handle cell click for adding shifts
@@ -196,13 +193,11 @@ export const MatrixView = ({
                 {/* Staff Info */}
                 <td className="sticky left-0 z-10 px-4 py-3 bg-white border-b border-gray-200 shadow-sm">
                   <div className="flex items-center">
-                    <div className={`w-3 h-3 rounded-full mr-3 ${
-                      person.type === 'medic' ? 'bg-blue-500' : 'bg-green-500'
-                    }`} />
+                    <div className="w-3 h-3 rounded-full mr-3 bg-blue-500" />
                     <div>
                       <div className="font-medium text-gray-900 text-sm">{person.name}</div>
                       <div className="text-xs text-gray-500">
-                        {person.type} • {person.specialization}
+                        Medic • {person.specialization}
                       </div>
                     </div>
                   </div>
