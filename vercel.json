@@ -1,14 +1,4 @@
 {
-  "build": {
-    "env": {
-      "DATABASE_URL": "@database_url",
-      "JWT_SECRET": "@jwt_secret"
-    }
-  },
-  "env": {
-    "DATABASE_URL": "@database_url", 
-    "JWT_SECRET": "@jwt_secret"
-  },
   "functions": {
     "pages/api/**/*.js": {
       "maxDuration": 10
