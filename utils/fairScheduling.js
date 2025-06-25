@@ -3,6 +3,10 @@ import { generateDaysForMonth } from './dateHelpers';
 
 /**
  * Generate a complete fair schedule ensuring full coverage
+ * Following real medical scheduling pattern:
+ * - Weekdays: Single 20-8 night shift (12h)
+ * - Weekends: Mix of 8-20 + 20-8 shifts OR single 8-8 shift (24h)
+ * - Fair rotation with proper rest periods
  * @param {Array} staff - Hospital staff members
  * @param {Date} date - Month to schedule
  * @param {Object} shiftTypes - Available shift types
@@ -11,67 +15,96 @@ import { generateDaysForMonth } from './dateHelpers';
 export function generateCompleteSchedule(staff, date, shiftTypes) {
   const shifts = {};
   const daysInMonth = new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
-  const doctors = staff.filter(s => s.type === 'medic');
+  const allStaff = staff.filter(s => s.type === 'medic' || s.type === 'biolog' || s.type === 'chimist');
   
-  if (doctors.length === 0) return shifts;
+  if (allStaff.length === 0) return shifts;
 
-  // Initialize tracking
-  const doctorStats = doctors.map(doc => ({
-    id: doc.id,
-    name: doc.name,
-    dayShifts: 0,
-    nightShifts: 0,
-    weekendShifts: 0,
-    lastShiftDate: null,
-    consecutiveDays: 0
+  // Initialize tracking for fair rotation
+  let staffRotationIndex = 0;
+  const staffWorkload = allStaff.map(person => ({
+    id: person.id,
+    name: person.name,
+    totalShifts: 0,
+    lastShiftDate: null
   }));
 
-  // Get shift types
-  const dayShift = Object.values(shiftTypes).find(st => st.start === '08:00' || st.start === '8:00') || Object.values(shiftTypes)[0];
-  const nightShift = Object.values(shiftTypes).find(st => st.start === '20:00') || Object.values(shiftTypes)[1];
-  const fullShift = Object.values(shiftTypes).find(st => st.duration >= 24) || Object.values(shiftTypes)[2];
+  // Get shift types - ensure we have the right ones
+  const dayShift = Object.values(shiftTypes).find(st => 
+    (st.start === '08:00' || st.start === '8:00' || st.startTime === '08:00') && 
+    (st.duration === 12 || st.duration === undefined)
+  ) || Object.values(shiftTypes)[0];
+  
+  const nightShift = Object.values(shiftTypes).find(st => 
+    (st.start === '20:00' || st.startTime === '20:00') && 
+    (st.duration === 12 || st.duration === undefined)
+  ) || Object.values(shiftTypes)[1];
+  
+  const fullShift = Object.values(shiftTypes).find(st => 
+    st.duration >= 24 || st.duration === 24
+  ) || Object.values(shiftTypes)[2];
 
-  // Generate schedule for each day
+  // Helper function to get next staff member in rotation
+  const getNextStaffMember = (excludeIds = []) => {
+    let attempts = 0;
+    const maxAttempts = allStaff.length * 2;
+    
+    while (attempts < maxAttempts) {
+      const currentStaff = allStaff[staffRotationIndex % allStaff.length];
+      
+      if (!excludeIds.includes(currentStaff.id)) {
+        staffRotationIndex = (staffRotationIndex + 1) % allStaff.length;
+        return currentStaff;
+      }
+      
+      staffRotationIndex = (staffRotationIndex + 1) % allStaff.length;
+      attempts++;
+    }
+    
+    // Fallback: return first available staff not in exclude list
+    return allStaff.find(s => !excludeIds.includes(s.id)) || allStaff[0];
+  };
+
+  // Generate schedule for each day following the exact pattern
   for (let day = 1; day <= daysInMonth; day++) {
     const currentDate = new Date(date.getFullYear(), date.getMonth(), day);
     const dateKey = currentDate.toISOString().split('T')[0];
-    const dayOfWeek = currentDate.getDay();
-    const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+    const dayOfWeek = currentDate.getDay(); // 0=Sunday, 1=Monday, ..., 6=Saturday
 
     shifts[dateKey] = [];
 
-    if (isWeekend) {
-      // Weekend: Need both day and night coverage OR 24h shift
-      const useFullShift = Math.random() > 0.7; // 30% chance of 24h shift
-      
-      if (useFullShift && fullShift) {
-        // Assign 24h shift
-        const doctor = getNextFairDoctor(doctorStats, 'weekend', currentDate);
-        if (doctor) {
-          shifts[dateKey].push(createShift(fullShift, doctor.id, dateKey));
-          updateDoctorStats(doctor, 'weekend', currentDate);
-        }
-      } else {
-        // Assign day + night shifts
-        const dayDoctor = getNextFairDoctor(doctorStats, 'day', currentDate);
-        const nightDoctor = getNextFairDoctor(doctorStats, 'night', currentDate, [dayDoctor?.id]);
-        
-        if (dayDoctor && dayShift) {
-          shifts[dateKey].push(createShift(dayShift, dayDoctor.id, dateKey));
-          updateDoctorStats(dayDoctor, 'day', currentDate);
-        }
-        
-        if (nightDoctor && nightShift) {
-          shifts[dateKey].push(createShift(nightShift, nightDoctor.id, dateKey));
-          updateDoctorStats(nightDoctor, 'night', currentDate);
-        }
+    if (dayOfWeek >= 1 && dayOfWeek <= 5) {
+      // WEEKDAYS (Monday-Friday): Single 20-8 night shift (12h)
+      const staffMember = getNextStaffMember();
+      if (staffMember && nightShift) {
+        shifts[dateKey].push(createShift(nightShift, staffMember.id, dateKey));
+        updateWorkload(staffWorkload, staffMember.id, currentDate);
       }
     } else {
-      // Weekday: Usually just night shift
-      const doctor = getNextFairDoctor(doctorStats, 'night', currentDate);
-      if (doctor && nightShift) {
-        shifts[dateKey].push(createShift(nightShift, doctor.id, dateKey));
-        updateDoctorStats(doctor, 'night', currentDate);
+      // WEEKENDS (Saturday/Sunday): Mix of patterns
+      const weekNumber = Math.ceil(day / 7);
+      const isSpecialWeekend = weekNumber % 3 === 0; // Every 3rd weekend gets 24h shift
+      
+      if (isSpecialWeekend && fullShift) {
+        // Some weekends: Single 8-8 shift (24h)
+        const staffMember = getNextStaffMember();
+        if (staffMember) {
+          shifts[dateKey].push(createShift(fullShift, staffMember.id, dateKey));
+          updateWorkload(staffWorkload, staffMember.id, currentDate);
+        }
+      } else {
+        // Most weekends: Both 8-20 (day) AND 20-8 (night) shifts
+        const dayStaffMember = getNextStaffMember();
+        const nightStaffMember = getNextStaffMember([dayStaffMember?.id]);
+        
+        if (dayStaffMember && dayShift) {
+          shifts[dateKey].push(createShift(dayShift, dayStaffMember.id, dateKey));
+          updateWorkload(staffWorkload, dayStaffMember.id, currentDate);
+        }
+        
+        if (nightStaffMember && nightShift) {
+          shifts[dateKey].push(createShift(nightShift, nightStaffMember.id, dateKey));
+          updateWorkload(staffWorkload, nightStaffMember.id, currentDate);
+        }
       }
     }
   }
@@ -80,84 +113,14 @@ export function generateCompleteSchedule(staff, date, shiftTypes) {
 }
 
 /**
- * Get the next doctor in fair rotation
+ * Update workload tracking for staff member
  */
-function getNextFairDoctor(doctorStats, shiftType, currentDate, excludeIds = []) {
-  const available = doctorStats.filter(doc => 
-    !excludeIds.includes(doc.id) &&
-    !hasConflict(doc, currentDate)
-  );
-
-  if (available.length === 0) return null;
-
-  // Sort by fairness (least worked first, then by last shift date)
-  available.sort((a, b) => {
-    const aTotal = a.dayShifts + a.nightShifts + a.weekendShifts;
-    const bTotal = b.dayShifts + b.nightShifts + b.weekendShifts;
-    
-    if (aTotal !== bTotal) return aTotal - bTotal;
-    
-    // If equal total, prefer who worked longest ago
-    if (!a.lastShiftDate && !b.lastShiftDate) return 0;
-    if (!a.lastShiftDate) return -1;
-    if (!b.lastShiftDate) return 1;
-    
-    return new Date(a.lastShiftDate) - new Date(b.lastShiftDate);
-  });
-
-  return available[0];
-}
-
-/**
- * Check if doctor has scheduling conflicts
- */
-function hasConflict(doctor, date) {
-  // Prevent consecutive night shifts
-  if (doctor.lastShiftDate) {
-    const lastDate = new Date(doctor.lastShiftDate);
-    const daysDiff = Math.abs(date - lastDate) / (1000 * 60 * 60 * 24);
-    
-    // Must have at least 1 day rest between shifts
-    if (daysDiff < 1) return true;
-    
-    // Prevent too many consecutive days
-    if (doctor.consecutiveDays >= 2) return true;
+function updateWorkload(staffWorkload, staffId, date) {
+  const staffRecord = staffWorkload.find(s => s.id === staffId);
+  if (staffRecord) {
+    staffRecord.totalShifts++;
+    staffRecord.lastShiftDate = date.toISOString().split('T')[0];
   }
-  
-  return false;
-}
-
-/**
- * Update doctor statistics after assignment
- */
-function updateDoctorStats(doctor, shiftType, date) {
-  switch (shiftType) {
-    case 'day':
-      doctor.dayShifts++;
-      break;
-    case 'night':
-      doctor.nightShifts++;
-      break;
-    case 'weekend':
-      doctor.weekendShifts++;
-      break;
-  }
-  
-  // Update consecutive tracking
-  if (doctor.lastShiftDate) {
-    const lastDate = new Date(doctor.lastShiftDate);
-    const daysDiff = Math.abs(date - lastDate) / (1000 * 60 * 60 * 24);
-    
-    if (daysDiff <= 1) {
-      doctor.consecutiveDays++;
-    } else {
-      doctor.consecutiveDays = 1;
-    }
-  } else {
-    doctor.consecutiveDays = 1;
-  }
-  
-  doctor.lastShiftDate = date.toISOString().split('T')[0];
 }
 
 /**

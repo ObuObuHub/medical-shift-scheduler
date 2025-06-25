@@ -40,10 +40,13 @@ export const MatrixView = ({
     }
   }, [currentDate]);
   
-  // Filter staff by hospital and department - doctors only
+  // Filter staff by hospital and department - all medical staff
   const filteredStaff = useMemo(() => {
     try {
-      let hospitalStaff = staff.filter(s => s.hospital === selectedHospital && s.type === 'medic'); // Only doctors
+      let hospitalStaff = staff.filter(s => 
+        s.hospital === selectedHospital && 
+        (s.type === 'medic' || s.type === 'biolog' || s.type === 'chimist')
+      );
       if (selectedDepartment) {
         hospitalStaff = hospitalStaff.filter(s => s.specialization === selectedDepartment);
       }
@@ -60,10 +63,13 @@ export const MatrixView = ({
     }
   }, [staff, selectedHospital, selectedDepartment]);
   
-  // Get departments for filter - doctors only
+  // Get departments for filter - all medical staff
   const departments = useMemo(() => {
     try {
-      const hospitalStaff = staff.filter(s => s.hospital === selectedHospital && s.type === 'medic'); // Only doctors
+      const hospitalStaff = staff.filter(s => 
+        s.hospital === selectedHospital && 
+        (s.type === 'medic' || s.type === 'biolog' || s.type === 'chimist')
+      );
       return [...new Set(hospitalStaff.map(s => s.specialization))].sort();
     } catch (error) {
       console.error('Error getting departments:', error);
@@ -482,7 +488,9 @@ export const MatrixView = ({
                       <div className="font-medium text-gray-900 text-xs sm:text-sm truncate">{person.name}</div>
                       <div className="text-xs text-gray-500 truncate">
                         <span className="sm:hidden">{person.specialization.slice(0, 8)}...</span>
-                        <span className="hidden sm:inline">Medic • {person.specialization}</span>
+                        <span className="hidden sm:inline">
+                          {person.type === 'medic' ? 'Medic' : person.type === 'biolog' ? 'Biolog' : 'Chimist'} • {person.specialization}
+                        </span>
                       </div>
                     </div>
                   </div>
