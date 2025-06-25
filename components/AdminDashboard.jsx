@@ -7,7 +7,6 @@ import {
   Menu, X, Shield, BarChart3
 } from './Icons';
 import { MatrixView } from './MatrixView';
-import { CalendarView } from './CalendarView';
 import { StaffView } from './StaffView';
 import { AdminPanel } from './AdminPanel';
 import { StaffEditModal } from './StaffEditModal';
@@ -50,7 +49,6 @@ export const AdminDashboard = () => {
   // Menu items for administrators
   const menuItems = [
     { id: 'matrix', label: 'Planificare', icon: BarChart3 },
-    { id: 'calendar', label: 'Calendar', icon: Calendar },
     { id: 'staff', label: 'Personal', icon: Users },
     { id: 'admin', label: 'Administrare', icon: Settings }
   ];
@@ -66,34 +64,23 @@ export const AdminDashboard = () => {
     };
 
     switch (currentView) {
-      case 'calendar':
-        return (
-          <CalendarView
-            {...commonProps}
-            navigateMonth={navigateMonth}
-            generateFairSchedule={generateFairSchedule}
-            getDaysInMonth={() => {}}
-            handleCellClick={handleCellClick}
-            getStaffName={() => ''}
-            setAddShiftModalData={setAddShiftModalData}
-          />
-        );
-      
       case 'matrix':
         return (
           <div className="space-y-6">
             <div className="flex items-center justify-between">
               <h2 className="text-xl font-semibold text-gray-800 flex items-center">
                 <BarChart3 className="w-5 h-5 mr-2" />
-                Planificare Personal - {formatMonthYear(currentDate)}
+                Planificare Personal
               </h2>
             </div>
             <MatrixView 
               selectedHospital={selectedHospital}
               currentDate={currentDate}
+              onDateChange={setCurrentDate}
               onAddShift={(date, editingShift) => setAddShiftModalData({ date, editingShift })}
               onDeleteShift={deleteShift}
               onRegenerateFromScratch={regenerateFromScratch}
+              onGenerateShifts={generateFairSchedule}
             />
           </div>
         );

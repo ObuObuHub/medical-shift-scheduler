@@ -1,22 +1,22 @@
 import React, { useState, useMemo } from 'react';
 import { useData } from './DataContext';
 import { useAuth } from './AuthContext';
-import { Users, Calendar, AlertCircle, CheckCircle, Plus, Trash2, Wand2, Download } from './Icons';
-import { CalendarSidebar } from './CalendarSidebar';
+import { Users, AlertCircle, CheckCircle, Plus, Trash2, Wand2, Download, ChevronLeft, ChevronRight } from './Icons';
 import { exportShiftsToText, downloadTextFile, generateExportFilename } from '../utils/exportUtils';
 
 export const MatrixView = ({ 
   selectedHospital, 
   currentDate, 
+  onDateChange,
   onAddShift,
   onDeleteShift,
-  onRegenerateFromScratch 
+  onRegenerateFromScratch,
+  onGenerateShifts
 }) => {
-  const { staff, shifts, shiftTypes } = useData();
+  const { staff, shifts, shiftTypes, setShifts } = useData();
   const { hasPermission } = useAuth();
   
   const [selectedDepartment, setSelectedDepartment] = useState('');
-  const [showCalendarSidebar, setShowCalendarSidebar] = useState(false);
   
   // Generate date range for current month
   const dateRange = useMemo(() => {
@@ -124,13 +124,36 @@ export const MatrixView = ({
   };
   
   
-  // Handle cell click for adding shifts
+  // Handle cell click for direct shift assignment
   const handleCellClick = (staffId, date) => {
     if (!hasPermission('assign_staff')) return;
     
+    const dateKey = date.toISOString().split('T')[0];
     const existingShift = getShiftForStaffAndDate(staffId, date);
-    if (onAddShift) {
-      onAddShift(date, existingShift);
+    const shiftTypesArray = Object.values(shiftTypes);
+    
+    if (existingShift) {
+      // Remove existing shift
+      const updatedShifts = { ...shifts };
+      updatedShifts[dateKey] = updatedShifts[dateKey].filter(s => s.id !== existingShift.id);
+      setShifts(updatedShifts);
+    } else {
+      // Add new shift - default to Day shift
+      const dayShift = shiftTypesArray.find(st => st.name === 'Gardă Zi') || shiftTypesArray[0];
+      
+      const newShift = {
+        id: `${dateKey}-${dayShift.id}-${Date.now()}`,
+        type: dayShift,
+        staffIds: [staffId],
+        department: staff.find(s => s.id === staffId)?.specialization || ''
+      };
+
+      const updatedShifts = { ...shifts };
+      if (!updatedShifts[dateKey]) {
+        updatedShifts[dateKey] = [];
+      }
+      updatedShifts[dateKey].push(newShift);
+      setShifts(updatedShifts);
     }
   };
 
@@ -162,25 +185,32 @@ export const MatrixView = ({
     }
   };
 
-  // Handle calendar date navigation
-  const handleCalendarDateChange = (newDate) => {
-    // For now, we'll just scroll to that date in the matrix if it's in the same month
-    // In a full implementation, this could trigger a month change in the parent component
-    if (newDate.getMonth() === currentDate.getMonth() && newDate.getFullYear() === currentDate.getFullYear()) {
-      // Scroll to the specific date column in the matrix
-      const dateKey = newDate.toISOString().split('T')[0];
-      const dateElement = document.querySelector(`[data-date="${dateKey}"]`);
-      if (dateElement) {
-        dateElement.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
-      }
-    }
-  };
 
   // Handle export to text file
   const handleExportSchedule = () => {
     const exportContent = exportShiftsToText(shifts, staff, currentDate);
     const filename = generateExportFilename(currentDate);
     downloadTextFile(exportContent, filename);
+  };
+
+  // Handle month navigation
+  const navigateMonth = (direction) => {
+    const newDate = new Date(currentDate);
+    newDate.setMonth(newDate.getMonth() + direction);
+    onDateChange(newDate);
+  };
+
+  // Handle generate shifts
+  const handleGenerateShifts = async () => {
+    if (!hasPermission('generate_shifts')) return;
+    
+    if (confirm('Generați ture noi pentru această lună? Aceasta va completa zilele fără ture programate.')) {
+      try {
+        await onGenerateShifts(selectedHospital, currentDate);
+      } catch (error) {
+        alert('Eroare la generarea turelor. Vă rugăm să încercați din nou.');
+      }
+    }
   };
   
   // Get cell styling based on shift type
@@ -296,13 +326,31 @@ export const MatrixView = ({
     <div className="bg-white rounded-lg shadow-sm border border-gray-200">
       {/* Header with filters - Mobile Responsive */}
       <div className="p-3 sm:p-4 border-b border-gray-200">
-        {/* Title */}
-        <div className="flex items-center mb-3 sm:mb-0">
-          <Users className="w-5 h-5 mr-2 text-blue-600" />
-          <h3 className="text-base sm:text-lg font-semibold text-gray-800 truncate">
-            <span className="hidden sm:inline">Programul Personalului - </span>
-            {currentDate.toLocaleDateString('ro-RO', { month: 'short', year: 'numeric' })}
-          </h3>
+        {/* Title with Month Navigation */}
+        <div className="flex items-center justify-between mb-3 sm:mb-0">
+          <div className="flex items-center">
+            <Users className="w-5 h-5 mr-2 text-blue-600" />
+            <h3 className="text-base sm:text-lg font-semibold text-gray-800 truncate">
+              <span className="hidden sm:inline">Programul Personalului - </span>
+              {currentDate.toLocaleDateString('ro-RO', { month: 'short', year: 'numeric' })}
+            </h3>
+          </div>
+          <div className="flex items-center space-x-1">
+            <button
+              onClick={() => navigateMonth(-1)}
+              className="p-2 rounded-lg hover:bg-gray-100 transition-colors touch-manipulation"
+              title="Luna anterioară"
+            >
+              <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5" />
+            </button>
+            <button
+              onClick={() => navigateMonth(1)}
+              className="p-2 rounded-lg hover:bg-gray-100 transition-colors touch-manipulation"
+              title="Luna următoare"
+            >
+              <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5" />
+            </button>
+          </div>
         </div>
         
         {/* Controls - Stack on mobile */}
@@ -332,29 +380,28 @@ export const MatrixView = ({
             </button>
             
             {hasPermission('generate_shifts') && (
-              <button
-                onClick={handleRegenerateFromScratch}
-                className="flex-1 sm:flex-none px-3 sm:px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-medium flex items-center justify-center space-x-2 transition-colors"
-                title="Regenerează complet programul pentru luna curentă"
-              >
-                <Wand2 className="w-4 h-4" />
-                <span className="hidden sm:inline">Regenerare</span>
-                <span className="sm:hidden">Regen</span>
-              </button>
+              <>
+                <button
+                  onClick={handleGenerateShifts}
+                  className="flex-1 sm:flex-none px-3 sm:px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium flex items-center justify-center space-x-2 transition-colors"
+                  title="Generează ture pentru zilele libere"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span className="hidden sm:inline">Generare</span>
+                  <span className="sm:hidden">Gen</span>
+                </button>
+                
+                <button
+                  onClick={handleRegenerateFromScratch}
+                  className="flex-1 sm:flex-none px-3 sm:px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-medium flex items-center justify-center space-x-2 transition-colors"
+                  title="Regenerează complet programul pentru luna curentă"
+                >
+                  <Wand2 className="w-4 h-4" />
+                  <span className="hidden sm:inline">Regenerare</span>
+                  <span className="sm:hidden">Regen</span>
+                </button>
+              </>
             )}
-            
-            <button
-              onClick={() => setShowCalendarSidebar(!showCalendarSidebar)}
-              className={`flex-1 sm:flex-none px-3 py-2 rounded-lg text-sm font-medium flex items-center justify-center space-x-2 transition-colors ${
-                showCalendarSidebar 
-                  ? 'bg-blue-600 text-white hover:bg-blue-700' 
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-              title="Deschide/închide navigatorul de calendar"
-            >
-              <Calendar className="w-4 h-4" />
-              <span className="hidden sm:inline">Calendar</span>
-            </button>
           </div>
         </div>
       </div>
@@ -528,15 +575,6 @@ export const MatrixView = ({
         </div>
       </div>
 
-      {/* Calendar Sidebar */}
-      <CalendarSidebar
-        isOpen={showCalendarSidebar}
-        onToggle={() => setShowCalendarSidebar(!showCalendarSidebar)}
-        currentDate={currentDate}
-        onDateChange={handleCalendarDateChange}
-        shifts={shifts}
-        selectedHospital={selectedHospital}
-      />
     </div>
   );
 };

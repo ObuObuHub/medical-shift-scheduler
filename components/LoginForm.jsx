@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useAuth } from './AuthContext';
 import { Shield, Lock, User, Eye, EyeOff } from './Icons';
 
-export const LoginForm = () => {
+export const LoginForm = ({ onSuccess }) => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -19,7 +19,9 @@ export const LoginForm = () => {
     try {
       const result = await login(username, password);
       
-      if (!result.success) {
+      if (result.success) {
+        if (onSuccess) onSuccess();
+      } else {
         setError(result.error);
       }
     } catch (err) {

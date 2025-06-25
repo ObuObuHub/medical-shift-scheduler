@@ -2,23 +2,36 @@ import React, { useState } from 'react';
 import Head from 'next/head';
 import { useAuth } from './AuthContext';
 import { useData } from './DataContext';
-import { Calendar, User, Clock, LogOut, ChevronLeft, ChevronRight, Download } from './Icons';
+import { Calendar, User, Clock, LogOut, ChevronLeft, ChevronRight, Download, Shield, Settings } from './Icons';
 import { formatMonthYear, addMonths } from '../utils/dateHelpers';
-import { CalendarView } from './CalendarView';
+import { LoginForm } from './LoginForm';
+import { AdminDashboard } from './AdminDashboard';
+import { ManagerDashboard } from './ManagerDashboard';
 
 export const StaffDashboard = () => {
-  const { currentUser, logout } = useAuth();
+  const { currentUser, logout, isAuthenticated } = useAuth();
   const { shifts, staff, shiftTypes } = useData();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [currentView, setCurrentView] = useState('schedule');
+  const [showLoginModal, setShowLoginModal] = useState(false);
+
+  // If authenticated as admin or manager, show their dashboard
+  if (isAuthenticated && currentUser) {
+    if (currentUser.role === 'admin') {
+      return <AdminDashboard />;
+    }
+    if (currentUser.role === 'manager') {
+      return <ManagerDashboard />;
+    }
+  }
 
   const navigateMonth = (direction) => {
     setCurrentDate(prev => addMonths(prev, direction));
   };
 
-  // Get staff member's shifts for current month
-  const getMyShifts = () => {
-    if (!currentUser || !shifts) return [];
+  // Get all shifts for current month (staff can see all schedules)
+  const getAllShifts = () => {
+    if (!shifts) return [];
     
     const currentMonth = currentDate.getMonth();
     const currentYear = currentDate.getFullYear();
@@ -30,13 +43,11 @@ export const StaffDashboard = () => {
                shiftDate.getFullYear() === currentYear;
       })
       .flatMap(([date, dayShifts]) => 
-        dayShifts
-          .filter(shift => shift.staffIds.includes(currentUser.id))
-          .map(shift => ({ ...shift, date }))
+        dayShifts.map(shift => ({ ...shift, date }))
       );
   };
 
-  const myShifts = getMyShifts();
+  const allShifts = getAllShifts();
 
   const renderScheduleView = () => (
     <div className="space-y-4 sm:space-y-6">
@@ -67,17 +78,17 @@ export const StaffDashboard = () => {
         <div className="p-4 sm:p-6">
           <h3 className="text-base sm:text-lg font-semibold text-gray-800 mb-3 sm:mb-4 flex items-center">
             <Clock className="w-4 h-4 sm:w-5 sm:h-5 mr-2 flex-shrink-0" />
-            <span className="truncate">Turele Mele ({myShifts.length})</span>
+            <span className="truncate">Program Ture ({allShifts.length})</span>
           </h3>
           
-          {myShifts.length === 0 ? (
+          {allShifts.length === 0 ? (
             <div className="text-center py-6 sm:py-8 text-gray-500">
               <Calendar className="w-10 h-10 sm:w-12 sm:h-12 mx-auto mb-3 text-gray-300" />
-              <p className="text-sm sm:text-base">Nu aveți ture programate în această lună</p>
+              <p className="text-sm sm:text-base">Nu sunt ture programate în această lună</p>
             </div>
           ) : (
             <div className="space-y-2 sm:space-y-3">
-              {myShifts
+              {allShifts
                 .sort((a, b) => new Date(a.date) - new Date(b.date))
                 .map((shift, index) => {
                   const shiftDate = new Date(shift.date);
@@ -104,7 +115,10 @@ export const StaffDashboard = () => {
                             {shift.type.name}
                           </div>
                           <div className="text-xs sm:text-sm text-gray-600 truncate">
-                            {shift.type.startTime} - {shift.type.endTime}
+                            {shift.type.startTime || shift.type.start} - {shift.type.endTime || shift.type.end}
+                            {shift.staffIds.length > 0 && (
+                              <span className="ml-2">• {shift.staffIds.length} personal</span>
+                            )}
                           </div>
                         </div>
                       </div>
@@ -129,7 +143,7 @@ export const StaffDashboard = () => {
               <Calendar className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600" />
             </div>
             <div className="ml-3 sm:ml-4 min-w-0 flex-1">
-              <div className="text-xl sm:text-2xl font-bold text-gray-900">{myShifts.length}</div>
+              <div className="text-xl sm:text-2xl font-bold text-gray-900">{allShifts.length}</div>
               <div className="text-xs sm:text-sm text-gray-600 truncate">
                 <span className="sm:hidden">Ture {formatMonthYear(currentDate).split(' ')[1]}</span>
                 <span className="hidden sm:inline">Ture în {formatMonthYear(currentDate)}</span>
@@ -145,7 +159,7 @@ export const StaffDashboard = () => {
             </div>
             <div className="ml-3 sm:ml-4 min-w-0 flex-1">
               <div className="text-xl sm:text-2xl font-bold text-gray-900">
-                {myShifts.reduce((total, shift) => total + (shift.type.duration || 12), 0)}h
+                {allShifts.reduce((total, shift) => total + (shift.type.duration || 12), 0)}h
               </div>
               <div className="text-xs sm:text-sm text-gray-600">Total ore</div>
             </div>
@@ -158,8 +172,10 @@ export const StaffDashboard = () => {
               <User className="w-5 h-5 sm:w-6 sm:h-6 text-purple-600" />
             </div>
             <div className="ml-3 sm:ml-4 min-w-0 flex-1">
-              <div className="text-lg sm:text-2xl font-bold text-gray-900 truncate">{currentUser.specialization}</div>
-              <div className="text-xs sm:text-sm text-gray-600">Specializare</div>
+              <div className="text-lg sm:text-2xl font-bold text-gray-900 truncate">
+                {isAuthenticated && currentUser ? currentUser.specialization : 'Toate'}
+              </div>
+              <div className="text-xs sm:text-sm text-gray-600">Departamente</div>
             </div>
           </div>
         </div>
@@ -169,29 +185,19 @@ export const StaffDashboard = () => {
 
   const renderCalendarView = () => (
     <div className="space-y-4 sm:space-y-6">
-      <h2 className="text-lg sm:text-2xl font-bold text-gray-900">Calendar Complet</h2>
-      <CalendarView
-        currentDate={currentDate}
-        selectedHospital={currentUser.hospital}
-        staff={staff}
-        shifts={shifts}
-        shiftTypes={shiftTypes}
-        hasPermission={() => false} // Staff can only view
-        navigateMonth={navigateMonth}
-        generateFairSchedule={() => {}}
-        getDaysInMonth={() => {}}
-        handleCellClick={() => {}}
-        getStaffName={() => ''}
-        setAddShiftModalData={() => {}}
-      />
+      <h2 className="text-lg sm:text-2xl font-bold text-gray-900">Vezi toate turile</h2>
+      <div className="bg-white rounded-lg p-4">
+        <p className="text-gray-600">Toate turile sunt afișate în secțiunea &quot;Programul Meu&quot; de mai sus.</p>
+        <p className="text-sm text-gray-500 mt-2">Pentru funcții avansate, autentificați-vă ca Administrator sau Manager.</p>
+      </div>
     </div>
   );
 
   return (
     <div className="min-h-screen bg-gray-50">
       <Head>
-        <title>Programul Meu - Planificare</title>
-        <meta name="description" content="Vizualizare program personal medical" />
+        <title>Program Medical - Planificare</title>
+        <meta name="description" content="Vizualizare program medical" />
       </Head>
 
       {/* Header - Mobile Responsive */}
@@ -199,7 +205,7 @@ export const StaffDashboard = () => {
         <div className="max-w-7xl mx-auto px-3 sm:px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-14 sm:h-16">
             <div className="flex items-center min-w-0 flex-1">
-              <h1 className="text-lg sm:text-xl font-bold text-gray-900 truncate">Planificare Personal</h1>
+              <h1 className="text-lg sm:text-xl font-bold text-gray-900 truncate">Program Medical</h1>
             </div>
 
             <div className="flex items-center space-x-2">
@@ -229,15 +235,38 @@ export const StaffDashboard = () => {
               </div>
 
               <div className="flex items-center space-x-1 sm:space-x-2">
-                <User className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400" />
-                <span className="text-xs sm:text-sm text-gray-700 truncate max-w-20 sm:max-w-none">{currentUser?.name}</span>
-                <button
-                  onClick={logout}
-                  className="p-2 text-gray-600 hover:text-gray-900 transition-colors touch-manipulation"
-                  title="Logout"
-                >
-                  <LogOut className="w-4 h-4 sm:w-5 sm:h-5" />
-                </button>
+                {isAuthenticated && currentUser ? (
+                  <>
+                    <User className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400" />
+                    <span className="text-xs sm:text-sm text-gray-700 truncate max-w-20 sm:max-w-none">{currentUser.name}</span>
+                    <button
+                      onClick={logout}
+                      className="p-2 text-gray-600 hover:text-gray-900 transition-colors touch-manipulation"
+                      title="Logout"
+                    >
+                      <LogOut className="w-4 h-4 sm:w-5 sm:h-5" />
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button
+                      onClick={() => setShowLoginModal(true)}
+                      className="px-3 py-1 text-xs sm:text-sm bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors touch-manipulation flex items-center space-x-1"
+                      title="Login Admin/Manager"
+                    >
+                      <Shield className="w-3 h-3 sm:w-4 sm:h-4" />
+                      <span className="hidden sm:inline">Admin</span>
+                    </button>
+                    <button
+                      onClick={() => setShowLoginModal(true)}
+                      className="px-3 py-1 text-xs sm:text-sm bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors touch-manipulation flex items-center space-x-1"
+                      title="Login Manager"
+                    >
+                      <Settings className="w-3 h-3 sm:w-4 sm:h-4" />
+                      <span className="hidden sm:inline">Manager</span>
+                    </button>
+                  </>
+                )}
               </div>
             </div>
           </div>
@@ -248,6 +277,24 @@ export const StaffDashboard = () => {
       <main className="max-w-7xl mx-auto px-3 sm:px-4 sm:px-6 lg:px-8 py-4 sm:py-8">
         {currentView === 'schedule' ? renderScheduleView() : renderCalendarView()}
       </main>
+
+      {/* Login Modal */}
+      {showLoginModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg max-w-md w-full p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold">Login Admin/Manager</h3>
+              <button
+                onClick={() => setShowLoginModal(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                ×
+              </button>
+            </div>
+            <LoginForm onSuccess={() => setShowLoginModal(false)} />
+          </div>
+        </div>
+      )}
     </div>
   );
 };

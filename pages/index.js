@@ -1,26 +1,14 @@
 import React from 'react';
-import { AuthProvider, useAuth } from '../components/AuthContext';
+import { AuthProvider } from '../components/AuthContext';
 import { DataProvider } from '../components/DataContext';
-import { LoginForm } from '../components/LoginForm';
-import { RoleBasedLanding } from '../components/RoleBasedLanding';
+import { StaffDashboard } from '../components/StaffDashboard';
 
-// Main app component with authentication
-function AppContent() {
-  const { isAuthenticated } = useAuth();
-
-  if (!isAuthenticated) {
-    return <LoginForm />;
-  }
-
-  return <RoleBasedLanding />;
-}
-
-// App wrapper with providers
+// Main app - defaults to staff view
 export default function App() {
   return (
     <AuthProvider>
       <DataProvider>
-        <AppContent />
+        <StaffDashboard />
       </DataProvider>
     </AuthProvider>
   );
