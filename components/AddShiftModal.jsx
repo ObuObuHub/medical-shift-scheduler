@@ -119,7 +119,7 @@ export const AddShiftModal = ({
 
       setConflicts(allConflicts);
     }
-  }, [formData.staffIds, formData.shiftTypeId, selectedDate, shifts, staff, editingShift, shiftTypes]);
+  }, [formData.staffIds, formData.shiftTypeId, formData.department, selectedDate, shifts, staff, editingShift, shiftTypes]);
 
 
   const handleStaffToggle = (staffId) => {
