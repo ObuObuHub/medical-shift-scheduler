@@ -391,44 +391,6 @@ export const AddShiftModal = ({
                 </div>
               </div>
 
-              {/* Coverage Analysis */}
-              {coverageAnalysis && (
-                <div className={`p-4 rounded-lg ${
-                  coverageAnalysis.adequate ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'
-                }`}>
-                  <div className="flex items-center mb-2">
-                    {getCoverageStatusIcon()}
-                    <span className="ml-2 font-medium">
-                      {coverageAnalysis.adequate ? 'Acoperire Adecvată' : 'Acoperire Insuficientă'}
-                    </span>
-                  </div>
-                  
-                  <div className="text-sm text-gray-600 mb-2">
-                    Personal asignat: {coverageAnalysis.staffBreakdown.doctors} medici
-                  </div>
-
-                  {coverageAnalysis.warnings.length > 0 && (
-                    <div className="space-y-1">
-                      {coverageAnalysis.warnings.map((warning, index) => (
-                        <div key={index} className="text-sm text-red-600 flex items-center">
-                          <AlertCircle className="w-4 h-4 mr-1" />
-                          {warning}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  {coverageAnalysis.recommendations.length > 0 && (
-                    <div className="mt-2 space-y-1">
-                      {coverageAnalysis.recommendations.map((rec, index) => (
-                        <div key={index} className="text-sm text-blue-600">
-                          💡 {rec}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
 
               {/* Conflicts */}
               {conflicts.length > 0 && (

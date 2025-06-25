@@ -30,7 +30,7 @@ function AppContent() {
     shiftTypes, hospitals, staff, shifts, setShifts, 
     addStaff, updateStaff, deleteStaff,
     addHospital, updateHospital, deleteHospital,
-    validateDayCoverage, getCoverageForDate, generateFairSchedule
+    generateFairSchedule, deleteShift, regenerateFromScratch
   } = useData();
 
   // Core state
@@ -129,7 +129,6 @@ function AppContent() {
             getDaysInMonth={() => getDaysInMonth(currentDate)}
             handleCellClick={handleCellClick}
             getStaffName={(staffId) => getStaffName(staffId, staff)}
-            getCoverageForDate={getCoverageForDate}
             setAddShiftModalData={setAddShiftModalData}
           />
         );
@@ -147,6 +146,8 @@ function AppContent() {
               selectedHospital={selectedHospital}
               currentDate={currentDate}
               onAddShift={(date, editingShift) => setAddShiftModalData({ date, editingShift })}
+              onDeleteShift={deleteShift}
+              onRegenerateFromScratch={regenerateFromScratch}
             />
           </div>
         );

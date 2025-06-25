@@ -14,7 +14,6 @@ export const CalendarView = ({
   hasPermission,
   staff,
   shifts,
-  getCoverageForDate,
   setAddShiftModalData,
   selectedHospital
 }) => {

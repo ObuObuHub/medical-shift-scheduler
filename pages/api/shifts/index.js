@@ -11,6 +11,13 @@ export default async function handler(req, res) {
       case 'POST':
         await runMiddleware(req, res, requireRole(['admin', 'manager', 'staff']));
         return await createShift(req, res);
+      case 'DELETE':
+        await runMiddleware(req, res, requireRole(['admin', 'manager']));
+        if (req.query.action === 'clear-all') {
+          return await clearAllShifts(req, res);
+        } else {
+          return await deleteShift(req, res);
+        }
       default:
         return res.status(405).json({ error: 'Method not allowed' });
     }
@@ -134,5 +141,69 @@ async function createShift(req, res) {
   } catch (error) {
     console.error('Create shift error:', error);
     res.status(500).json({ error: 'Failed to create shift' });
+  }
+}
+
+async function deleteShift(req, res) {
+  try {
+    const { shiftId } = req.query;
+    
+    if (!shiftId) {
+      return res.status(400).json({ error: 'Shift ID is required' });
+    }
+
+    const result = await sql`
+      UPDATE shifts 
+      SET is_active = false 
+      WHERE shift_id = ${shiftId}
+      RETURNING *;
+    `;
+
+    if (result.length === 0) {
+      return res.status(404).json({ error: 'Shift not found' });
+    }
+
+    res.status(200).json({ message: 'Shift deleted successfully' });
+  } catch (error) {
+    console.error('Delete shift error:', error);
+    res.status(500).json({ error: 'Failed to delete shift' });
+  }
+}
+
+async function clearAllShifts(req, res) {
+  try {
+    const { hospital, startDate, endDate } = req.query;
+    
+    if (!hospital) {
+      return res.status(400).json({ error: 'Hospital is required' });
+    }
+
+    let result;
+    
+    if (startDate && endDate) {
+      // Clear shifts for specific date range
+      result = await sql`
+        UPDATE shifts 
+        SET is_active = false 
+        WHERE hospital = ${hospital} AND date >= ${startDate} AND date <= ${endDate}
+        RETURNING shift_id;
+      `;
+    } else {
+      // Clear all shifts for hospital
+      result = await sql`
+        UPDATE shifts 
+        SET is_active = false 
+        WHERE hospital = ${hospital}
+        RETURNING shift_id;
+      `;
+    }
+
+    res.status(200).json({ 
+      message: 'All shifts cleared successfully',
+      clearedCount: result.length 
+    });
+  } catch (error) {
+    console.error('Clear all shifts error:', error);
+    res.status(500).json({ error: 'Failed to clear shifts' });
   }
 }

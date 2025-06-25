@@ -1,9 +1,11 @@
 /**
- * Fair Medical Shift Scheduling Engine
+ * Medical Guard Shift Scheduling Engine
  * 
- * Creates a fair rota that:
- * - Guarantees each medic gets roughly the same number of day/night/weekend shifts
- * - Avoids assigning the same person two consecutive night shifts
+ * Creates a fair guard schedule based on real hospital patterns:
+ * - Weekdays: Single 20-8 (12h night guard) shifts
+ * - Weekends: Both 8-20 (12h day guard) AND 20-8 (12h night guard) shifts
+ * - Some Saturdays: Single 8-8 (24h guard) shifts
+ * - Fair rotation ensuring no consecutive assignments
  * - Respects individual "can't work" dates
  */
 
@@ -92,10 +94,13 @@ function totalWorked(currentStaff, originalStaff) {
 }
 
 /**
- * Generate days array for a given month with logical shift coverage
- * Each day gets either: 1 x 24h shift OR 2 x 12h shifts (day + night)
+ * Generate days array for a given month with real guard shift pattern
+ * Based on real schedule model:
+ * - Weekdays: Single 20-8 (12h night guard)
+ * - Weekends: Both 8-20 (12h day guard) AND 20-8 (12h night guard)
+ * - Some Saturdays: Single 8-8 (24h guard)
  * @param {Date} date - Month to generate schedule for
- * @returns {Array} Array of day objects with coverage types
+ * @returns {Array} Array of day objects with guard coverage types
  */
 export function generateDaysForMonth(date) {
   const year = date.getFullYear();
@@ -106,25 +111,33 @@ export function generateDaysForMonth(date) {
   for (let day = 1; day <= daysInMonth; day++) {
     const currentDate = new Date(year, month, day);
     const dateString = currentDate.toISOString().split('T')[0];
-    const dayOfWeek = currentDate.getDay();
+    const dayOfWeek = currentDate.getDay(); // 0 = Sunday, 6 = Saturday
     
-    // Determine coverage type based on calendar logic:
-    // - Weekends: prefer 24h shifts for efficiency
-    // - Weekdays: prefer day+night 12h shifts for better work-life balance
+    // Determine guard coverage type based on real hospital pattern
     let coverageType;
     
-    if (dayOfWeek === 0 || dayOfWeek === 6) {
-      // Weekend: 24-hour shifts for minimal staff
-      coverageType = "FULL_DAY";
-    } else {
-      // Weekday: day + night shifts for better rotation
-      coverageType = "DAY_NIGHT";
+    if (dayOfWeek >= 1 && dayOfWeek <= 5) {
+      // Monday to Friday: Single night guard (20-8, 12h)
+      coverageType = "WEEKDAY_NIGHT";
+    } else if (dayOfWeek === 6) {
+      // Saturday: Alternate between 24h guard and day+night guards
+      // Every 2nd Saturday gets 24h guard for efficiency
+      const saturdayOfMonth = Math.ceil(day / 7);
+      if (saturdayOfMonth % 2 === 0) {
+        coverageType = "SATURDAY_24H";
+      } else {
+        coverageType = "WEEKEND_DAY_NIGHT";
+      }
+    } else if (dayOfWeek === 0) {
+      // Sunday: Both day guard (8-20) and night guard (20-8)
+      coverageType = "WEEKEND_DAY_NIGHT";
     }
 
     days.push({
       date: dateString,
       coverageType: coverageType,
-      dayOfWeek: dayOfWeek
+      dayOfWeek: dayOfWeek,
+      dayName: ['Duminică', 'Luni', 'Marți', 'Miercuri', 'Joi', 'Vineri', 'Sâmbătă'][dayOfWeek]
     });
   }
 
@@ -160,54 +173,85 @@ export function calculateFairQuotas(staff, days) {
 }
 
 /**
- * Convert schedule result to shifts format with logical calendar organization
- * @param {Array} days - Days with coverage types
+ * Convert schedule result to shifts format with real guard pattern
+ * @param {Array} days - Days with guard coverage types
  * @param {Array} staff - Available staff
  * @param {Object} shiftTypes - Available shift types
- * @returns {Object} Shifts object keyed by date with logical coverage
+ * @returns {Object} Shifts object keyed by date with real guard coverage
  */
 export function convertScheduleToShifts(days, staff, shiftTypes) {
   const shifts = {};
   const availableStaff = [...staff];
   let staffIndex = 0;
+  let lastNightGuardId = null; // Track last night guard to avoid consecutive assignments
 
   days.forEach(day => {
     if (!shifts[day.date]) {
       shifts[day.date] = [];
     }
 
-    // Get next staff member for assignment (simple rotation)
-    const assignedStaff = availableStaff[staffIndex % availableStaff.length];
-    const nextStaff = availableStaff[(staffIndex + 1) % availableStaff.length];
-
-    if (day.coverageType === "FULL_DAY") {
-      // One 24-hour shift for full day coverage
-      shifts[day.date].push({
-        id: `${day.date}-24h-${assignedStaff.id}`,
-        type: shiftTypes.GARDA_24,
-        staffIds: [assignedStaff.id],
-        requirements: { minDoctors: 1, specializations: [] },
-        generated: true
-      });
+    // Get next available staff member avoiding consecutive night guards
+    let assignedStaff = availableStaff[staffIndex % availableStaff.length];
+    let nextStaff = availableStaff[(staffIndex + 1) % availableStaff.length];
+    
+    // Avoid consecutive night shifts for the same person
+    if (day.coverageType.includes('NIGHT') && assignedStaff.id === lastNightGuardId) {
       staffIndex += 1;
-    } else if (day.coverageType === "DAY_NIGHT") {
-      // Two 12-hour shifts for day + night coverage
-      shifts[day.date].push({
-        id: `${day.date}-day-${assignedStaff.id}`,
-        type: shiftTypes.GARDA_ZI,
-        staffIds: [assignedStaff.id],
-        requirements: { minDoctors: 1, specializations: [] },
-        generated: true
-      });
-      
-      shifts[day.date].push({
-        id: `${day.date}-night-${nextStaff.id}`,
-        type: shiftTypes.NOAPTE,
-        staffIds: [nextStaff.id],
-        requirements: { minDoctors: 1, specializations: [] },
-        generated: true
-      });
-      staffIndex += 2;
+      assignedStaff = availableStaff[staffIndex % availableStaff.length];
+      nextStaff = availableStaff[(staffIndex + 1) % availableStaff.length];
+    }
+
+    switch (day.coverageType) {
+      case "WEEKDAY_NIGHT":
+        // Monday-Friday: Single 20-8 night guard (12h)
+        shifts[day.date].push({
+          id: `${day.date}-night-${assignedStaff.id}`,
+          type: shiftTypes.NOAPTE, // 20-8, 12h
+          staffIds: [assignedStaff.id],
+          requirements: { minDoctors: 1, specializations: [] },
+          generated: true
+        });
+        lastNightGuardId = assignedStaff.id;
+        staffIndex += 1;
+        break;
+
+      case "WEEKEND_DAY_NIGHT":
+        // Weekend: Both 8-20 day guard AND 20-8 night guard
+        shifts[day.date].push({
+          id: `${day.date}-day-${assignedStaff.id}`,
+          type: shiftTypes.GARDA_ZI, // 8-20, 12h
+          staffIds: [assignedStaff.id],
+          requirements: { minDoctors: 1, specializations: [] },
+          generated: true
+        });
+        
+        shifts[day.date].push({
+          id: `${day.date}-night-${nextStaff.id}`,
+          type: shiftTypes.NOAPTE, // 20-8, 12h
+          staffIds: [nextStaff.id],
+          requirements: { minDoctors: 1, specializations: [] },
+          generated: true
+        });
+        lastNightGuardId = nextStaff.id;
+        staffIndex += 2;
+        break;
+
+      case "SATURDAY_24H":
+        // Saturday: Single 8-8 guard (24h)
+        shifts[day.date].push({
+          id: `${day.date}-24h-${assignedStaff.id}`,
+          type: shiftTypes.GARDA_24, // 8-8, 24h
+          staffIds: [assignedStaff.id],
+          requirements: { minDoctors: 1, specializations: [] },
+          generated: true
+        });
+        lastNightGuardId = null; // 24h shift covers night, but reset for next day
+        staffIndex += 1;
+        break;
+
+      default:
+        console.warn(`Unknown coverage type: ${day.coverageType}`);
+        break;
     }
   });
 

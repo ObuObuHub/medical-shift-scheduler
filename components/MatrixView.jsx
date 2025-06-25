@@ -1,14 +1,16 @@
 import React, { useState, useMemo } from 'react';
 import { useData } from './DataContext';
 import { useAuth } from './AuthContext';
-import { Users, Calendar, AlertCircle, CheckCircle, Plus } from './Icons';
+import { Users, Calendar, AlertCircle, CheckCircle, Plus, Trash2, Wand2 } from './Icons';
 
 export const MatrixView = ({ 
   selectedHospital, 
   currentDate, 
-  onAddShift 
+  onAddShift,
+  onDeleteShift,
+  onRegenerateFromScratch 
 }) => {
-  const { staff, shifts, shiftTypes, getCoverageForDate } = useData();
+  const { staff, shifts, shiftTypes } = useData();
   const { hasPermission } = useAuth();
   
   const [selectedDepartment, setSelectedDepartment] = useState('');
@@ -76,27 +78,6 @@ export const MatrixView = ({
     }
   };
   
-  // Get coverage status for date - simplified for doctors only
-  const getCoverageStatus = (date) => {
-    try {
-      if (!date || !getCoverageForDate) return 'insufficient';
-      const coverage = getCoverageForDate(date, selectedHospital);
-      if (!coverage) return 'insufficient';
-      
-      const totalDoctors = Object.values(coverage).reduce((sum, slot) => {
-        return sum + (slot && slot.doctors ? slot.doctors : 0);
-      }, 0);
-      
-      // Simplified logic: 1 doctor per time slot = 3 doctors total for excellent
-      if (totalDoctors >= 3) return 'excellent'; // All time slots covered
-      if (totalDoctors >= 2) return 'good';      // Most slots covered
-      if (totalDoctors >= 1) return 'minimal';   // Some coverage
-      return 'insufficient';                     // No coverage
-    } catch (error) {
-      console.error('Error getting coverage status:', error);
-      return 'insufficient';
-    }
-  };
   
   // Handle cell click for adding shifts
   const handleCellClick = (staffId, date) => {
@@ -105,6 +86,34 @@ export const MatrixView = ({
     const existingShift = getShiftForStaffAndDate(staffId, date);
     if (onAddShift) {
       onAddShift(date, existingShift);
+    }
+  };
+
+  // Handle shift deletion
+  const handleDeleteShift = async (shiftId, event) => {
+    event.stopPropagation(); // Prevent cell click
+    
+    if (!hasPermission('assign_staff')) return;
+    
+    if (confirm('Ești sigur că vrei să ștergi această tură?')) {
+      try {
+        await onDeleteShift(shiftId);
+      } catch (error) {
+        alert('Eroare la ștergerea turei. Te rugăm să încerci din nou.');
+      }
+    }
+  };
+
+  // Handle regeneration from scratch
+  const handleRegenerateFromScratch = async () => {
+    if (!hasPermission('generate_shifts')) return;
+    
+    if (confirm('Ești sigur că vrei să regenerezi complet programul pentru această lună? Toate turile existente vor fi șterse și înlocuite cu un program nou.')) {
+      try {
+        await onRegenerateFromScratch(selectedHospital, currentDate);
+      } catch (error) {
+        alert('Eroare la regenerarea programului. Te rugăm să încerci din nou.');
+      }
     }
   };
   
@@ -198,6 +207,17 @@ export const MatrixView = ({
                 <option key={dept} value={dept}>{dept}</option>
               ))}
             </select>
+            
+            {hasPermission('generate_shifts') && (
+              <button
+                onClick={handleRegenerateFromScratch}
+                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-medium flex items-center space-x-2 transition-colors"
+                title="Regenerează complet programul pentru luna curentă"
+              >
+                <Wand2 className="w-4 h-4" />
+                <span>Regenerare</span>
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -211,28 +231,18 @@ export const MatrixView = ({
               <th className="sticky left-0 z-10 px-4 py-3 bg-gray-100 border-b border-gray-300 text-left text-sm font-medium text-gray-700 min-w-48">
                 Personal
               </th>
-              {dateRange.map(date => {
-                const coverageStatus = getCoverageStatus(date);
-                return (
-                  <th key={date.toISOString()} className={getDateHeaderStyle(date)}>
-                    <div className="flex flex-col items-center">
-                      <div className="text-xs text-gray-500 mb-1">
-                        {date.toLocaleDateString('ro-RO', { weekday: 'short' })}
-                      </div>
-                      <div className="font-semibold">
-                        {date.getDate()}
-                      </div>
-                      {/* Coverage indicator */}
-                      <div className="mt-1">
-                        {coverageStatus === 'excellent' && <CheckCircle className="w-3 h-3 text-green-500" />}
-                        {coverageStatus === 'good' && <CheckCircle className="w-3 h-3 text-blue-500" />}
-                        {coverageStatus === 'minimal' && <AlertCircle className="w-3 h-3 text-yellow-500" />}
-                        {coverageStatus === 'insufficient' && <AlertCircle className="w-3 h-3 text-red-500" />}
-                      </div>
+              {dateRange.map(date => (
+                <th key={date.toISOString()} className={getDateHeaderStyle(date)}>
+                  <div className="flex flex-col items-center">
+                    <div className="text-xs text-gray-500 mb-1">
+                      {date.toLocaleDateString('ro-RO', { weekday: 'short' })}
                     </div>
-                  </th>
-                );
-              })}
+                    <div className="font-semibold">
+                      {date.getDate()}
+                    </div>
+                  </div>
+                </th>
+              ))}
             </tr>
           </thead>
           
@@ -267,10 +277,19 @@ export const MatrixView = ({
                       title={shift ? `${shift.type.name} (${shift.type.start}-${shift.type.end})` : 'Click pentru a adăuga tură'}
                     >
                       {shift ? (
-                        <div className="flex items-center justify-center h-full">
+                        <div className="flex items-center justify-center h-full relative group">
                           <div className="text-xs font-medium text-gray-800 truncate">
                             {shift.type.duration}h
                           </div>
+                          {canClick && (
+                            <button
+                              onClick={(e) => handleDeleteShift(shift.id, e)}
+                              className="absolute top-0 right-0 w-4 h-4 bg-red-500 hover:bg-red-600 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
+                              title="Șterge tură"
+                            >
+                              <Trash2 className="w-2 h-2" />
+                            </button>
+                          )}
                         </div>
                       ) : (
                         canClick && (

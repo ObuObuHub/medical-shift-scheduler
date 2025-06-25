@@ -304,153 +304,7 @@ export const DataProvider = ({ children }) => {
     }
   };
 
-  // Coverage validation utilities (unchanged)
-  const getCoverageForDate = (date, hospitalId) => {
-    const dateKey = date.toISOString().split('T')[0];
-    const dayShifts = shifts[dateKey] || [];
-    const hospitalStaff = staff.filter(s => s.hospital === hospitalId);
-    
-    // Calculate coverage by time periods - simplified for doctors only
-    const timeSlots = {
-      morning: { start: 6, end: 14, doctors: 0, coverage: [] },
-      afternoon: { start: 14, end: 22, doctors: 0, coverage: [] },
-      night: { start: 22, end: 6, doctors: 0, coverage: [] }
-    };
 
-    dayShifts.forEach(shift => {
-      const assignedStaff = hospitalStaff.filter(s => shift.staffIds.includes(s.id));
-      const doctors = assignedStaff.filter(s => s.type === 'medic'); // Only doctors now
-      
-      const startHour = parseInt(shift.type.start.split(':')[0]);
-      const endHour = parseInt(shift.type.end.split(':')[0]);
-      
-      // Determine which time slots this shift covers
-      Object.keys(timeSlots).forEach(slot => {
-        const slotData = timeSlots[slot];
-        const coversSlot = (
-          (startHour <= slotData.start && endHour > slotData.start) ||
-          (startHour < slotData.end && endHour >= slotData.end) ||
-          (startHour >= slotData.start && endHour <= slotData.end) ||
-          (shift.type.duration >= 24) // 24-hour shifts cover all slots
-        );
-        
-        if (coversSlot) {
-          slotData.doctors += doctors.length;
-          slotData.coverage.push({
-            shift,
-            doctors: doctors.length,
-            department: shift.department || 'General'
-          });
-        }
-      });
-    });
-
-    return timeSlots;
-  };
-
-  const validateDayCoverage = (date, hospitalId) => {
-    const coverage = getCoverageForDate(date, hospitalId);
-    const isWeekend = date.getDay() === 0 || date.getDay() === 6;
-    const criticalDepartments = ['Urgențe', 'ATI', 'Chirurgie'];
-    
-    const validation = {
-      status: 'adequate', // adequate, minimal, insufficient, over_staffed
-      warnings: [],
-      recommendations: [],
-      coverage,
-      score: 0 // 0-100 coverage score
-    };
-
-    let totalScore = 0;
-    let maxScore = 0;
-
-    Object.keys(coverage).forEach(timeSlot => {
-      const slot = coverage[timeSlot];
-      let slotScore = 0;
-      const requiredDoctors = 1; // Simplified: always require 1 doctor per time slot
-
-      // Check doctor coverage - simplified to 100 points per slot
-      maxScore += 100;
-      if (slot.doctors >= requiredDoctors) {
-        slotScore += 100; // Full coverage
-      } else {
-        validation.warnings.push(`Lipsă medic în perioada ${timeSlot}`);
-        slotScore += 0; // No partial credit - either covered or not
-      }
-
-      totalScore += slotScore;
-    });
-
-    validation.score = maxScore > 0 ? Math.round((totalScore / maxScore) * 100) : 0;
-
-    // Determine overall status
-    if (validation.score >= 90) {
-      validation.status = 'adequate';
-    } else if (validation.score >= 70) {
-      validation.status = 'minimal';
-    } else if (validation.score >= 50) {
-      validation.status = 'insufficient';
-    } else {
-      validation.status = 'critical';
-    }
-
-    // Add recommendations
-    if (validation.score < 80) {
-      validation.recommendations.push('Considerați adăugarea de ture suplimentare pentru acoperire optimă');
-    }
-    
-    if (isWeekend && validation.score < 70) {
-      validation.recommendations.push('Weekend: considerați ture de 12 ore pentru eficiență maximă');
-    }
-
-    return validation;
-  };
-
-  const getWeeklyCoverage = (startDate, hospitalId) => {
-    const weekCoverage = [];
-    for (let i = 0; i < 7; i++) {
-      const date = new Date(startDate);
-      date.setDate(date.getDate() + i);
-      const dayValidation = validateDayCoverage(date, hospitalId);
-      weekCoverage.push({
-        date,
-        validation: dayValidation
-      });
-    }
-    return weekCoverage;
-  };
-
-  const getDepartmentCoverage = (date, hospitalId, department) => {
-    const dateKey = date.toISOString().split('T')[0];
-    const dayShifts = shifts[dateKey] || [];
-    const deptShifts = dayShifts.filter(shift => 
-      shift.department === department || !shift.department
-    );
-    
-    const hospitalStaff = staff.filter(s => 
-      s.hospital === hospitalId && 
-      (s.specialization === department || !department)
-    );
-    
-    let totalDoctors = 0;
-    let totalHours = 0;
-
-    deptShifts.forEach(shift => {
-      const assignedStaff = hospitalStaff.filter(s => shift.staffIds.includes(s.id));
-      const doctors = assignedStaff.filter(s => s.type === 'medic'); // Only doctors
-      
-      totalDoctors += doctors.length;
-      totalHours += shift.type.duration * doctors.length; // Only count doctor hours
-    });
-
-    return {
-      department,
-      shifts: deptShifts.length,
-      doctors: totalDoctors,
-      totalHours,
-      adequateCoverage: totalDoctors >= 1 // Simplified: only need 1+ doctors
-    };
-  };
 
   // Fair scheduling engine methods
   const generateFairSchedule = (hospitalId, date) => {
@@ -480,6 +334,121 @@ export const DataProvider = ({ children }) => {
     updateStaff(staffId, { unavailable: unavailableDates });
   };
 
+  const deleteShift = async (shiftId) => {
+    try {
+      if (!isOffline) {
+        const response = await fetch(`/api/shifts?shiftId=${shiftId}`, {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to delete shift');
+        }
+      }
+
+      // Remove shift from local state
+      setShifts(prevShifts => {
+        const newShifts = { ...prevShifts };
+        
+        // Find and remove the shift from all dates
+        Object.keys(newShifts).forEach(dateKey => {
+          newShifts[dateKey] = newShifts[dateKey].filter(shift => shift.id !== shiftId);
+          // Remove empty date entries
+          if (newShifts[dateKey].length === 0) {
+            delete newShifts[dateKey];
+          }
+        });
+        
+        return newShifts;
+      });
+
+      console.log('Shift deleted successfully');
+    } catch (error) {
+      console.error('Failed to delete shift:', error);
+      throw error;
+    }
+  };
+
+  const clearAllShifts = async (hospitalId, startDate = null, endDate = null) => {
+    try {
+      if (!isOffline) {
+        const params = new URLSearchParams({
+          action: 'clear-all',
+          hospital: hospitalId
+        });
+        
+        if (startDate) params.append('startDate', startDate);
+        if (endDate) params.append('endDate', endDate);
+        
+        const response = await fetch(`/api/shifts?${params}`, {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to clear shifts');
+        }
+      }
+
+      // Clear shifts from local state
+      setShifts(prevShifts => {
+        if (startDate && endDate) {
+          // Clear only shifts in date range
+          const newShifts = { ...prevShifts };
+          Object.keys(newShifts).forEach(dateKey => {
+            const date = new Date(dateKey);
+            if (date >= new Date(startDate) && date <= new Date(endDate)) {
+              delete newShifts[dateKey];
+            }
+          });
+          return newShifts;
+        } else {
+          // Clear all shifts
+          return {};
+        }
+      });
+
+      console.log('All shifts cleared successfully');
+    } catch (error) {
+      console.error('Failed to clear shifts:', error);
+      throw error;
+    }
+  };
+
+  const regenerateFromScratch = async (hospitalId, date) => {
+    try {
+      if (!hospitalId || !date) {
+        throw new Error('Hospital ID and date are required');
+      }
+
+      // Get the start and end of the month
+      const startOfMonth = new Date(date.getFullYear(), date.getMonth(), 1);
+      const endOfMonth = new Date(date.getFullYear(), date.getMonth() + 1, 0);
+      
+      const startDateStr = startOfMonth.toISOString().split('T')[0];
+      const endDateStr = endOfMonth.toISOString().split('T')[0];
+
+      // First, clear all existing shifts for the month
+      await clearAllShifts(hospitalId, startDateStr, endDateStr);
+      
+      // Then generate new schedule
+      const result = generateFairSchedule(hospitalId, date);
+      
+      console.log('Schedule regenerated from scratch successfully');
+      return result;
+    } catch (error) {
+      console.error('Failed to regenerate schedule:', error);
+      throw error;
+    }
+  };
+
   const value = {
     // Data
     shiftTypes,
@@ -506,14 +475,12 @@ export const DataProvider = ({ children }) => {
     addHospital,
     updateHospital,
     deleteHospital,
-    // Coverage validation
-    getCoverageForDate,
-    validateDayCoverage,
-    getWeeklyCoverage,
-    getDepartmentCoverage,
     // Fair scheduling
     generateFairSchedule,
     setStaffUnavailability,
+    deleteShift,
+    clearAllShifts,
+    regenerateFromScratch,
     // Utility
     loadInitialData
   };
