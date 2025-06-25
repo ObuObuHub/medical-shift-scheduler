@@ -1,8 +1,9 @@
 import React, { useState, useMemo } from 'react';
 import { useData } from './DataContext';
 import { useAuth } from './AuthContext';
-import { Users, AlertCircle, CheckCircle, Plus, Trash2, Wand2, Download, ChevronLeft, ChevronRight } from './Icons';
+import { Users, AlertCircle, CheckCircle, Plus, Trash2, Wand2, Download, ChevronLeft, ChevronRight, X } from './Icons';
 import { exportShiftsToText, downloadTextFile, generateExportFilename } from '../utils/exportUtils';
+import { generateCompleteSchedule, regenerateCompleteSchedule } from '../utils/fairScheduling';
 
 export const MatrixView = ({ 
   selectedHospital, 
@@ -17,6 +18,8 @@ export const MatrixView = ({
   const { hasPermission } = useAuth();
   
   const [selectedDepartment, setSelectedDepartment] = useState('');
+  const [showShiftTypeModal, setShowShiftTypeModal] = useState(false);
+  const [selectedCell, setSelectedCell] = useState(null);
   
   // Generate date range for current month
   const dateRange = useMemo(() => {
@@ -124,37 +127,52 @@ export const MatrixView = ({
   };
   
   
-  // Handle cell click for direct shift assignment
+  // Handle cell click for shift assignment/deletion
   const handleCellClick = (staffId, date) => {
     if (!hasPermission('assign_staff')) return;
     
-    const dateKey = date.toISOString().split('T')[0];
     const existingShift = getShiftForStaffAndDate(staffId, date);
-    const shiftTypesArray = Object.values(shiftTypes);
     
     if (existingShift) {
-      // Remove existing shift
+      // Delete existing shift (tap again to delete)
+      const dateKey = date.toISOString().split('T')[0];
       const updatedShifts = { ...shifts };
       updatedShifts[dateKey] = updatedShifts[dateKey].filter(s => s.id !== existingShift.id);
+      if (updatedShifts[dateKey].length === 0) {
+        delete updatedShifts[dateKey];
+      }
       setShifts(updatedShifts);
     } else {
-      // Add new shift - default to Day shift
-      const dayShift = shiftTypesArray.find(st => st.name === 'Gardă Zi') || shiftTypesArray[0];
-      
-      const newShift = {
-        id: `${dateKey}-${dayShift.id}-${Date.now()}`,
-        type: dayShift,
-        staffIds: [staffId],
-        department: staff.find(s => s.id === staffId)?.specialization || ''
-      };
-
-      const updatedShifts = { ...shifts };
-      if (!updatedShifts[dateKey]) {
-        updatedShifts[dateKey] = [];
-      }
-      updatedShifts[dateKey].push(newShift);
-      setShifts(updatedShifts);
+      // Show shift type selection modal
+      setSelectedCell({ staffId, date });
+      setShowShiftTypeModal(true);
     }
+  };
+
+  // Handle shift type selection
+  const handleShiftTypeSelect = (shiftType) => {
+    if (!selectedCell) return;
+    
+    const { staffId, date } = selectedCell;
+    const dateKey = date.toISOString().split('T')[0];
+    
+    const newShift = {
+      id: `${dateKey}-${shiftType.id}-${staffId}-${Date.now()}`,
+      type: shiftType,
+      staffIds: [staffId],
+      department: staff.find(s => s.id === staffId)?.specialization || '',
+      requirements: { minDoctors: 1, specializations: [] }
+    };
+
+    const updatedShifts = { ...shifts };
+    if (!updatedShifts[dateKey]) {
+      updatedShifts[dateKey] = [];
+    }
+    updatedShifts[dateKey].push(newShift);
+    setShifts(updatedShifts);
+    
+    setShowShiftTypeModal(false);
+    setSelectedCell(null);
   };
 
   // Handle shift deletion
@@ -185,6 +203,17 @@ export const MatrixView = ({
     }
   };
 
+  // Check if month has any existing shifts
+  const hasExistingShifts = useMemo(() => {
+    const monthStart = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+    const monthEnd = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
+    
+    return Object.keys(shifts).some(dateKey => {
+      const shiftDate = new Date(dateKey);
+      return shiftDate >= monthStart && shiftDate <= monthEnd && shifts[dateKey].length > 0;
+    });
+  }, [shifts, currentDate]);
+
 
   // Handle export to text file
   const handleExportSchedule = () => {
@@ -200,16 +229,33 @@ export const MatrixView = ({
     onDateChange(newDate);
   };
 
-  // Handle generate shifts
+  // Handle generate shifts with regeneration capability
   const handleGenerateShifts = async () => {
     if (!hasPermission('generate_shifts')) return;
     
-    if (confirm('Generați ture noi pentru această lună? Aceasta va completa zilele fără ture programate.')) {
-      try {
-        await onGenerateShifts(selectedHospital, currentDate);
-      } catch (error) {
-        alert('Eroare la generarea turelor. Vă rugăm să încercați din nou.');
+    try {
+      const hospitalStaff = staff.filter(s => s.hospital === selectedHospital && s.type === 'medic');
+      if (hospitalStaff.length === 0) {
+        alert('Nu există medici disponibili pentru acest spital.');
+        return;
       }
+
+      if (hasExistingShifts) {
+        // Regenerate existing schedule
+        if (confirm('Există deja ture pentru această lună. Doriți să regenerați complet programul? Toate turile existente vor fi înlocuite.')) {
+          const newShifts = regenerateCompleteSchedule(shifts, hospitalStaff, currentDate, shiftTypes);
+          setShifts(newShifts);
+        }
+      } else {
+        // Generate new schedule
+        if (confirm('Generați ture noi pentru această lună cu distribuție echitabilă?')) {
+          const newShifts = generateCompleteSchedule(hospitalStaff, currentDate, shiftTypes);
+          setShifts(prevShifts => ({ ...prevShifts, ...newShifts }));
+        }
+      }
+    } catch (error) {
+      console.error('Error generating shifts:', error);
+      alert('Eroare la generarea turelor. Vă rugăm să încercați din nou.');
     }
   };
   
@@ -384,21 +430,11 @@ export const MatrixView = ({
                 <button
                   onClick={handleGenerateShifts}
                   className="flex-1 sm:flex-none px-3 sm:px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium flex items-center justify-center space-x-2 transition-colors"
-                  title="Generează ture pentru zilele libere"
+                  title={hasExistingShifts ? 'Regenerează complet programul cu distribuție echitabilă' : 'Generează ture noi cu distribuție echitabilă'}
                 >
-                  <Plus className="w-4 h-4" />
-                  <span className="hidden sm:inline">Generare</span>
-                  <span className="sm:hidden">Gen</span>
-                </button>
-                
-                <button
-                  onClick={handleRegenerateFromScratch}
-                  className="flex-1 sm:flex-none px-3 sm:px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-medium flex items-center justify-center space-x-2 transition-colors"
-                  title="Regenerează complet programul pentru luna curentă"
-                >
-                  <Wand2 className="w-4 h-4" />
-                  <span className="hidden sm:inline">Regenerare</span>
-                  <span className="sm:hidden">Regen</span>
+                  {hasExistingShifts ? <Wand2 className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
+                  <span className="hidden sm:inline">{hasExistingShifts ? 'Regenerare' : 'Generare'}</span>
+                  <span className="sm:hidden">{hasExistingShifts ? 'Regen' : 'Gen'}</span>
                 </button>
               </>
             )}
@@ -574,6 +610,75 @@ export const MatrixView = ({
           </div>
         </div>
       </div>
+
+      {/* Shift Type Selection Modal */}
+      {showShiftTypeModal && selectedCell && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-gray-900">
+                  Selectați tipul de tură
+                </h3>
+                <button
+                  onClick={() => {
+                    setShowShiftTypeModal(false);
+                    setSelectedCell(null);
+                  }}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              
+              <div className="mb-4 p-3 bg-blue-50 rounded-lg">
+                <p className="text-sm text-blue-800">
+                  <strong>Personal:</strong> {staff.find(s => s.id === selectedCell.staffId)?.name}
+                </p>
+                <p className="text-sm text-blue-800">
+                  <strong>Data:</strong> {selectedCell.date.toLocaleDateString('ro-RO', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                </p>
+              </div>
+              
+              <div className="space-y-3">
+                {Object.values(shiftTypes).map(shiftType => (
+                  <button
+                    key={shiftType.id}
+                    onClick={() => handleShiftTypeSelect(shiftType)}
+                    className="w-full p-4 text-left border border-gray-200 rounded-lg hover:bg-gray-50 hover:border-gray-300 transition-colors"
+                  >
+                    <div className="flex items-center">
+                      <div 
+                        className="w-4 h-4 rounded mr-3 flex-shrink-0"
+                        style={{ backgroundColor: shiftType.color }}
+                      />
+                      <div className="flex-1">
+                        <div className="font-medium text-gray-900">{shiftType.name}</div>
+                        <div className="text-sm text-gray-500">
+                          {shiftType.start || shiftType.startTime} - {shiftType.end || shiftType.endTime} 
+                          ({shiftType.duration || 12}h)
+                        </div>
+                      </div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+              
+              <div className="mt-6 flex justify-end">
+                <button
+                  onClick={() => {
+                    setShowShiftTypeModal(false);
+                    setSelectedCell(null);
+                  }}
+                  className="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors"
+                >
+                  Anulează
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );

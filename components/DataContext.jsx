@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import apiClient from '../lib/apiClient';
 import { generateSchedule, generateDaysForMonth, calculateFairQuotas, convertScheduleToShifts } from '../utils/shiftEngine';
+import { generateCompleteSchedule, regenerateCompleteSchedule } from '../utils/fairScheduling';
 
 // Default fallback data (used only when API is not available)
 const DEFAULT_SHIFT_TYPES = {
@@ -310,24 +311,29 @@ export const DataProvider = ({ children }) => {
   const generateFairSchedule = (hospitalId, date) => {
     if (!hospitalId || !date) return;
 
-    const hospitalStaff = staff.filter(s => s.hospital === hospitalId);
+    const hospitalStaff = staff.filter(s => s.hospital === hospitalId && s.type === 'medic');
     if (hospitalStaff.length === 0) {
-      // No staff available - handled silently
+      console.warn('No medical staff available for fair scheduling');
       return;
     }
 
-    // Generate days with logical coverage types
-    const days = generateDaysForMonth(date);
-    
-    // Convert to shifts format with logical calendar organization
-    const newShifts = convertScheduleToShifts(days, hospitalStaff, shiftTypes);
-    
-    // Update shifts state
-    setShifts(newShifts);
-    
-    // Fair schedule generated silently
-    
-    return { days, shifts: newShifts };
+    try {
+      // Use the new fair scheduling algorithm
+      const newShifts = generateCompleteSchedule(hospitalStaff, date, shiftTypes);
+      
+      // Merge with existing shifts from other months/hospitals
+      setShifts(prevShifts => ({ ...prevShifts, ...newShifts }));
+      
+      console.log('Fair schedule generated successfully');
+      return { shifts: newShifts };
+    } catch (error) {
+      console.error('Error generating fair schedule:', error);
+      // Fallback to old method if new one fails
+      const days = generateDaysForMonth(date);
+      const newShifts = convertScheduleToShifts(days, hospitalStaff, shiftTypes);
+      setShifts(prevShifts => ({ ...prevShifts, ...newShifts }));
+      return { days, shifts: newShifts };
+    }
   };
 
   const setStaffUnavailability = (staffId, unavailableDates) => {
@@ -428,21 +434,19 @@ export const DataProvider = ({ children }) => {
         throw new Error('Hospital ID and date are required');
       }
 
-      // Get the start and end of the month
-      const startOfMonth = new Date(date.getFullYear(), date.getMonth(), 1);
-      const endOfMonth = new Date(date.getFullYear(), date.getMonth() + 1, 0);
-      
-      const startDateStr = startOfMonth.toISOString().split('T')[0];
-      const endDateStr = endOfMonth.toISOString().split('T')[0];
+      const hospitalStaff = staff.filter(s => s.hospital === hospitalId && s.type === 'medic');
+      if (hospitalStaff.length === 0) {
+        throw new Error('No medical staff available for regeneration');
+      }
 
-      // First, clear all existing shifts for the month
-      await clearAllShifts(hospitalId, startDateStr, endDateStr);
+      // Use the new regeneration algorithm
+      const newShifts = regenerateCompleteSchedule(shifts, hospitalStaff, date, shiftTypes);
       
-      // Then generate new schedule
-      const result = generateFairSchedule(hospitalId, date);
+      // Update shifts state
+      setShifts(newShifts);
       
       console.log('Schedule regenerated from scratch successfully');
-      return result;
+      return { shifts: newShifts };
     } catch (error) {
       console.error('Failed to regenerate schedule:', error);
       throw error;
@@ -603,6 +607,15 @@ export const DataProvider = ({ children }) => {
     deleteShift,
     clearAllShifts,
     regenerateFromScratch,
+    // Fair scheduling utilities
+    generateCompleteSchedule: (hospitalId, date) => {
+      const hospitalStaff = staff.filter(s => s.hospital === hospitalId && s.type === 'medic');
+      return generateCompleteSchedule(hospitalStaff, date, shiftTypes);
+    },
+    regenerateCompleteSchedule: (hospitalId, date) => {
+      const hospitalStaff = staff.filter(s => s.hospital === hospitalId && s.type === 'medic');
+      return regenerateCompleteSchedule(shifts, hospitalStaff, date, shiftTypes);
+    },
     // Templates
     loadTemplates,
     saveTemplate,
