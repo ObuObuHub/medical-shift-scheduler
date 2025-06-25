@@ -1,7 +1,9 @@
 import React, { useState, useMemo } from 'react';
 import { useData } from './DataContext';
 import { useAuth } from './AuthContext';
-import { Users, Calendar, AlertCircle, CheckCircle, Plus, Trash2, Wand2 } from './Icons';
+import { Users, Calendar, AlertCircle, CheckCircle, Plus, Trash2, Wand2, Download } from './Icons';
+import { CalendarSidebar } from './CalendarSidebar';
+import { exportShiftsToText, downloadTextFile, generateExportFilename } from '../utils/exportUtils';
 
 export const MatrixView = ({ 
   selectedHospital, 
@@ -14,6 +16,7 @@ export const MatrixView = ({
   const { hasPermission } = useAuth();
   
   const [selectedDepartment, setSelectedDepartment] = useState('');
+  const [showCalendarSidebar, setShowCalendarSidebar] = useState(false);
   
   // Generate date range for current month
   const dateRange = useMemo(() => {
@@ -77,6 +80,48 @@ export const MatrixView = ({
       return null;
     }
   };
+
+  // Get all shifts for a specific staff member and date (to handle multiple shifts per day)
+  const getAllShiftsForStaffAndDate = (staffId, date) => {
+    try {
+      if (!date || !staffId) return [];
+      const dateKey = date.toISOString().split('T')[0];
+      const dayShifts = shifts[dateKey] || [];
+      return dayShifts.filter(shift => shift && shift.staffIds && shift.staffIds.includes(staffId));
+    } catch (error) {
+      console.error('Error getting shifts for staff and date:', error);
+      return [];
+    }
+  };
+
+  // Determine shift coverage type for visual representation
+  const getShiftCoverageType = (staffShifts) => {
+    if (!staffShifts || staffShifts.length === 0) return { type: 'none' };
+    
+    let hasDayShift = false;
+    let hasNightShift = false;
+    let has24hShift = false;
+    
+    staffShifts.forEach(shift => {
+      const duration = shift.type.duration || 12;
+      const startTime = shift.type.startTime || shift.type.start || '08:00';
+      
+      if (duration >= 24) {
+        has24hShift = true;
+      } else if (startTime.includes('08:00') || startTime.includes('8:')) {
+        hasDayShift = true;
+      } else if (startTime.includes('20:00') || startTime.includes('20:')) {
+        hasNightShift = true;
+      }
+    });
+    
+    if (has24hShift) return { type: 'full', shifts: staffShifts };
+    if (hasDayShift && hasNightShift) return { type: 'full', shifts: staffShifts };
+    if (hasDayShift) return { type: 'day', shifts: staffShifts };
+    if (hasNightShift) return { type: 'night', shifts: staffShifts };
+    
+    return { type: 'other', shifts: staffShifts };
+  };
   
   
   // Handle cell click for adding shifts
@@ -116,6 +161,27 @@ export const MatrixView = ({
       }
     }
   };
+
+  // Handle calendar date navigation
+  const handleCalendarDateChange = (newDate) => {
+    // For now, we'll just scroll to that date in the matrix if it's in the same month
+    // In a full implementation, this could trigger a month change in the parent component
+    if (newDate.getMonth() === currentDate.getMonth() && newDate.getFullYear() === currentDate.getFullYear()) {
+      // Scroll to the specific date column in the matrix
+      const dateKey = newDate.toISOString().split('T')[0];
+      const dateElement = document.querySelector(`[data-date="${dateKey}"]`);
+      if (dateElement) {
+        dateElement.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+      }
+    }
+  };
+
+  // Handle export to text file
+  const handleExportSchedule = () => {
+    const exportContent = exportShiftsToText(shifts, staff, currentDate);
+    const filename = generateExportFilename(currentDate);
+    downloadTextFile(exportContent, filename);
+  };
   
   // Get cell styling based on shift type
   const getCellStyle = (shift) => {
@@ -133,28 +199,70 @@ export const MatrixView = ({
     return `hover:opacity-80 border border-gray-300 cursor-pointer transition-all duration-200`;
   };
   
-  const getCellBackgroundColor = (shift) => {
-    if (!shift) return {}; // Return empty object instead of empty string
+  // Get cell styling based on coverage type (day/night/full/none)
+  const getCellCoverageStyle = (coverageInfo) => {
+    if (!coverageInfo || coverageInfo.type === 'none') {
+      return { style: {}, className: '' };
+    }
     
-    const shiftType = shift.type;
-    if (!shiftType || !shiftType.color) return {};
-    
-    const baseColor = shiftType.color;
+    const shifts = coverageInfo.shifts;
+    const primaryShift = shifts[0];
+    const baseColor = primaryShift.type.color;
     
     // Convert hex to RGB for opacity
     const hex = baseColor.replace('#', '');
     const r = parseInt(hex.substr(0, 2), 16);
     const g = parseInt(hex.substr(2, 2), 16);
     const b = parseInt(hex.substr(4, 2), 16);
+    const rgbaColor = `rgba(${r}, ${g}, ${b}, 0.4)`;
     
-    return { backgroundColor: `rgba(${r}, ${g}, ${b}, 0.3)` };
+    switch (coverageInfo.type) {
+      case 'full':
+        // 24h shift or day+night combination - fill entire cell
+        return {
+          style: { backgroundColor: rgbaColor },
+          className: 'border-l-4',
+          borderColor: baseColor
+        };
+      
+      case 'day':
+        // Day shift (8-20) - fill upper half
+        return {
+          style: {
+            background: `linear-gradient(to bottom, ${rgbaColor} 50%, transparent 50%)`
+          },
+          className: 'border-l-4 border-t-4',
+          borderColor: baseColor
+        };
+      
+      case 'night':
+        // Night shift (20-8) - fill lower half
+        return {
+          style: {
+            background: `linear-gradient(to bottom, transparent 50%, ${rgbaColor} 50%)`
+          },
+          className: 'border-l-4 border-b-4',
+          borderColor: baseColor
+        };
+      
+      case 'other':
+        // Other shift types - full coverage with different styling
+        return {
+          style: { backgroundColor: rgbaColor },
+          className: 'border-l-4',
+          borderColor: baseColor
+        };
+      
+      default:
+        return { style: {}, className: '' };
+    }
   };
   
   const getDateHeaderStyle = (date) => {
     const isWeekend = date.getDay() === 0 || date.getDay() === 6;
     const isToday = date.toDateString() === new Date().toDateString();
     
-    let classes = 'px-2 py-3 text-center border-b border-gray-300 text-sm font-medium ';
+    let classes = 'px-1 sm:px-2 py-2 sm:py-3 text-center border-b border-gray-300 text-xs sm:text-sm font-medium ';
     
     if (isToday) {
       classes += 'bg-blue-100 text-blue-800 ';
@@ -186,56 +294,89 @@ export const MatrixView = ({
 
   return (
     <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-      {/* Header with filters */}
-      <div className="p-4 border-b border-gray-200">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center">
-            <Users className="w-5 h-5 mr-2 text-blue-600" />
-            <h3 className="text-lg font-semibold text-gray-800">
-              Programul Personalului - {currentDate.toLocaleDateString('ro-RO', { month: 'long', year: 'numeric' })}
-            </h3>
-          </div>
-          
-          <div className="flex items-center space-x-4">
+      {/* Header with filters - Mobile Responsive */}
+      <div className="p-3 sm:p-4 border-b border-gray-200">
+        {/* Title */}
+        <div className="flex items-center mb-3 sm:mb-0">
+          <Users className="w-5 h-5 mr-2 text-blue-600" />
+          <h3 className="text-base sm:text-lg font-semibold text-gray-800 truncate">
+            <span className="hidden sm:inline">Programul Personalului - </span>
+            {currentDate.toLocaleDateString('ro-RO', { month: 'short', year: 'numeric' })}
+          </h3>
+        </div>
+        
+        {/* Controls - Stack on mobile */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-3 sm:space-y-0">
+          <div className="flex items-center space-x-2">
             <select
               value={selectedDepartment}
               onChange={(e) => setSelectedDepartment(e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
+              className="flex-1 sm:flex-none px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
             >
               <option value="">Toate departamentele</option>
               {departments.map(dept => (
                 <option key={dept} value={dept}>{dept}</option>
               ))}
             </select>
+          </div>
+          
+          <div className="flex items-center space-x-2">
+            <button
+              onClick={handleExportSchedule}
+              className="flex-1 sm:flex-none px-3 sm:px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium flex items-center justify-center space-x-2 transition-colors"
+              title="Exportă programul în format text"
+            >
+              <Download className="w-4 h-4" />
+              <span className="hidden sm:inline">Export</span>
+              <span className="sm:hidden">Export</span>
+            </button>
             
             {hasPermission('generate_shifts') && (
               <button
                 onClick={handleRegenerateFromScratch}
-                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-medium flex items-center space-x-2 transition-colors"
+                className="flex-1 sm:flex-none px-3 sm:px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-medium flex items-center justify-center space-x-2 transition-colors"
                 title="Regenerează complet programul pentru luna curentă"
               >
                 <Wand2 className="w-4 h-4" />
-                <span>Regenerare</span>
+                <span className="hidden sm:inline">Regenerare</span>
+                <span className="sm:hidden">Regen</span>
               </button>
             )}
+            
+            <button
+              onClick={() => setShowCalendarSidebar(!showCalendarSidebar)}
+              className={`flex-1 sm:flex-none px-3 py-2 rounded-lg text-sm font-medium flex items-center justify-center space-x-2 transition-colors ${
+                showCalendarSidebar 
+                  ? 'bg-blue-600 text-white hover:bg-blue-700' 
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+              title="Deschide/închide navigatorul de calendar"
+            >
+              <Calendar className="w-4 h-4" />
+              <span className="hidden sm:inline">Calendar</span>
+            </button>
           </div>
         </div>
       </div>
 
-      {/* Matrix Table */}
-      <div className="overflow-x-auto">
-        <table className="w-full">
+      {/* Matrix Table - Mobile Optimized */}
+      <div className="overflow-x-auto touch-pan-x">
+        <table className="w-full min-w-max">
           {/* Date Headers */}
           <thead>
             <tr>
-              <th className="sticky left-0 z-10 px-4 py-3 bg-gray-100 border-b border-gray-300 text-left text-sm font-medium text-gray-700 min-w-48">
+              <th className="sticky left-0 z-10 px-2 sm:px-4 py-3 bg-gray-100 border-b border-gray-300 text-left text-sm font-medium text-gray-700 min-w-40 sm:min-w-48">
                 Personal
               </th>
               {dateRange.map(date => (
-                <th key={date.toISOString()} className={getDateHeaderStyle(date)}>
-                  <div className="flex flex-col items-center">
+                <th 
+                  key={date.toISOString()} 
+                  className={`${getDateHeaderStyle(date)} min-w-12 sm:min-w-16 w-12 sm:w-16`}
+                  data-date={date.toISOString().split('T')[0]}
+                >
+                  <div className="flex flex-col items-center px-1">
                     <div className="text-xs text-gray-500 mb-1">
-                      {date.toLocaleDateString('ro-RO', { weekday: 'short' })}
+                      {date.toLocaleDateString('ro-RO', { weekday: 'short' }).slice(0, 2)}
                     </div>
                     <div className="font-semibold">
                       {date.getDate()}
@@ -250,14 +391,15 @@ export const MatrixView = ({
           <tbody>
             {filteredStaff.map((person, index) => (
               <tr key={person.id} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-25'}>
-                {/* Staff Info */}
-                <td className="sticky left-0 z-10 px-4 py-3 bg-white border-b border-gray-200 shadow-sm">
+                {/* Staff Info - Mobile Responsive */}
+                <td className="sticky left-0 z-10 px-2 sm:px-4 py-2 sm:py-3 bg-white border-b border-gray-200 shadow-sm">
                   <div className="flex items-center">
-                    <div className="w-3 h-3 rounded-full mr-3 bg-blue-500" />
-                    <div>
-                      <div className="font-medium text-gray-900 text-sm">{person.name}</div>
-                      <div className="text-xs text-gray-500">
-                        Medic • {person.specialization}
+                    <div className="w-2 sm:w-3 h-2 sm:h-3 rounded-full mr-2 sm:mr-3 bg-blue-500 flex-shrink-0" />
+                    <div className="min-w-0 flex-1">
+                      <div className="font-medium text-gray-900 text-xs sm:text-sm truncate">{person.name}</div>
+                      <div className="text-xs text-gray-500 truncate">
+                        <span className="sm:hidden">{person.specialization.slice(0, 8)}...</span>
+                        <span className="hidden sm:inline">Medic • {person.specialization}</span>
                       </div>
                     </div>
                   </div>
@@ -265,36 +407,50 @@ export const MatrixView = ({
                 
                 {/* Shift Cells */}
                 {dateRange.map(date => {
-                  const shift = getShiftForStaffAndDate(person.id, date);
+                  const staffShifts = getAllShiftsForStaffAndDate(person.id, date);
+                  const coverageInfo = getShiftCoverageType(staffShifts);
+                  const coverageStyle = getCellCoverageStyle(coverageInfo);
                   const canClick = hasPermission('assign_staff');
+                  const primaryShift = staffShifts[0]; // For backward compatibility
                   
                   return (
                     <td
                       key={`${person.id}-${date.toISOString()}`}
-                      className={`${getCellStyle(shift)} ${canClick ? 'cursor-pointer' : ''} h-12 w-12 min-w-12 text-center border-b border-gray-200 relative`}
-                      style={getCellBackgroundColor(shift)}
+                      className={`${getCellStyle(primaryShift)} ${canClick ? 'cursor-pointer touch-manipulation' : ''} h-10 sm:h-12 w-12 sm:w-16 min-w-12 sm:min-w-16 text-center border-b border-gray-200 relative ${coverageStyle.className}`}
+                      style={{
+                        ...coverageStyle.style,
+                        borderLeftColor: coverageStyle.borderColor,
+                        borderTopColor: coverageStyle.borderColor,
+                        borderBottomColor: coverageStyle.borderColor
+                      }}
                       onClick={() => canClick && handleCellClick(person.id, date)}
-                      title={shift ? `${shift.type.name} (${shift.type.start}-${shift.type.end})` : 'Click pentru a adăuga tură'}
+                      title={staffShifts.length > 0 
+                        ? `${staffShifts.map(s => `${s.type.name} (${s.type.startTime || s.type.start}-${s.type.endTime || s.type.end})`).join(' + ')}` 
+                        : 'Tap pentru a adăuga tură'
+                      }
                     >
-                      {shift ? (
+                      {staffShifts.length > 0 ? (
                         <div className="flex items-center justify-center h-full relative group">
-                          <div className="text-xs font-medium text-gray-800 truncate">
-                            {shift.type.duration}h
+                          <div className="text-xs font-medium text-gray-800 truncate px-1">
+                            {coverageInfo.type === 'full' 
+                              ? '24h' 
+                              : `${staffShifts.reduce((total, s) => total + (s.type.duration || 12), 0)}h`
+                            }
                           </div>
                           {canClick && (
                             <button
-                              onClick={(e) => handleDeleteShift(shift.id, e)}
-                              className="absolute top-0 right-0 w-4 h-4 bg-red-500 hover:bg-red-600 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
+                              onClick={(e) => handleDeleteShift(primaryShift.id, e)}
+                              className="absolute -top-1 -right-1 w-5 h-5 sm:w-4 sm:h-4 bg-red-500 hover:bg-red-600 active:bg-red-700 text-white rounded-full opacity-0 group-hover:opacity-100 sm:group-hover:opacity-100 group-active:opacity-100 transition-opacity flex items-center justify-center touch-manipulation"
                               title="Șterge tură"
                             >
-                              <Trash2 className="w-2 h-2" />
+                              <Trash2 className="w-2.5 h-2.5 sm:w-2 sm:h-2" />
                             </button>
                           )}
                         </div>
                       ) : (
                         canClick && (
-                          <div className="flex items-center justify-center h-full opacity-0 hover:opacity-50 transition-opacity">
-                            <Plus className="w-4 h-4 text-gray-400" />
+                          <div className="flex items-center justify-center h-full opacity-0 hover:opacity-50 active:opacity-75 transition-opacity">
+                            <Plus className="w-3 h-3 sm:w-4 sm:h-4 text-gray-400" />
                           </div>
                         )
                       )}
@@ -330,6 +486,26 @@ export const MatrixView = ({
             ))}
           </div>
           
+          <div className="flex items-center space-x-6 mt-2 lg:mt-0">
+            <div className="text-sm font-medium text-gray-700">Acoperire vizuală:</div>
+            <div className="flex items-center">
+              <div className="w-4 h-4 mr-2 border border-gray-300 relative">
+                <div className="absolute top-0 left-0 w-full h-1/2 bg-blue-400 opacity-60"></div>
+              </div>
+              <span className="text-xs text-gray-600">Gardă zi</span>
+            </div>
+            <div className="flex items-center">
+              <div className="w-4 h-4 mr-2 border border-gray-300 relative">
+                <div className="absolute bottom-0 left-0 w-full h-1/2 bg-yellow-400 opacity-60"></div>
+              </div>
+              <span className="text-xs text-gray-600">Gardă noapte</span>
+            </div>
+            <div className="flex items-center">
+              <div className="w-4 h-4 mr-2 border border-gray-300 bg-green-400 opacity-60"></div>
+              <span className="text-xs text-gray-600">Gardă 24h</span>
+            </div>
+          </div>
+          
           <div className="flex items-center space-x-4 mt-2 lg:mt-0">
             <div className="text-sm text-gray-600">Acoperire:</div>
             <div className="flex items-center">
@@ -351,6 +527,16 @@ export const MatrixView = ({
           </div>
         </div>
       </div>
+
+      {/* Calendar Sidebar */}
+      <CalendarSidebar
+        isOpen={showCalendarSidebar}
+        onToggle={() => setShowCalendarSidebar(!showCalendarSidebar)}
+        currentDate={currentDate}
+        onDateChange={handleCalendarDateChange}
+        shifts={shifts}
+        selectedHospital={selectedHospital}
+      />
     </div>
   );
 };

@@ -39,7 +39,8 @@ async function getStaff(req, res) {
       specialization: s.specialization,
       hospital: s.hospital,
       role: s.role,
-      unavailable: s.unavailable || []
+      unavailable: s.unavailable || [],
+      maxGuardsPerMonth: s.max_guards_per_month || 10
     }));
 
     res.status(200).json(legacyStaff);
@@ -51,15 +52,15 @@ async function getStaff(req, res) {
 
 async function createStaff(req, res) {
   try {
-    const { name, type, specialization, hospital, role } = req.body;
+    const { name, type, specialization, hospital, role, maxGuardsPerMonth } = req.body;
 
     if (!name || !specialization || !hospital) {
       return res.status(400).json({ error: 'Name, specialization, and hospital are required' });
     }
 
     const result = await sql`
-      INSERT INTO staff (name, type, specialization, hospital, role, created_by)
-      VALUES (${name.trim()}, ${type || 'medic'}, ${specialization}, ${hospital}, ${role || 'staff'}, ${req.user.id})
+      INSERT INTO staff (name, type, specialization, hospital, role, max_guards_per_month, created_by)
+      VALUES (${name.trim()}, ${type || 'medic'}, ${specialization}, ${hospital}, ${role || 'staff'}, ${maxGuardsPerMonth || 10}, ${req.user.id})
       RETURNING *;
     `;
 
@@ -72,7 +73,8 @@ async function createStaff(req, res) {
       specialization: staff.specialization,
       hospital: staff.hospital,
       role: staff.role,
-      unavailable: staff.unavailable || []
+      unavailable: staff.unavailable || [],
+      maxGuardsPerMonth: staff.max_guards_per_month || 10
     };
 
     res.status(201).json(newStaff);

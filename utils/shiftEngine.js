@@ -184,68 +184,111 @@ export function convertScheduleToShifts(days, staff, shiftTypes) {
   const availableStaff = [...staff];
   let staffIndex = 0;
   let lastNightGuardId = null; // Track last night guard to avoid consecutive assignments
+  
+  // Track guard counts for each staff member
+  const guardCounts = {};
+  availableStaff.forEach(person => {
+    guardCounts[person.id] = 0;
+  });
+
+  // Helper function to find next available staff member
+  const findAvailableStaff = (excludeId = null, isNightShift = false) => {
+    let attempts = 0;
+    const maxAttempts = availableStaff.length * 2; // Prevent infinite loop
+    
+    while (attempts < maxAttempts) {
+      const currentStaff = availableStaff[staffIndex % availableStaff.length];
+      const maxGuards = currentStaff.maxGuardsPerMonth || 10;
+      
+      // Check if this staff member is available
+      const isUnderLimit = guardCounts[currentStaff.id] < maxGuards;
+      const notExcluded = excludeId ? currentStaff.id !== excludeId : true;
+      const notConsecutiveNight = isNightShift ? currentStaff.id !== lastNightGuardId : true;
+      
+      if (isUnderLimit && notExcluded && notConsecutiveNight) {
+        return currentStaff;
+      }
+      
+      staffIndex += 1;
+      attempts += 1;
+    }
+    
+    // If no one is available under limits, assign to someone with lowest count
+    const sortedByCount = availableStaff
+      .filter(s => excludeId ? s.id !== excludeId : true)
+      .filter(s => isNightShift ? s.id !== lastNightGuardId : true)
+      .sort((a, b) => guardCounts[a.id] - guardCounts[b.id]);
+      
+    return sortedByCount[0] || availableStaff[0];
+  };
 
   days.forEach(day => {
     if (!shifts[day.date]) {
       shifts[day.date] = [];
     }
 
-    // Get next available staff member avoiding consecutive night guards
-    let assignedStaff = availableStaff[staffIndex % availableStaff.length];
-    let nextStaff = availableStaff[(staffIndex + 1) % availableStaff.length];
-    
-    // Avoid consecutive night shifts for the same person
-    if (day.coverageType.includes('NIGHT') && assignedStaff.id === lastNightGuardId) {
-      staffIndex += 1;
-      assignedStaff = availableStaff[staffIndex % availableStaff.length];
-      nextStaff = availableStaff[(staffIndex + 1) % availableStaff.length];
-    }
-
     switch (day.coverageType) {
       case "WEEKDAY_NIGHT":
         // Monday-Friday: Single 20-8 night guard (12h)
-        shifts[day.date].push({
-          id: `${day.date}-night-${assignedStaff.id}`,
-          type: shiftTypes.NOAPTE, // 20-8, 12h
-          staffIds: [assignedStaff.id],
-          requirements: { minDoctors: 1, specializations: [] },
-          generated: true
-        });
-        lastNightGuardId = assignedStaff.id;
+        const nightStaff = findAvailableStaff(null, true);
+        if (nightStaff) {
+          shifts[day.date].push({
+            id: `${day.date}-night-${nightStaff.id}`,
+            type: shiftTypes.NOAPTE, // 20-8, 12h
+            staffIds: [nightStaff.id],
+            requirements: { minDoctors: 1, specializations: [] },
+            generated: true
+          });
+          guardCounts[nightStaff.id]++;
+          lastNightGuardId = nightStaff.id;
+        }
         staffIndex += 1;
         break;
 
       case "WEEKEND_DAY_NIGHT":
         // Weekend: Both 8-20 day guard AND 20-8 night guard
-        shifts[day.date].push({
-          id: `${day.date}-day-${assignedStaff.id}`,
-          type: shiftTypes.GARDA_ZI, // 8-20, 12h
-          staffIds: [assignedStaff.id],
-          requirements: { minDoctors: 1, specializations: [] },
-          generated: true
-        });
+        const dayStaff = findAvailableStaff();
+        const nightStaffWeekend = findAvailableStaff(dayStaff?.id, true);
         
-        shifts[day.date].push({
-          id: `${day.date}-night-${nextStaff.id}`,
-          type: shiftTypes.NOAPTE, // 20-8, 12h
-          staffIds: [nextStaff.id],
-          requirements: { minDoctors: 1, specializations: [] },
-          generated: true
-        });
-        lastNightGuardId = nextStaff.id;
+        if (dayStaff) {
+          shifts[day.date].push({
+            id: `${day.date}-day-${dayStaff.id}`,
+            type: shiftTypes.GARDA_ZI, // 8-20, 12h
+            staffIds: [dayStaff.id],
+            requirements: { minDoctors: 1, specializations: [] },
+            generated: true
+          });
+          guardCounts[dayStaff.id]++;
+        }
+        
+        if (nightStaffWeekend) {
+          shifts[day.date].push({
+            id: `${day.date}-night-${nightStaffWeekend.id}`,
+            type: shiftTypes.NOAPTE, // 20-8, 12h
+            staffIds: [nightStaffWeekend.id],
+            requirements: { minDoctors: 1, specializations: [] },
+            generated: true
+          });
+          guardCounts[nightStaffWeekend.id]++;
+          lastNightGuardId = nightStaffWeekend.id;
+        }
         staffIndex += 2;
         break;
 
       case "SATURDAY_24H":
         // Saturday: Single 8-8 guard (24h)
-        shifts[day.date].push({
-          id: `${day.date}-24h-${assignedStaff.id}`,
-          type: shiftTypes.GARDA_24, // 8-8, 24h
-          staffIds: [assignedStaff.id],
-          requirements: { minDoctors: 1, specializations: [] },
-          generated: true
-        });
-        lastNightGuardId = null; // 24h shift covers night, but reset for next day
+        const guardStaff = findAvailableStaff();
+        if (guardStaff) {
+          shifts[day.date].push({
+            id: `${day.date}-24h-${guardStaff.id}`,
+            type: shiftTypes.GARDA_24, // 8-8, 24h
+            staffIds: [guardStaff.id],
+            requirements: { minDoctors: 1, specializations: [] },
+            generated: true
+          });
+          guardCounts[guardStaff.id]++;
+          lastNightGuardId = null; // 24h shift covers night, but reset for next day
+        }
         staffIndex += 1;
         break;
 

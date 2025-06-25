@@ -1,13 +1,11 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { ChevronLeft, ChevronRight, Plus, Wand2, Save, Download, Trash2 } from './Icons';
+import { TemplateModal } from './TemplateModal';
 
 export const CalendarView = ({ 
   currentDate,
   navigateMonth,
   generateFairSchedule,
-  saveTemplate,
-  loadTemplate,
-  deleteTemplate,
   getDaysInMonth,
   handleCellClick,
   getStaffName,
@@ -21,6 +19,9 @@ export const CalendarView = ({
                   'Iulie', 'August', 'Septembrie', 'Octombrie', 'Noiembrie', 'Decembrie'];
   const weekDays = ['Dum', 'Lun', 'Mar', 'Mie', 'Joi', 'Vin', 'Sâm'];
   const days = getDaysInMonth();
+  
+  // Template modal state
+  const [templateModal, setTemplateModal] = useState({ isOpen: false, mode: null });
 
   return (
     <div className="bg-white rounded-xl shadow-lg p-6">
@@ -52,7 +53,7 @@ export const CalendarView = ({
               
               <div className="flex items-center space-x-2 ml-4">
                 <button 
-                  onClick={saveTemplate}
+                  onClick={() => setTemplateModal({ isOpen: true, mode: 'save' })}
                   className="px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center text-sm"
                   title="Salvează programul curent ca șablon"
                 >
@@ -61,21 +62,21 @@ export const CalendarView = ({
                 </button>
                 
                 <button 
-                  onClick={loadTemplate}
+                  onClick={() => setTemplateModal({ isOpen: true, mode: 'load' })}
                   className="px-3 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 flex items-center text-sm"
-                  title="Încarcă ultimul șablon salvat"
+                  title="Încarcă șablon salvat"
                 >
                   <Download className="w-4 h-4 mr-1" />
                   Încarcă Șablon
                 </button>
                 
                 <button 
-                  onClick={deleteTemplate}
+                  onClick={() => setTemplateModal({ isOpen: true, mode: 'delete' })}
                   className="px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 flex items-center text-sm"
-                  title="Șterge șablonul salvat"
+                  title="Șterge șablon salvat"
                 >
                   <Trash2 className="w-4 h-4 mr-1" />
-                  Sterge Șablon
+                  Șterge Șablon
                 </button>
               </div>
             </>
@@ -231,6 +232,14 @@ export const CalendarView = ({
           );
         })}
       </div>
+
+      {/* Template Modal */}
+      <TemplateModal
+        isOpen={templateModal.isOpen}
+        onClose={() => setTemplateModal({ isOpen: false, mode: null })}
+        selectedHospital={selectedHospital}
+        mode={templateModal.mode}
+      />
     </div>
   );
 };

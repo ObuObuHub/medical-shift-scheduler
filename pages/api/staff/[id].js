@@ -45,6 +45,7 @@ async function updateStaff(req, res, id) {
         hospital = ${updates.hospital || staffResult[0].hospital},
         role = ${updates.role || staffResult[0].role},
         unavailable = ${JSON.stringify(updates.unavailable || staffResult[0].unavailable)},
+        max_guards_per_month = ${updates.maxGuardsPerMonth !== undefined ? updates.maxGuardsPerMonth : (staffResult[0].max_guards_per_month || 10)},
         updated_at = CURRENT_TIMESTAMP
       WHERE id = ${id}
       RETURNING *;
@@ -59,7 +60,8 @@ async function updateStaff(req, res, id) {
       specialization: staff.specialization,
       hospital: staff.hospital,
       role: staff.role,
-      unavailable: staff.unavailable || []
+      unavailable: staff.unavailable || [],
+      maxGuardsPerMonth: staff.max_guards_per_month || 10
     };
 
     res.status(200).json(updatedStaffResult);

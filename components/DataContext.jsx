@@ -449,6 +449,127 @@ export const DataProvider = ({ children }) => {
     }
   };
 
+  // Template management
+  const [templates, setTemplates] = useState([]);
+
+  const loadTemplates = async (hospitalId) => {
+    try {
+      if (!isOffline) {
+        const templatesData = await apiClient.getTemplates(hospitalId);
+        setTemplates(templatesData);
+        return templatesData;
+      }
+      return [];
+    } catch (error) {
+      console.error('Failed to load templates:', error);
+      return [];
+    }
+  };
+
+  const saveTemplate = async (hospitalId, name, description = '') => {
+    try {
+      if (!hospitalId || !name) {
+        throw new Error('Hospital ID and template name are required');
+      }
+
+      // Get current month's shifts for the hospital
+      const currentMonthShifts = {};
+      Object.entries(shifts).forEach(([date, dayShifts]) => {
+        const shiftDate = new Date(date);
+        const filteredShifts = dayShifts.filter(shift => 
+          shift.hospital === hospitalId || 
+          (shift.staffIds && shift.staffIds.some(staffId => 
+            staff.find(s => s.id === staffId)?.hospital === hospitalId
+          ))
+        );
+        
+        if (filteredShifts.length > 0) {
+          currentMonthShifts[date] = filteredShifts;
+        }
+      });
+
+      if (Object.keys(currentMonthShifts).length === 0) {
+        throw new Error('No shifts found to save as template');
+      }
+
+      const templateData = {
+        name,
+        description,
+        hospital: hospitalId,
+        templateData: currentMonthShifts,
+        templateType: 'monthly'
+      };
+
+      if (!isOffline) {
+        const newTemplate = await apiClient.createTemplate(templateData);
+        setTemplates(prev => [newTemplate, ...prev]);
+        console.log(`Template "${name}" saved successfully`);
+        return newTemplate;
+      } else {
+        // Local fallback
+        const newTemplate = { 
+          ...templateData, 
+          id: Date.now(), 
+          createdAt: new Date().toISOString() 
+        };
+        setTemplates(prev => [newTemplate, ...prev]);
+        return newTemplate;
+      }
+    } catch (error) {
+      console.error('Failed to save template:', error);
+      throw error;
+    }
+  };
+
+  const loadTemplate = async (templateId) => {
+    try {
+      if (!templateId) {
+        throw new Error('Template ID is required');
+      }
+
+      let template;
+      if (!isOffline) {
+        template = await apiClient.getTemplate(templateId);
+      } else {
+        template = templates.find(t => t.id === templateId);
+      }
+
+      if (!template) {
+        throw new Error('Template not found');
+      }
+
+      // Apply template data to current shifts
+      setShifts(prevShifts => ({
+        ...prevShifts,
+        ...template.templateData
+      }));
+
+      console.log(`Template "${template.name}" loaded successfully`);
+      return template;
+    } catch (error) {
+      console.error('Failed to load template:', error);
+      throw error;
+    }
+  };
+
+  const deleteTemplate = async (templateId) => {
+    try {
+      if (!templateId) {
+        throw new Error('Template ID is required');
+      }
+
+      if (!isOffline) {
+        await apiClient.deleteTemplate(templateId);
+      }
+
+      setTemplates(prev => prev.filter(t => t.id !== templateId));
+      console.log('Template deleted successfully');
+    } catch (error) {
+      console.error('Failed to delete template:', error);
+      throw error;
+    }
+  };
+
   const value = {
     // Data
     shiftTypes,
@@ -456,6 +577,7 @@ export const DataProvider = ({ children }) => {
     staff,
     shifts,
     notifications,
+    templates,
     isLoading,
     isOffline,
     // Setters
@@ -481,6 +603,11 @@ export const DataProvider = ({ children }) => {
     deleteShift,
     clearAllShifts,
     regenerateFromScratch,
+    // Templates
+    loadTemplates,
+    saveTemplate,
+    loadTemplate,
+    deleteTemplate,
     // Utility
     loadInitialData
   };

@@ -12,7 +12,8 @@ export const StaffEditModal = ({
     type: 'medic',
     specialization: '',
     hospital: 'spital1',
-    role: 'staff'
+    role: 'staff',
+    maxGuardsPerMonth: 10
   });
 
   useEffect(() => {
@@ -23,7 +24,8 @@ export const StaffEditModal = ({
         type: editingStaff.type || 'medic',
         specialization: editingStaff.specialization || '',
         hospital: editingStaff.hospital || 'spital1',
-        role: editingStaff.role || 'staff'
+        role: editingStaff.role || 'staff',
+        maxGuardsPerMonth: editingStaff.maxGuardsPerMonth || 10
       });
     } else {
       // Adding new staff
@@ -32,7 +34,8 @@ export const StaffEditModal = ({
         type: 'medic',
         specialization: '',
         hospital: 'spital1',
-        role: 'staff'
+        role: 'staff',
+        maxGuardsPerMonth: 10
       });
     }
   }, [editingStaff]);
@@ -178,6 +181,25 @@ export const StaffEditModal = ({
                 <option value="manager">Manager</option>
                 <option value="admin">Administrator</option>
               </select>
+            </div>
+
+            {/* Max Guards Per Month */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Numărul maxim de garzi pe lună
+              </label>
+              <input
+                type="number"
+                min="1"
+                max="31"
+                value={formData.maxGuardsPerMonth}
+                onChange={(e) => setFormData(prev => ({ ...prev, maxGuardsPerMonth: parseInt(e.target.value) || 10 }))}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                placeholder="10"
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                Numărul maxim de garzi pe care acest medic le poate avea într-o lună
+              </p>
             </div>
 
             {/* Action buttons */}
