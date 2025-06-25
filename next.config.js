@@ -11,6 +11,10 @@ const nextConfig = {
   images: {
     domains: [],
     unoptimized: true
+  },
+  // Force fresh build
+  generateBuildId: async () => {
+    return 'postgres-deployment-' + Date.now()
   }
 }
 
