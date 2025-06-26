@@ -9,15 +9,15 @@ const DEFAULT_USERS = {
     passwordHash: '240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9', // sha256('admin123')
     name: 'Administrator Principal',
     role: 'admin',
-    hospital: 'spital1'
+    hospital: 'spital1' // Spitalul Județean de Urgență Piatra-Neamț
   },
   manager: {
     id: 'manager',
     username: 'manager', 
     passwordHash: '866485796cfa8d7c0cf7111640205b83076433547577511d81f8030ae99ecea5', // sha256('manager123')
-    name: 'Manager Spital',
+    name: 'Dr. Chiper Leferman Andrei',
     role: 'manager',
-    hospital: 'spital1'
+    hospital: 'spital1' // Spitalul Județean de Urgență Piatra-Neamț
   }
 };
 

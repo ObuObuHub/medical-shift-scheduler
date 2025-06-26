@@ -12,13 +12,12 @@ const DEFAULT_SHIFT_TYPES = {
 };
 
 const DEFAULT_HOSPITALS = [
-  { id: 'spital1', name: 'Spital Județean Urgență' },
-  { id: 'spital2', name: 'Spital Municipal' },
-  { id: 'spital3', name: 'Spital Pediatrie' }
+  { id: 'spital1', name: 'Spitalul Județean de Urgență Piatra-Neamț' },
+  { id: 'spital2', name: 'Spitalul "Prof. Dr. Eduard Apetrei" Buhuși' }
 ];
 
 const DEFAULT_STAFF = [
-  // Laboratorul de analize medicale - pattern similar to the user's example
+  // Spitalul Județean de Urgență Piatra-Neamț - Laboratorul de analize medicale
   { id: 1, name: 'Dr. Zugun Eduard', type: 'medic', specialization: 'Laborator', hospital: 'spital1', role: 'staff', unavailable: [] },
   { id: 2, name: 'Dr. Gîlea Arina', type: 'medic', specialization: 'Laborator', hospital: 'spital1', role: 'staff', unavailable: [] },
   { id: 3, name: 'Dr. Manole Anca', type: 'medic', specialization: 'Laborator', hospital: 'spital1', role: 'staff', unavailable: [] },
@@ -29,22 +28,7 @@ const DEFAULT_STAFF = [
   { id: 8, name: 'Dr. Constantinescu Raluca', type: 'medic', specialization: 'Laborator', hospital: 'spital1', role: 'staff', unavailable: [] },
   { id: 9, name: 'Dr. Dobrea Letiția', type: 'medic', specialization: 'Laborator', hospital: 'spital1', role: 'staff', unavailable: [] },
   { id: 10, name: 'Ch. Dobre Liliana Gabriela', type: 'chimist', specialization: 'Laborator', hospital: 'spital1', role: 'staff', unavailable: [] },
-  { id: 11, name: 'Dr. Chiper Leferman Andrei', type: 'medic', specialization: 'Laborator', hospital: 'spital1', role: 'staff', unavailable: [] },
-  
-  // Urgențe
-  { id: 12, name: 'Dr. Popescu Ion', type: 'medic', specialization: 'Urgențe', hospital: 'spital1', role: 'manager', unavailable: [] },
-  { id: 13, name: 'Dr. Stanescu Mihai', type: 'medic', specialization: 'Urgențe', hospital: 'spital1', role: 'staff', unavailable: [] },
-  { id: 14, name: 'Dr. Popa Stefan', type: 'medic', specialization: 'Urgențe', hospital: 'spital1', role: 'staff', unavailable: [] },
-  
-  // Chirurgie
-  { id: 15, name: 'Dr. Ionescu Maria', type: 'medic', specialization: 'Chirurgie', hospital: 'spital1', role: 'manager', unavailable: [] },
-  { id: 16, name: 'Dr. Dumitrescu Paul', type: 'medic', specialization: 'Chirurgie', hospital: 'spital1', role: 'staff', unavailable: [] },
-  { id: 17, name: 'Dr. Vlad Carmen', type: 'medic', specialization: 'Chirurgie', hospital: 'spital1', role: 'staff', unavailable: [] },
-  
-  // Pediatrie
-  { id: 18, name: 'Dr. Gheorghe Andrei', type: 'medic', specialization: 'Pediatrie', hospital: 'spital2', role: 'manager', unavailable: [] },
-  { id: 19, name: 'Dr. Moraru Elena', type: 'medic', specialization: 'Pediatrie', hospital: 'spital2', role: 'staff', unavailable: [] },
-  { id: 20, name: 'Dr. Neagu Raluca', type: 'medic', specialization: 'Pediatrie', hospital: 'spital2', role: 'staff', unavailable: [] }
+  { id: 11, name: 'Dr. Chiper Leferman Andrei', type: 'medic', specialization: 'Laborator', hospital: 'spital1', role: 'manager', unavailable: [] }
 ];
 
 const DataContext = createContext();
