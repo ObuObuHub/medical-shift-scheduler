@@ -127,7 +127,7 @@ export const CalendarView = ({
           return (
             <div
               key={index}
-              className={`relative p-2 h-28 border-2 rounded-lg transition-all duration-200 cursor-pointer
+              className={`relative p-2 h-36 border-2 rounded-lg transition-all duration-200 cursor-pointer overflow-hidden
                 ${!isCurrentMonth ? 'bg-gray-50 text-gray-400' : 'bg-white'}
                 ${isToday ? 'ring-2 ring-blue-400' : 'border-gray-200'}
                 ${coverageInfo ? coverageInfo.className : ''}
@@ -177,22 +177,35 @@ export const CalendarView = ({
                     return (
                       <div 
                         key={fullDayShift.id} 
-                        className="shift-item text-xs p-1 rounded flex flex-col hover:shadow-sm transition-shadow border-2 relative group"
+                        className="shift-item text-xs p-2 rounded-lg flex flex-col hover:shadow-md transition-shadow border-2 relative group h-full"
                         style={{ 
-                          backgroundColor: fullDayShift.type.color + '30', 
+                          backgroundColor: fullDayShift.type.color + '20', 
                           borderColor: fullDayShift.type.color 
                         }}
                         data-shift-id={fullDayShift.id}
                       >
-                        <div className="flex items-center justify-between">
-                          <span className="truncate font-medium">24h Gardă</span>
-                          <span className="text-xs text-gray-600">{fullDayShift.staffIds.length}👨‍⚕️</span>
+                        <div className="font-semibold text-xs mb-1" style={{ color: fullDayShift.type.color }}>
+                          Gardă 24h (8-8)
                         </div>
-                        <span className="text-xs text-gray-500">
-                          {isReserved && '🔒 Rezervat'}
-                          {isSwapRequested && '🔄 Schimb cerut'}
-                          {!isReserved && !isSwapRequested && 'Acoperire completă'}
-                        </span>
+                        <div className="flex-1 space-y-0.5 mb-1">
+                          {fullDayShift.staffIds.map(staffId => {
+                            const staffMember = staff.find(s => s.id === staffId);
+                            return staffMember ? (
+                              <div key={staffId} className={`text-xs truncate ${staffId === staffId ? 'font-semibold' : ''}`}>
+                                {staffMember.name}
+                              </div>
+                            ) : null;
+                          })}
+                          {fullDayShift.reservedBy && !fullDayShift.staffIds.includes(fullDayShift.reservedBy) && (
+                            <div className="text-xs truncate italic text-gray-600">
+                              Rezervat: {staff.find(s => s.id === fullDayShift.reservedBy)?.name}
+                            </div>
+                          )}
+                        </div>
+                        <div className="text-xs mt-auto">
+                          {isSwapRequested && <span className="text-blue-600 font-medium">🔄 Schimb cerut</span>}
+                          {isReserved && !isSwapRequested && <span className="text-green-600">🔒 Rezervat</span>}
+                        </div>
                         
                         {/* Action buttons on hover - only show if not guest */}
                         {(currentUser || (selectedStaff && !isGuest)) && (
@@ -257,20 +270,51 @@ export const CalendarView = ({
                     // Show combined day + night shifts as one logical unit
                     const totalStaff = new Set([...dayShift.staffIds, ...nightShift.staffIds]).size;
                     return (
-                      <div className="space-y-0.5">
-                        <div 
-                          className="shift-item text-xs p-1 rounded flex flex-col hover:shadow-sm transition-shadow border-l-4"
-                          style={{ 
-                            backgroundColor: '#10B981' + '20', 
-                            borderLeftColor: '#10B981' 
-                          }}
-                        >
-                          <div className="flex items-center justify-between">
-                            <span className="truncate font-medium">Zi + Noapte</span>
-                            <span className="text-xs text-gray-600">{totalStaff}👨‍⚕️</span>
+                      <div className="space-y-1 h-full">
+                        {/* Day Shift */}
+                        {dayShift && (
+                          <div 
+                            className="shift-item text-xs p-1.5 rounded flex flex-col hover:shadow-sm transition-shadow border-l-4"
+                            style={{ 
+                              backgroundColor: dayShift.type.color + '20', 
+                              borderLeftColor: dayShift.type.color 
+                            }}
+                          >
+                            <div className="font-medium text-xs mb-0.5" style={{ color: dayShift.type.color }}>
+                              Zi (8-20)
+                            </div>
+                            {dayShift.staffIds.map(staffId => {
+                              const staffMember = staff.find(s => s.id === staffId);
+                              return staffMember ? (
+                                <div key={staffId} className="text-xs truncate">
+                                  {staffMember.name}
+                                </div>
+                              ) : null;
+                            })}
                           </div>
-                          <span className="text-xs text-gray-500">12h + 12h</span>
-                        </div>
+                        )}
+                        {/* Night Shift */}
+                        {nightShift && (
+                          <div 
+                            className="shift-item text-xs p-1.5 rounded flex flex-col hover:shadow-sm transition-shadow border-l-4"
+                            style={{ 
+                              backgroundColor: nightShift.type.color + '20', 
+                              borderLeftColor: nightShift.type.color 
+                            }}
+                          >
+                            <div className="font-medium text-xs mb-0.5" style={{ color: nightShift.type.color }}>
+                              Noapte (20-8)
+                            </div>
+                            {nightShift.staffIds.map(staffId => {
+                              const staffMember = staff.find(s => s.id === staffId);
+                              return staffMember ? (
+                                <div key={staffId} className="text-xs truncate">
+                                  {staffMember.name}
+                                </div>
+                              ) : null;
+                            })}
+                          </div>
+                        )}
                       </div>
                     );
                   } else {
@@ -285,22 +329,36 @@ export const CalendarView = ({
                       return (
                         <div 
                           key={shift.id} 
-                          className="shift-item text-xs p-1 rounded flex flex-col hover:shadow-sm transition-shadow border-l-4 relative group"
+                          className="shift-item text-xs p-1.5 rounded-lg flex flex-col hover:shadow-sm transition-shadow border-l-4 relative group"
                           style={{ 
                             backgroundColor: shift.type.color + '20', 
                             borderLeftColor: shift.type.color 
                           }}
                           data-shift-id={shift.id}
                         >
-                          <div className="flex items-center justify-between">
-                            <span className="truncate font-medium">{shift.type.name.split(' ')[0]}</span>
-                            <span className="text-xs text-gray-600">{shift.staffIds.length}👨‍⚕️</span>
+                          <div className="font-medium text-xs mb-0.5" style={{ color: shift.type.color }}>
+                            {shift.type.name}
                           </div>
-                          <span className="text-xs">
-                            {isReserved && '🔒 '}
-                            {isSwapRequested && '🔄 '}
-                            {isPartial && <span className="text-orange-500">Parțial</span>}
-                          </span>
+                          <div className="flex-1">
+                            {shift.staffIds.map(staffId => {
+                              const staffMember = staff.find(s => s.id === staffId);
+                              return staffMember ? (
+                                <div key={staffId} className={`text-xs truncate ${staffId === staffId ? 'font-semibold' : ''}`}>
+                                  {staffMember.name}
+                                </div>
+                              ) : null;
+                            })}
+                            {shift.reservedBy && !shift.staffIds.includes(shift.reservedBy) && (
+                              <div className="text-xs truncate italic text-gray-600">
+                                Rezervat: {staff.find(s => s.id === shift.reservedBy)?.name}
+                              </div>
+                            )}
+                          </div>
+                          <div className="text-xs mt-auto">
+                            {isSwapRequested && <span className="text-blue-600">🔄</span>}
+                            {isReserved && !isSwapRequested && <span className="text-green-600">🔒</span>}
+                            {isPartial && <span className="text-orange-500">⚠️ Parțial</span>}
+                          </div>
                           
                           {/* Action buttons on hover - only show if not guest */}
                           {(currentUser || (selectedStaff && !isGuest)) && (

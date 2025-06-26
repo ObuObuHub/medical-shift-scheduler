@@ -2,13 +2,14 @@ import React, { useState } from 'react';
 import Head from 'next/head';
 import { useAuth } from './AuthContext';
 import { useData } from './DataContext';
-import { Calendar, User, Clock, LogOut, ChevronLeft, ChevronRight, Download, Shield, Settings, CalendarDays } from './Icons';
+import { Calendar, User, Clock, LogOut, ChevronLeft, ChevronRight, Download, Shield, Settings, CalendarDays, RefreshCw } from './Icons';
 import { formatMonthYear, addMonths } from '../utils/dateHelpers';
 import { LoginForm } from './LoginForm';
 import { AdminDashboard } from './AdminDashboard';
 import { ManagerDashboard } from './ManagerDashboard';
 import { CalendarView } from './CalendarView';
 import { AddShiftModal } from './AddShiftModal';
+import { SwapRequestsView } from './SwapRequestsView';
 
 export const StaffDashboard = ({ 
   selectedHospital: propSelectedHospital,
@@ -260,6 +261,12 @@ export const StaffDashboard = ({
     />
   );
 
+  const renderSwapRequestsView = () => (
+    <SwapRequestsView
+      selectedHospital={selectedHospital}
+    />
+  );
+
   return (
     <div className="min-h-screen bg-gray-50">
       <Head>
@@ -322,6 +329,21 @@ export const StaffDashboard = ({
                   <span className="sm:hidden">Ture</span>
                   <span className="hidden sm:inline">Turele Mele</span>
                 </button>
+                {/* Show swap requests tab only for authenticated staff or selected staff (not guests) */}
+                {(selectedStaff && !isGuest) && (
+                  <button
+                    onClick={() => setCurrentView('swaps')}
+                    className={`px-2 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors touch-manipulation ${
+                      currentView === 'swaps'
+                        ? 'bg-blue-100 text-blue-700'
+                        : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                    }`}
+                  >
+                    <RefreshCw className="w-4 h-4 sm:w-5 sm:h-5 inline mr-1" />
+                    <span className="sm:hidden">Schimb</span>
+                    <span className="hidden sm:inline">Cereri Schimb</span>
+                  </button>
+                )}
               </div>
 
               <div className="flex items-center space-x-1 sm:space-x-2">
@@ -385,7 +407,9 @@ export const StaffDashboard = ({
 
       {/* Main content - Mobile Responsive */}
       <main className="max-w-7xl mx-auto px-3 sm:px-4 sm:px-6 lg:px-8 py-4 sm:py-8">
-        {currentView === 'schedule' ? renderScheduleView() : renderCalendarView()}
+        {currentView === 'schedule' && renderScheduleView()}
+        {currentView === 'calendar' && renderCalendarView()}
+        {currentView === 'swaps' && renderSwapRequestsView()}
       </main>
 
       {/* Login Modal */}
