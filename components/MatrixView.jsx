@@ -1,19 +1,14 @@
 import React, { useState, useMemo } from 'react';
 import { useData } from './DataContext';
 import { useAuth } from './AuthContext';
-import { Users, AlertCircle, CheckCircle, Plus, Trash2, Wand2, Download, ChevronLeft, ChevronRight, X } from './Icons';
-import { exportShiftsToText, downloadTextFile, generateExportFilename } from '../utils/exportUtils';
+import { Users, Plus, Trash2, ChevronLeft, ChevronRight, X } from './Icons';
 
 export const MatrixView = ({ 
   selectedHospital, 
   currentDate, 
-  onDateChange,
-  onAddShift,
-  onDeleteShift,
-  onRegenerateFromScratch,
-  onGenerateShifts
+  onDateChange
 }) => {
-  const { staff, shifts, shiftTypes, setShifts, generateFairSchedule, regenerateFromScratch } = useData();
+  const { staff, shifts, shiftTypes, setShifts, deleteShift } = useData();
   const { hasPermission } = useAuth();
   
   const [selectedDepartment, setSelectedDepartment] = useState('');
@@ -182,42 +177,11 @@ export const MatrixView = ({
     
     if (confirm('Ești sigur că vrei să ștergi această tură?')) {
       try {
-        await onDeleteShift(shiftId);
+        await deleteShift(shiftId);
       } catch (error) {
-        alert('Eroare la ștergerea turei. Te rugăm să încerci din nou.');
+        // Error already handled by DataContext
       }
     }
-  };
-
-  // Handle regeneration from scratch
-  const handleRegenerateFromScratch = async () => {
-    if (!hasPermission('generate_shifts')) return;
-    
-    if (confirm('Ești sigur că vrei să regenerezi complet programul pentru această lună? Toate turile existente vor fi șterse și înlocuite cu un program nou.')) {
-      try {
-        await onRegenerateFromScratch(selectedHospital, currentDate);
-      } catch (error) {
-        alert('Eroare la regenerarea programului. Te rugăm să încerci din nou.');
-      }
-    }
-  };
-
-  // Check if month has any existing shifts
-  const hasExistingShifts = useMemo(() => {
-    const monthStart = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
-    const monthEnd = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
-    
-    return Object.keys(shifts).some(dateKey => {
-      const shiftDate = new Date(dateKey);
-      return shiftDate >= monthStart && shiftDate <= monthEnd && shifts[dateKey].length > 0;
-    });
-  }, [shifts, currentDate]);
-
-  // Handle export to text file
-  const handleExportSchedule = () => {
-    const exportContent = exportShiftsToText(shifts, staff, currentDate);
-    const filename = generateExportFilename(currentDate);
-    downloadTextFile(exportContent, filename);
   };
 
   // Handle month navigation
@@ -225,36 +189,6 @@ export const MatrixView = ({
     const newDate = new Date(currentDate);
     newDate.setMonth(newDate.getMonth() + direction);
     onDateChange(newDate);
-  };
-
-  // Handle generate shifts with regeneration capability
-  const handleGenerateShifts = async () => {
-    if (!hasPermission('generate_shifts')) return;
-    
-    try {
-      const hospitalStaff = staff.filter(s => 
-        s.hospital === selectedHospital && 
-        (s.type === 'medic' || s.type === 'biolog' || s.type === 'chimist')
-      );
-      if (hospitalStaff.length === 0) {
-        alert('Nu există personal disponibil pentru acest spital.');
-        return;
-      }
-
-      if (hasExistingShifts) {
-        // Regenerate existing schedule
-        if (confirm('Există deja ture pentru această lună. Doriți să regenerați complet programul? Toate turile existente vor fi înlocuite.')) {
-          await regenerateFromScratch(selectedHospital, currentDate);
-        }
-      } else {
-        // Generate new schedule using the same method as Calendar View
-        if (confirm('Generați ture noi pentru această lună cu distribuție echitabilă?')) {
-          await generateFairSchedule(selectedHospital, currentDate);
-        }
-      }
-    } catch (error) {
-            alert('Eroare la generarea turelor. Vă rugăm să încercați din nou.');
-    }
   };
   
   // Get cell styling based on shift type
@@ -397,46 +331,25 @@ export const MatrixView = ({
           </div>
         </div>
         
-        {/* Controls - Stack on mobile */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-3 sm:space-y-0">
-          <div className="flex items-center space-x-2">
-            <select
-              value={selectedDepartment}
-              onChange={(e) => setSelectedDepartment(e.target.value)}
-              className="flex-1 sm:flex-none px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="">Toate departamentele</option>
-              {departments.map(dept => (
-                <option key={dept} value={dept}>{dept}</option>
-              ))}
-            </select>
-          </div>
+        {/* Department Filter Only */}
+        <div className="flex items-center">
+          <select
+            value={selectedDepartment}
+            onChange={(e) => setSelectedDepartment(e.target.value)}
+            className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="">Toate departamentele</option>
+            {departments.map(dept => (
+              <option key={dept} value={dept}>{dept}</option>
+            ))}
+          </select>
           
-          <div className="flex items-center space-x-2">
-            <button
-              onClick={handleExportSchedule}
-              className="flex-1 sm:flex-none px-3 sm:px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium flex items-center justify-center space-x-2 transition-colors"
-              title="Exportă programul în format text"
-            >
-              <Download className="w-4 h-4" />
-              <span className="hidden sm:inline">Export</span>
-              <span className="sm:hidden">Export</span>
-            </button>
-            
-            {hasPermission('generate_shifts') && (
-              <>
-                <button
-                  onClick={handleGenerateShifts}
-                  className="flex-1 sm:flex-none px-3 sm:px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium flex items-center justify-center space-x-2 transition-colors"
-                  title={hasExistingShifts ? 'Regenerează complet programul cu distribuție echitabilă' : 'Generează ture noi cu distribuție echitabilă'}
-                >
-                  {hasExistingShifts ? <Wand2 className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
-                  <span className="hidden sm:inline">{hasExistingShifts ? 'Regenerare' : 'Generare'}</span>
-                  <span className="sm:hidden">{hasExistingShifts ? 'Regen' : 'Gen'}</span>
-                </button>
-              </>
-            )}
-          </div>
+          {hasPermission('assign_staff') && (
+            <div className="ml-4 text-sm text-gray-600">
+              <span className="hidden sm:inline">Faceți click pe celule pentru a adăuga/șterge ture manual</span>
+              <span className="sm:hidden">Tap pentru editare</span>
+            </div>
+          )}
         </div>
       </div>
 

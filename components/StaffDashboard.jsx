@@ -8,6 +8,8 @@ import { LoginForm } from './LoginForm';
 import { AdminDashboard } from './AdminDashboard';
 import { ManagerDashboard } from './ManagerDashboard';
 import { CalendarView } from './CalendarView';
+import { MatrixView } from './MatrixView';
+import { ViewSwitcher } from './ViewSwitcher';
 import { AddShiftModal } from './AddShiftModal';
 import { SwapRequestsView } from './SwapRequestsView';
 
@@ -21,7 +23,8 @@ export const StaffDashboard = ({
   const { currentUser, logout, isAuthenticated, hasPermission } = useAuth();
   const { shifts, staff, shiftTypes, hospitals, generateFairSchedule, deleteShift, reserveShift } = useData();
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [currentView, setCurrentView] = useState('calendar'); // Default to Planificare view
+  const [currentView, setCurrentView] = useState('calendar'); // Default to Calendar view
+  const [planningView, setPlanningView] = useState('calendar'); // Calendar or Matrix for planning
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [addShiftModalData, setAddShiftModalData] = useState(null);
   const [selectedHospital, setSelectedHospital] = useState(propSelectedHospital || currentUser?.hospital || 'spital1');
@@ -265,26 +268,40 @@ export const StaffDashboard = ({
     return member ? member.name : 'Unknown';
   };
 
-  const renderCalendarView = () => (
-    <CalendarView
-      currentDate={currentDate}
-      navigateMonth={navigateMonth}
-      generateFairSchedule={generateFairSchedule}
-      getDaysInMonth={getDaysInMonth}
-      handleCellClick={handleCellClick}
-      getStaffName={getStaffName}
-      hasPermission={hasPermission}
-      staff={staff}
-      shifts={shifts}
-      setAddShiftModalData={setAddShiftModalData}
-      selectedHospital={selectedHospital}
-      currentUser={currentUser}
-      selectedStaff={selectedStaff}
-      isGuest={isGuest}
-      swapModal={swapModal}
-      setSwapModal={setSwapModal}
-    />
-  );
+  const renderPlanningView = () => {
+    if (planningView === 'matrix' && (hasPermission('assign_staff') || hasPermission('generate_shifts'))) {
+      // Matrix view only for admins/managers
+      return (
+        <MatrixView
+          selectedHospital={selectedHospital}
+          currentDate={currentDate}
+          onDateChange={setCurrentDate}
+        />
+      );
+    }
+    
+    // Calendar view for everyone
+    return (
+      <CalendarView
+        currentDate={currentDate}
+        navigateMonth={navigateMonth}
+        generateFairSchedule={generateFairSchedule}
+        getDaysInMonth={getDaysInMonth}
+        handleCellClick={handleCellClick}
+        getStaffName={getStaffName}
+        hasPermission={hasPermission}
+        staff={staff}
+        shifts={shifts}
+        setAddShiftModalData={setAddShiftModalData}
+        selectedHospital={selectedHospital}
+        currentUser={currentUser}
+        selectedStaff={selectedStaff}
+        isGuest={isGuest}
+        swapModal={swapModal}
+        setSwapModal={setSwapModal}
+      />
+    );
+  };
 
   const renderSwapRequestsView = () => (
     <SwapRequestsView
@@ -342,6 +359,15 @@ export const StaffDashboard = ({
                   <CalendarDays className="w-4 h-4 sm:w-5 sm:h-5 inline mr-1" />
                   <span>Planificare</span>
                 </button>
+                
+                {/* View switcher for planning - only visible when in planning view */}
+                {currentView === 'calendar' && (hasPermission('assign_staff') || hasPermission('generate_shifts')) && (
+                  <ViewSwitcher 
+                    currentView={planningView} 
+                    onViewChange={setPlanningView}
+                    className="ml-2"
+                  />
+                )}
                 <button
                   onClick={() => setCurrentView('schedule')}
                   className={`px-2 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors touch-manipulation ${
@@ -433,7 +459,7 @@ export const StaffDashboard = ({
       {/* Main content - Mobile Responsive */}
       <main className="max-w-7xl mx-auto px-3 sm:px-4 sm:px-6 lg:px-8 py-4 sm:py-8">
         {currentView === 'schedule' && renderScheduleView()}
-        {currentView === 'calendar' && renderCalendarView()}
+        {currentView === 'calendar' && renderPlanningView()}
         {currentView === 'swaps' && renderSwapRequestsView()}
       </main>
 

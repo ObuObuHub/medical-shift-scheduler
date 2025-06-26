@@ -3,6 +3,7 @@ import { ChevronLeft, ChevronRight, Plus, Wand2, Save, Download, Trash2, Refresh
 import { TemplateModal } from './TemplateModal';
 import SwapRequestModal from './SwapRequestModal';
 import { useData } from './DataContext';
+import { exportShiftsToText, downloadTextFile, generateExportFilename } from '../utils/exportUtils';
 
 export const CalendarView = ({ 
   currentDate,
@@ -55,6 +56,20 @@ export const CalendarView = ({
           </div>
         </div>
         <div className="flex items-center space-x-2">
+          {/* Export button - available to all users */}
+          <button 
+            onClick={() => {
+              const exportContent = exportShiftsToText(shifts, staff, currentDate);
+              const filename = generateExportFilename(currentDate);
+              downloadTextFile(exportContent, filename);
+            }} 
+            className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 flex items-center"
+            title="Exportă programul în format text"
+          >
+            <Download className="w-4 h-4 mr-2" />
+            Export
+          </button>
+          
           {hasPermission('generate_shifts') && (
             <>
               <button 

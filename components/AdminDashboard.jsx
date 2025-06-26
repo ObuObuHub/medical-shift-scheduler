@@ -7,6 +7,8 @@ import {
   Menu, X, Shield, BarChart3
 } from './Icons';
 import { MatrixView } from './MatrixView';
+import { CalendarView } from './CalendarView';
+import { ViewSwitcher } from './ViewSwitcher';
 import { StaffView } from './StaffView';
 import { AdminPanel } from './AdminPanel';
 import { StaffEditModal } from './StaffEditModal';
@@ -27,6 +29,7 @@ export const AdminDashboard = () => {
   // State
   const [selectedHospital, setSelectedHospital] = useState(currentUser?.hospital || 'spital1');
   const [currentView, setCurrentView] = useState('matrix');
+  const [planningView, setPlanningView] = useState('calendar'); // Calendar or Matrix for planning
   const [currentDate, setCurrentDate] = useState(new Date());
   const [showMobileMenu, setShowMobileMenu] = useState(false);
 
@@ -44,6 +47,40 @@ export const AdminDashboard = () => {
     if (!hasPermission('assign_staff')) return;
     e.preventDefault();
     setAddShiftModalData({ date, editingShift: null });
+  };
+  
+  // Helper functions for CalendarView
+  const getDaysInMonth = () => {
+    const year = currentDate.getFullYear();
+    const month = currentDate.getMonth();
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+    const days = [];
+    
+    // Add padding days from previous month
+    const startPadding = firstDay.getDay();
+    for (let i = startPadding - 1; i >= 0; i--) {
+      const date = new Date(year, month, -i);
+      days.push(date);
+    }
+    
+    // Add all days of current month
+    for (let i = 1; i <= lastDay.getDate(); i++) {
+      days.push(new Date(year, month, i));
+    }
+    
+    // Add padding days from next month
+    const endPadding = 6 - lastDay.getDay();
+    for (let i = 1; i <= endPadding; i++) {
+      days.push(new Date(year, month + 1, i));
+    }
+    
+    return days;
+  };
+  
+  const getStaffName = (staffId) => {
+    const member = staff.find(s => s.id === staffId);
+    return member ? member.name : 'Unknown';
   };
 
   // Menu items for administrators
@@ -72,16 +109,35 @@ export const AdminDashboard = () => {
                 <BarChart3 className="w-5 h-5 mr-2" />
                 Planificare Personal
               </h2>
+              <ViewSwitcher 
+                currentView={planningView} 
+                onViewChange={setPlanningView}
+              />
             </div>
-            <MatrixView 
-              selectedHospital={selectedHospital}
-              currentDate={currentDate}
-              onDateChange={setCurrentDate}
-              onAddShift={(date, editingShift) => setAddShiftModalData({ date, editingShift })}
-              onDeleteShift={deleteShift}
-              onRegenerateFromScratch={regenerateFromScratch}
-              onGenerateShifts={generateFairSchedule}
-            />
+            {planningView === 'matrix' ? (
+              <MatrixView 
+                selectedHospital={selectedHospital}
+                currentDate={currentDate}
+                onDateChange={setCurrentDate}
+              />
+            ) : (
+              <CalendarView
+                currentDate={currentDate}
+                navigateMonth={navigateMonth}
+                generateFairSchedule={generateFairSchedule}
+                getDaysInMonth={getDaysInMonth}
+                handleCellClick={handleCellClick}
+                getStaffName={getStaffName}
+                hasPermission={hasPermission}
+                staff={staff}
+                shifts={shifts}
+                setAddShiftModalData={setAddShiftModalData}
+                selectedHospital={selectedHospital}
+                currentUser={currentUser}
+                selectedStaff={null}
+                isGuest={false}
+              />
+            )}
           </div>
         );
       
