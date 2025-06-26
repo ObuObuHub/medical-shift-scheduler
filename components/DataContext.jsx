@@ -298,7 +298,7 @@ export const DataProvider = ({ children }) => {
   const generateFairSchedule = async (hospitalId, date) => {
     if (!hospitalId || !date) return;
 
-    const hospitalStaff = staff.filter(s => s.hospital === hospitalId && s.type === 'medic');
+    const hospitalStaff = staff.filter(s => s.hospital === hospitalId);
     if (hospitalStaff.length === 0) {
       console.warn('No medical staff available for fair scheduling');
       return;
@@ -460,7 +460,7 @@ export const DataProvider = ({ children }) => {
         throw new Error('Hospital ID and date are required');
       }
 
-      const hospitalStaff = staff.filter(s => s.hospital === hospitalId && s.type === 'medic');
+      const hospitalStaff = staff.filter(s => s.hospital === hospitalId);
       if (hospitalStaff.length === 0) {
         throw new Error('No medical staff available for regeneration');
       }
@@ -892,11 +892,11 @@ export const DataProvider = ({ children }) => {
     updateHospitalConfig,
     // Fair scheduling utilities
     generateCompleteSchedule: (hospitalId, date) => {
-      const hospitalStaff = staff.filter(s => s.hospital === hospitalId && s.type === 'medic');
+      const hospitalStaff = staff.filter(s => s.hospital === hospitalId);
       return generateCompleteSchedule(hospitalStaff, date, shiftTypes);
     },
     regenerateCompleteSchedule: (hospitalId, date) => {
-      const hospitalStaff = staff.filter(s => s.hospital === hospitalId && s.type === 'medic');
+      const hospitalStaff = staff.filter(s => s.hospital === hospitalId);
       return regenerateCompleteSchedule(shifts, hospitalStaff, date, shiftTypes);
     },
     // Templates

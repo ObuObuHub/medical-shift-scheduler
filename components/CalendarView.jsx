@@ -18,7 +18,9 @@ export const CalendarView = ({
   selectedHospital,
   currentUser,
   selectedStaff,
-  isGuest
+  isGuest,
+  swapModal: propsSwapModal,
+  setSwapModal: propsSetSwapModal
 }) => {
   const months = ['Ianuarie', 'Februarie', 'Martie', 'Aprilie', 'Mai', 'Iunie',
                   'Iulie', 'August', 'Septembrie', 'Octombrie', 'Noiembrie', 'Decembrie'];
@@ -31,8 +33,10 @@ export const CalendarView = ({
   // Template modal state
   const [templateModal, setTemplateModal] = useState({ isOpen: false, mode: null });
   
-  // Swap modal state
-  const [swapModal, setSwapModal] = useState({ isOpen: false, shift: null });
+  // Swap modal state - use props if provided, otherwise local state
+  const [localSwapModal, setLocalSwapModal] = useState({ isOpen: false, shift: null });
+  const swapModal = propsSwapModal || localSwapModal;
+  const setSwapModal = propsSetSwapModal || setLocalSwapModal;
 
   return (
     <div className="bg-white rounded-xl shadow-lg p-6">

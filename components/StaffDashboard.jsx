@@ -19,12 +19,13 @@ export const StaffDashboard = ({
   onChangeStaff 
 }) => {
   const { currentUser, logout, isAuthenticated, hasPermission } = useAuth();
-  const { shifts, staff, shiftTypes, hospitals, generateFairSchedule, deleteShift } = useData();
+  const { shifts, staff, shiftTypes, hospitals, generateFairSchedule, deleteShift, reserveShift } = useData();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [currentView, setCurrentView] = useState('calendar'); // Default to Planificare view
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [addShiftModalData, setAddShiftModalData] = useState(null);
   const [selectedHospital, setSelectedHospital] = useState(propSelectedHospital || currentUser?.hospital || 'spital1');
+  const [swapModal, setSwapModal] = useState({ isOpen: false, shift: null });
 
   // If authenticated as admin or manager, show their dashboard
   if (isAuthenticated && currentUser) {
@@ -231,10 +232,33 @@ export const StaffDashboard = ({
     return days;
   };
 
-  const handleCellClick = (date, dayShifts, e) => {
-    // Staff can view shift details
-    // Reservation and swap actions are handled by hover buttons in CalendarView
-    console.log('Shift details for', date, dayShifts);
+  const handleCellClick = async (date, dayShifts, e) => {
+    if (!currentUser && !selectedStaff) return;
+    
+    const staffId = selectedStaff?.id || currentUser?.id;
+    const dateStr = date.toISOString().split('T')[0];
+    const myShift = dayShifts.find(s => s.staffIds?.includes(staffId));
+    const openShift = dayShifts.find(s => s.status === 'open');
+    
+    if (myShift) {
+      // I have a shift - open swap modal
+      setSwapModal({ 
+        isOpen: true, 
+        shift: { 
+          ...myShift, 
+          date: dateStr,
+          assigneeId: staffId,
+          hospital: selectedHospital
+        } 
+      });
+    } else if (openShift) {
+      // Empty shift - reserve it
+      try {
+        await reserveShift(openShift.id);
+      } catch (error) {
+        console.error('Failed to reserve shift:', error);
+      }
+    }
   };
 
   const getStaffName = (staffId) => {
@@ -258,6 +282,8 @@ export const StaffDashboard = ({
       currentUser={currentUser}
       selectedStaff={selectedStaff}
       isGuest={isGuest}
+      swapModal={swapModal}
+      setSwapModal={setSwapModal}
     />
   );
 

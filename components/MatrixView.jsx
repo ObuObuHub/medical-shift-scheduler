@@ -239,9 +239,12 @@ export const MatrixView = ({
     if (!hasPermission('generate_shifts')) return;
     
     try {
-      const hospitalStaff = staff.filter(s => s.hospital === selectedHospital && s.type === 'medic');
+      const hospitalStaff = staff.filter(s => 
+        s.hospital === selectedHospital && 
+        (s.type === 'medic' || s.type === 'biolog' || s.type === 'chimist')
+      );
       if (hospitalStaff.length === 0) {
-        alert('Nu există medici disponibili pentru acest spital.');
+        alert('Nu există personal disponibil pentru acest spital.');
         return;
       }
 
