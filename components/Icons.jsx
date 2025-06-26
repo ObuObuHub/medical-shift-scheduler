@@ -281,3 +281,10 @@ export const Download = ({ className = "w-5 h-5" }) => (
     <line x1="12" y1="15" x2="12" y2="3"/>
   </svg>
 );
+
+export const Search = ({ className = "w-5 h-5" }) => (
+  <svg className={className} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+    <circle cx="11" cy="11" r="8"/>
+    <path d="m21 21-4.35-4.35"/>
+  </svg>
+);

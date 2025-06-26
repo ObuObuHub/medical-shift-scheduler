@@ -16,7 +16,9 @@ export const CalendarView = ({
   shifts,
   setAddShiftModalData,
   selectedHospital,
-  currentUser
+  currentUser,
+  selectedStaff,
+  isGuest
 }) => {
   const months = ['Ianuarie', 'Februarie', 'Martie', 'Aprilie', 'Mai', 'Iunie',
                   'Iulie', 'August', 'Septembrie', 'Octombrie', 'Noiembrie', 'Decembrie'];
@@ -167,7 +169,8 @@ export const CalendarView = ({
                   // Priority: 24h shift > combined 12h shifts > individual shifts
                   if (fullDayShift) {
                     // Show single 24-hour shift
-                    const isMyShift = fullDayShift.staffIds?.includes(currentUser?.id) || fullDayShift.reservedBy === currentUser?.id;
+                    const staffId = selectedStaff?.id || currentUser?.id;
+                    const isMyShift = staffId && (fullDayShift.staffIds?.includes(staffId) || fullDayShift.reservedBy === staffId);
                     const isReserved = fullDayShift.status === 'reserved';
                     const isSwapRequested = fullDayShift.status === 'swap_requested';
                     
@@ -191,8 +194,8 @@ export const CalendarView = ({
                           {!isReserved && !isSwapRequested && 'Acoperire completă'}
                         </span>
                         
-                        {/* Action buttons on hover */}
-                        {currentUser && (
+                        {/* Action buttons on hover - only show if not guest */}
+                        {(currentUser || (selectedStaff && !isGuest)) && (
                           <div className="absolute -top-8 right-0 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
                             {isMyShift && !isSwapRequested && (
                               <button
@@ -203,7 +206,7 @@ export const CalendarView = ({
                                     shift: { 
                                       ...fullDayShift, 
                                       date: date.toISOString().split('T')[0],
-                                      assigneeId: currentUser.id,
+                                      assigneeId: staffId,
                                       hospital: selectedHospital
                                     } 
                                   });
@@ -230,7 +233,7 @@ export const CalendarView = ({
                                 <UserCheck className="w-3 h-3" />
                               </button>
                             )}
-                            {isReserved && fullDayShift.reservedBy === currentUser?.id && (
+                            {isReserved && fullDayShift.reservedBy === staffId && (
                               <button
                                 onClick={async (e) => {
                                   e.stopPropagation();
@@ -274,7 +277,8 @@ export const CalendarView = ({
                     // Show individual shifts (partial coverage)
                     return dayShifts.slice(0, 2).map((shift) => {
                       const isPartial = dayShifts.length === 1;
-                      const isMyShift = shift.staffIds?.includes(currentUser?.id) || shift.reservedBy === currentUser?.id;
+                      const staffId = selectedStaff?.id || currentUser?.id;
+                      const isMyShift = staffId && (shift.staffIds?.includes(staffId) || shift.reservedBy === staffId);
                       const isReserved = shift.status === 'reserved';
                       const isSwapRequested = shift.status === 'swap_requested';
                       
@@ -298,8 +302,8 @@ export const CalendarView = ({
                             {isPartial && <span className="text-orange-500">Parțial</span>}
                           </span>
                           
-                          {/* Action buttons on hover */}
-                          {currentUser && (
+                          {/* Action buttons on hover - only show if not guest */}
+                          {(currentUser || (selectedStaff && !isGuest)) && (
                             <div className="absolute -top-8 right-0 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
                               {isMyShift && !isSwapRequested && (
                                 <button
@@ -310,7 +314,7 @@ export const CalendarView = ({
                                       shift: { 
                                         ...shift, 
                                         date: date.toISOString().split('T')[0],
-                                        assigneeId: currentUser.id,
+                                        assigneeId: staffId,
                                         hospital: selectedHospital
                                       } 
                                     });
@@ -337,7 +341,7 @@ export const CalendarView = ({
                                   <UserCheck className="w-3 h-3" />
                                 </button>
                               )}
-                              {isReserved && shift.reservedBy === currentUser?.id && (
+                              {isReserved && shift.reservedBy === staffId && (
                                 <button
                                   onClick={async (e) => {
                                     e.stopPropagation();

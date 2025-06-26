@@ -33,6 +33,7 @@ export const useAuth = () => {
 
 export const AuthProvider = ({ children }) => {
   const [currentUser, setCurrentUser] = useState(null);
+  const [selectedStaff, setSelectedStaff] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
 
   // Check for existing session on mount
@@ -95,8 +96,18 @@ export const AuthProvider = ({ children }) => {
 
   const logout = () => {
     setCurrentUser(null);
+    setSelectedStaff(null);
     localStorage.removeItem('currentUser');
     apiClient.logout();
+  };
+
+  // Staff selection methods
+  const selectStaff = (staffMember) => {
+    setSelectedStaff(staffMember);
+  };
+
+  const clearStaffSelection = () => {
+    setSelectedStaff(null);
   };
 
   // Permission checking
@@ -114,13 +125,16 @@ export const AuthProvider = ({ children }) => {
 
   const value = {
     currentUser,
+    selectedStaff,
     login,
     logout,
     hasPermission,
     isLoading,
     isAuthenticated: !!currentUser,
     isAdmin: currentUser?.role === 'admin',
-    isManager: currentUser?.role === 'manager' || currentUser?.role === 'admin'
+    isManager: currentUser?.role === 'manager' || currentUser?.role === 'admin',
+    selectStaff,
+    clearStaffSelection
   };
 
   return (

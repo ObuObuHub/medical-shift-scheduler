@@ -10,14 +10,20 @@ import { ManagerDashboard } from './ManagerDashboard';
 import { CalendarView } from './CalendarView';
 import { AddShiftModal } from './AddShiftModal';
 
-export const StaffDashboard = () => {
+export const StaffDashboard = ({ 
+  selectedHospital: propSelectedHospital,
+  selectedStaff,
+  isGuest,
+  onChangeHospital,
+  onChangeStaff 
+}) => {
   const { currentUser, logout, isAuthenticated, hasPermission } = useAuth();
   const { shifts, staff, shiftTypes, hospitals, generateFairSchedule, deleteShift } = useData();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [currentView, setCurrentView] = useState('calendar'); // Default to Planificare view
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [addShiftModalData, setAddShiftModalData] = useState(null);
-  const [selectedHospital, setSelectedHospital] = useState(currentUser?.hospital || 'spital1');
+  const [selectedHospital, setSelectedHospital] = useState(propSelectedHospital || currentUser?.hospital || 'spital1');
 
   // If authenticated as admin or manager, show their dashboard
   if (isAuthenticated && currentUser) {
@@ -33,7 +39,7 @@ export const StaffDashboard = () => {
     setCurrentDate(prev => addMonths(prev, direction));
   };
 
-  // Get all shifts for current month (staff can see all schedules)
+  // Get shifts based on view mode
   const getAllShifts = () => {
     if (!shifts) return [];
     
@@ -46,9 +52,16 @@ export const StaffDashboard = () => {
         return shiftDate.getMonth() === currentMonth && 
                shiftDate.getFullYear() === currentYear;
       })
-      .flatMap(([date, dayShifts]) => 
-        dayShifts.map(shift => ({ ...shift, date }))
-      );
+      .flatMap(([date, dayShifts]) => {
+        // Filter by selected staff if not guest and not admin/manager
+        if (selectedStaff && !isGuest && !isAuthenticated) {
+          return dayShifts
+            .filter(shift => shift.staffIds?.includes(selectedStaff.id))
+            .map(shift => ({ ...shift, date }));
+        }
+        // Show all shifts for guests, admins, and managers
+        return dayShifts.map(shift => ({ ...shift, date }));
+      });
   };
 
   const allShifts = getAllShifts();
@@ -59,7 +72,9 @@ export const StaffDashboard = () => {
       <div className="flex items-center justify-between">
         <h2 className="text-lg sm:text-2xl font-bold text-gray-900 truncate flex-1 min-w-0 mr-2">
           <span className="sm:hidden">Program - {formatMonthYear(currentDate).split(' ')[1]}</span>
-          <span className="hidden sm:inline">Programul Meu - {formatMonthYear(currentDate)}</span>
+          <span className="hidden sm:inline">
+            {selectedStaff && !isGuest ? 'Programul Meu' : 'Program General'} - {formatMonthYear(currentDate)}
+          </span>
         </h2>
         <div className="flex items-center space-x-1 sm:space-x-2 flex-shrink-0">
           <button
@@ -240,6 +255,8 @@ export const StaffDashboard = () => {
       setAddShiftModalData={setAddShiftModalData}
       selectedHospital={selectedHospital}
       currentUser={currentUser}
+      selectedStaff={selectedStaff}
+      isGuest={isGuest}
     />
   );
 
@@ -256,6 +273,28 @@ export const StaffDashboard = () => {
           <div className="flex items-center justify-between h-14 sm:h-16">
             <div className="flex items-center min-w-0 flex-1">
               <h1 className="text-lg sm:text-xl font-bold text-gray-900 truncate">Program Medical</h1>
+              {/* Show selected hospital and staff */}
+              {!isAuthenticated && (
+                <div className="ml-4 flex items-center space-x-4 text-sm text-gray-600">
+                  <span className="hidden sm:inline">
+                    {hospitals.find(h => h.id === selectedHospital)?.name}
+                  </span>
+                  {selectedStaff && !isGuest && (
+                    <>
+                      <span className="text-gray-400">|</span>
+                      <span className="font-medium text-gray-700">
+                        {selectedStaff.name}
+                      </span>
+                    </>
+                  )}
+                  {isGuest && (
+                    <>
+                      <span className="text-gray-400">|</span>
+                      <span className="text-gray-500">Vizitator</span>
+                    </>
+                  )}
+                </div>
+              )}
             </div>
 
             <div className="flex items-center space-x-2">
@@ -286,6 +325,26 @@ export const StaffDashboard = () => {
               </div>
 
               <div className="flex items-center space-x-1 sm:space-x-2">
+                {/* Change Hospital/Staff buttons for non-authenticated users */}
+                {!isAuthenticated && (
+                  <>
+                    <button
+                      onClick={onChangeHospital}
+                      className="px-2 sm:px-3 py-1 text-xs sm:text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors"
+                    >
+                      Schimbă Spital
+                    </button>
+                    {!isGuest && (
+                      <button
+                        onClick={onChangeStaff}
+                        className="px-2 sm:px-3 py-1 text-xs sm:text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors"
+                      >
+                        Schimbă Personal
+                      </button>
+                    )}
+                  </>
+                )}
+                
                 {isAuthenticated && currentUser ? (
                   <>
                     <User className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400" />
