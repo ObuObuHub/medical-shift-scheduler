@@ -300,9 +300,9 @@ export const MatrixView = ({
   }
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+    <div className="bg-white rounded-lg shadow-sm border border-gray-200 flex flex-col max-h-[calc(100vh-8rem)]">
       {/* Header with filters - Mobile Responsive */}
-      <div className="p-2 sm:p-4 border-b border-gray-200">
+      <div className="p-2 sm:p-4 border-b border-gray-200 flex-shrink-0">
         {/* Title with Month Navigation */}
         <div className="flex items-center justify-between mb-3 sm:mb-0">
           <div className="flex items-center">
@@ -352,13 +352,14 @@ export const MatrixView = ({
         </div>
       </div>
 
-      {/* Matrix Table - Mobile Optimized */}
-      <div className="overflow-x-auto touch-pan-x">
-        <table className="w-full min-w-max">
+      {/* Matrix Table - Mobile Optimized with vertical scroll */}
+      <div className="overflow-auto touch-pan-y flex-1 -webkit-overflow-scrolling-touch">
+        <div className="overflow-x-auto touch-pan-x -webkit-overflow-scrolling-touch">
+          <table className="w-full min-w-max">
           {/* Date Headers */}
-          <thead>
+          <thead className="sticky top-0 z-20 bg-white">
             <tr>
-              <th className="sticky left-0 z-10 px-2 sm:px-4 py-3 bg-gray-100 border-b border-gray-300 text-left text-sm font-medium text-gray-700 min-w-40 sm:min-w-48">
+              <th className="sticky left-0 z-30 px-2 sm:px-4 py-3 bg-gray-100 border-b border-gray-300 text-left text-sm font-medium text-gray-700 min-w-40 sm:min-w-48">
                 Personal
               </th>
               {dateRange.map(date => (
@@ -455,18 +456,19 @@ export const MatrixView = ({
               </tr>
             ))}
           </tbody>
-        </table>
-        
-        {filteredStaff.length === 0 && (
-          <div className="p-8 text-center text-gray-500">
-            <Users className="w-12 h-12 mx-auto mb-4 text-gray-300" />
-            <p>Nu există personal în departamentul selectat</p>
-          </div>
-        )}
+          </table>
+          
+          {filteredStaff.length === 0 && (
+            <div className="p-8 text-center text-gray-500">
+              <Users className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+              <p>Nu există personal în departamentul selectat</p>
+            </div>
+          )}
+        </div>
       </div>
       
-      {/* Legend */}
-      <div className="p-4 border-t border-gray-200 bg-gray-50">
+      {/* Legend - Fixed at bottom */}
+      <div className="p-4 border-t border-gray-200 bg-gray-50 flex-shrink-0">
         <div className="flex flex-wrap items-center justify-between">
           <div className="flex items-center space-x-6">
             <div className="text-sm font-medium text-gray-700">Tipuri de ture:</div>
