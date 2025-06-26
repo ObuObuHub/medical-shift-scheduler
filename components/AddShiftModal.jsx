@@ -121,7 +121,6 @@ export const AddShiftModal = ({
     }
   }, [formData.staffIds, formData.shiftTypeId, formData.department, selectedDate, shifts, staff, editingShift, shiftTypes]);
 
-
   const handleStaffToggle = (staffId) => {
     setFormData(prev => ({
       ...prev,
@@ -383,7 +382,6 @@ export const AddShiftModal = ({
                   )}
                 </div>
               </div>
-
 
               {/* Conflicts Preview - Mobile Optimized */}
               {conflicts.length > 0 && (

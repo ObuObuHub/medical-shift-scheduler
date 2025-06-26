@@ -22,8 +22,7 @@ export default async function handler(req, res) {
         return res.status(405).json({ error: 'Method not allowed' });
     }
   } catch (error) {
-    console.error('Shifts API error:', error);
-    return res.status(500).json({ error: 'Internal server error' });
+        return res.status(500).json({ error: 'Internal server error' });
   }
 }
 
@@ -86,8 +85,7 @@ async function getShifts(req, res) {
 
     res.status(200).json(groupedShifts);
   } catch (error) {
-    console.error('Get shifts error:', error);
-    res.status(500).json({ error: 'Failed to fetch shifts' });
+        res.status(500).json({ error: 'Failed to fetch shifts' });
   }
 }
 
@@ -139,8 +137,7 @@ async function createShift(req, res) {
 
     res.status(201).json(newShift);
   } catch (error) {
-    console.error('Create shift error:', error);
-    res.status(500).json({ error: 'Failed to create shift' });
+        res.status(500).json({ error: 'Failed to create shift' });
   }
 }
 
@@ -165,8 +162,7 @@ async function deleteShift(req, res) {
 
     res.status(200).json({ message: 'Shift deleted successfully' });
   } catch (error) {
-    console.error('Delete shift error:', error);
-    res.status(500).json({ error: 'Failed to delete shift' });
+        res.status(500).json({ error: 'Failed to delete shift' });
   }
 }
 
@@ -203,7 +199,6 @@ async function clearAllShifts(req, res) {
       clearedCount: result.length 
     });
   } catch (error) {
-    console.error('Clear all shifts error:', error);
-    res.status(500).json({ error: 'Failed to clear shifts' });
+        res.status(500).json({ error: 'Failed to clear shifts' });
   }
 }

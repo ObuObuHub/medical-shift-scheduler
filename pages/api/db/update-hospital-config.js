@@ -66,7 +66,6 @@ export default async function handler(req, res) {
       config: result.rows[0]
     });
   } catch (error) {
-    console.error('Update error:', error);
-    res.status(500).json({ error: 'Failed to update configuration', details: error.message });
+        res.status(500).json({ error: 'Failed to update configuration', details: error.message });
   }
 }

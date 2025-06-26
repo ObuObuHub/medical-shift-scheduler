@@ -15,8 +15,7 @@ export default async function handler(req, res) {
         return res.status(405).json({ error: 'Method not allowed' });
     }
   } catch (error) {
-    console.error('Hospitals API error:', error);
-    return res.status(500).json({ error: 'Internal server error' });
+        return res.status(500).json({ error: 'Internal server error' });
   }
 }
 
@@ -34,8 +33,7 @@ async function getHospitals(req, res) {
 
     res.status(200).json(legacyHospitals);
   } catch (error) {
-    console.error('Get hospitals error:', error);
-    res.status(500).json({ error: 'Failed to fetch hospitals' });
+        res.status(500).json({ error: 'Failed to fetch hospitals' });
   }
 }
 
@@ -65,7 +63,6 @@ async function createHospital(req, res) {
 
     res.status(201).json(newHospital);
   } catch (error) {
-    console.error('Create hospital error:', error);
-    res.status(500).json({ error: 'Failed to create hospital' });
+        res.status(500).json({ error: 'Failed to create hospital' });
   }
 }

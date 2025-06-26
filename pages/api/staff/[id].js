@@ -18,8 +18,7 @@ export default async function handler(req, res) {
         return res.status(405).json({ error: 'Method not allowed' });
     }
   } catch (error) {
-    console.error('Staff API error:', error);
-    return res.status(500).json({ error: 'Internal server error' });
+        return res.status(500).json({ error: 'Internal server error' });
   }
 }
 
@@ -66,8 +65,7 @@ async function updateStaff(req, res, id) {
 
     res.status(200).json(updatedStaffResult);
   } catch (error) {
-    console.error('Update staff error:', error);
-    res.status(500).json({ error: 'Failed to update staff member' });
+        res.status(500).json({ error: 'Failed to update staff member' });
   }
 }
 
@@ -86,7 +84,6 @@ async function deleteStaff(req, res, id) {
 
     res.status(200).json({ message: 'Staff member deleted successfully' });
   } catch (error) {
-    console.error('Delete staff error:', error);
-    res.status(500).json({ error: 'Failed to delete staff member' });
+        res.status(500).json({ error: 'Failed to delete staff member' });
   }
 }

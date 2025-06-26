@@ -15,8 +15,7 @@ export default async function handler(req, res) {
         return res.status(405).json({ error: 'Method not allowed' });
     }
   } catch (error) {
-    console.error('Templates API error:', error);
-    return res.status(500).json({ error: 'Internal server error' });
+        return res.status(500).json({ error: 'Internal server error' });
   }
 }
 
@@ -54,8 +53,7 @@ async function getTemplates(req, res) {
 
     res.status(200).json(templates);
   } catch (error) {
-    console.error('Get templates error:', error);
-    res.status(500).json({ error: 'Failed to fetch templates' });
+        res.status(500).json({ error: 'Failed to fetch templates' });
   }
 }
 
@@ -89,7 +87,6 @@ async function createTemplate(req, res) {
 
     res.status(201).json(newTemplate);
   } catch (error) {
-    console.error('Create template error:', error);
-    res.status(500).json({ error: 'Failed to create template' });
+        res.status(500).json({ error: 'Failed to create template' });
   }
 }

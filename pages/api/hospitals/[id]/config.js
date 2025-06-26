@@ -91,8 +91,7 @@ export default async function handler(req, res) {
 
       res.status(200).json(rows[0]);
     } catch (error) {
-      console.error('Error fetching hospital config:', error);
-      res.status(500).json({ error: 'Failed to fetch hospital configuration' });
+            res.status(500).json({ error: 'Failed to fetch hospital configuration' });
     }
   } else if (req.method === 'PUT') {
     // Update hospital configuration (admin only)
@@ -176,8 +175,7 @@ export default async function handler(req, res) {
         config: result.rows[0] 
       });
     } catch (error) {
-      console.error('Error updating hospital config:', error);
-      res.status(500).json({ error: 'Failed to update hospital configuration' });
+            res.status(500).json({ error: 'Failed to update hospital configuration' });
     }
   } else if (req.method === 'DELETE') {
     // Soft delete configuration (admin only)
@@ -193,8 +191,7 @@ export default async function handler(req, res) {
 
       res.status(200).json({ message: 'Hospital configuration deleted successfully' });
     } catch (error) {
-      console.error('Error deleting hospital config:', error);
-      res.status(500).json({ error: 'Failed to delete hospital configuration' });
+            res.status(500).json({ error: 'Failed to delete hospital configuration' });
     }
   } else {
     res.status(405).json({ error: 'Method not allowed' });

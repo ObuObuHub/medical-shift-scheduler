@@ -241,8 +241,7 @@ export const CalendarView = ({
                                   try {
                                     await reserveShift(fullDayShift.id);
                                   } catch (error) {
-                                    console.error('Failed to reserve shift:', error);
-                                  }
+                                                                      }
                                 }}
                                 className="p-1 bg-green-500 text-white rounded hover:bg-green-600"
                                 title="Rezervă tură"
@@ -257,8 +256,7 @@ export const CalendarView = ({
                                   try {
                                     await cancelReservation(fullDayShift.id);
                                   } catch (error) {
-                                    console.error('Failed to cancel reservation:', error);
-                                  }
+                                                                      }
                                 }}
                                 className="p-1 bg-red-500 text-white rounded hover:bg-red-600"
                                 title="Anulează rezervarea"
@@ -394,8 +392,7 @@ export const CalendarView = ({
                                     try {
                                       await reserveShift(shift.id);
                                     } catch (error) {
-                                      console.error('Failed to reserve shift:', error);
-                                    }
+                                                                          }
                                   }}
                                   className="p-1 bg-green-500 text-white rounded hover:bg-green-600"
                                   title="Rezervă tură"
@@ -410,8 +407,7 @@ export const CalendarView = ({
                                     try {
                                       await cancelReservation(shift.id);
                                     } catch (error) {
-                                      console.error('Failed to cancel reservation:', error);
-                                    }
+                                                                          }
                                   }}
                                   className="p-1 bg-red-500 text-white rounded hover:bg-red-600"
                                   title="Anulează rezervarea"

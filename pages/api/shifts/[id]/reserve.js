@@ -108,8 +108,7 @@ export default async function handler(req, res) {
         shift: updatedRows[0] 
       });
     } catch (error) {
-      console.error('Error reserving shift:', error);
-      res.status(500).json({ error: 'Failed to reserve shift' });
+            res.status(500).json({ error: 'Failed to reserve shift' });
     }
   } else if (req.method === 'DELETE') {
     // Cancel reservation
@@ -157,8 +156,7 @@ export default async function handler(req, res) {
         shift: updatedRows[0] 
       });
     } catch (error) {
-      console.error('Error cancelling reservation:', error);
-      res.status(500).json({ error: 'Failed to cancel reservation' });
+            res.status(500).json({ error: 'Failed to cancel reservation' });
     }
   } else {
     res.status(405).json({ error: 'Method not allowed' });

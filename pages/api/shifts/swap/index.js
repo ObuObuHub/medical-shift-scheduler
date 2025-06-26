@@ -74,8 +74,7 @@ export default async function handler(req, res) {
       const { rows } = await sql.query(query, params);
       res.status(200).json(rows);
     } catch (error) {
-      console.error('Error fetching swap requests:', error);
-      res.status(500).json({ error: 'Failed to fetch swap requests' });
+            res.status(500).json({ error: 'Failed to fetch swap requests' });
     }
   } else if (req.method === 'POST') {
     // Create new swap request
@@ -183,8 +182,7 @@ export default async function handler(req, res) {
         swapRequest: rows[0] 
       });
     } catch (error) {
-      console.error('Error creating swap request:', error);
-      res.status(500).json({ error: 'Failed to create swap request' });
+            res.status(500).json({ error: 'Failed to create swap request' });
     }
   } else {
     res.status(405).json({ error: 'Method not allowed' });

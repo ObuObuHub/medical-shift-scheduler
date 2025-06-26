@@ -34,8 +34,7 @@ export const MatrixView = ({
       }
       return dates;
     } catch (error) {
-      console.error('Error generating date range:', error);
-      return [];
+            return [];
     }
   }, [currentDate]);
   
@@ -57,8 +56,7 @@ export const MatrixView = ({
         return a.name.localeCompare(b.name);
       });
     } catch (error) {
-      console.error('Error filtering staff:', error);
-      return [];
+            return [];
     }
   }, [staff, selectedHospital, selectedDepartment]);
   
@@ -71,8 +69,7 @@ export const MatrixView = ({
       );
       return [...new Set(hospitalStaff.map(s => s.specialization))].sort();
     } catch (error) {
-      console.error('Error getting departments:', error);
-      return [];
+            return [];
     }
   }, [staff, selectedHospital]);
   
@@ -84,8 +81,7 @@ export const MatrixView = ({
       const dayShifts = shifts[dateKey] || [];
       return dayShifts.find(shift => shift && shift.staffIds && shift.staffIds.includes(staffId));
     } catch (error) {
-      console.error('Error getting shift for staff and date:', error);
-      return null;
+            return null;
     }
   };
 
@@ -97,8 +93,7 @@ export const MatrixView = ({
       const dayShifts = shifts[dateKey] || [];
       return dayShifts.filter(shift => shift && shift.staffIds && shift.staffIds.includes(staffId));
     } catch (error) {
-      console.error('Error getting shifts for staff and date:', error);
-      return [];
+            return [];
     }
   };
 
@@ -130,8 +125,7 @@ export const MatrixView = ({
     
     return { type: 'other', shifts: staffShifts };
   };
-  
-  
+
   // Handle cell click for shift assignment/deletion
   const handleCellClick = (staffId, date) => {
     if (!hasPermission('assign_staff')) return;
@@ -219,7 +213,6 @@ export const MatrixView = ({
     });
   }, [shifts, currentDate]);
 
-
   // Handle export to text file
   const handleExportSchedule = () => {
     const exportContent = exportShiftsToText(shifts, staff, currentDate);
@@ -260,8 +253,7 @@ export const MatrixView = ({
         }
       }
     } catch (error) {
-      console.error('Error generating shifts:', error);
-      alert('Eroare la generarea turelor. Vă rugăm să încercați din nou.');
+            alert('Eroare la generarea turelor. Vă rugăm să încercați din nou.');
     }
   };
   

@@ -12,8 +12,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    console.log('Starting database migration...');
-    const results = [];
+        const results = [];
 
     // 1. Update shifts table
     try {
@@ -204,7 +203,6 @@ export default async function handler(req, res) {
       }
     });
   } catch (error) {
-    console.error('Migration error:', error);
-    res.status(500).json({ error: 'Migration failed', details: error.message });
+        res.status(500).json({ error: 'Migration failed', details: error.message });
   }
 }

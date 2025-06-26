@@ -72,29 +72,25 @@ export const DataProvider = ({ children }) => {
         setHospitals(hospitalsData.value);
         setIsOffline(false);
       } else {
-        console.warn('Failed to load hospitals from API, using defaults');
-        setIsOffline(true);
+                setIsOffline(true);
       }
 
       if (staffData.status === 'fulfilled') {
         setStaff(staffData.value);
         setIsOffline(false);
       } else {
-        console.warn('Failed to load staff from API, using defaults');
-        setIsOffline(true);
+                setIsOffline(true);
       }
 
       if (shiftsData.status === 'fulfilled') {
         setShifts(shiftsData.value);
         setIsOffline(false);
       } else {
-        console.warn('Failed to load shifts from API, using defaults');
-        setIsOffline(true);
+                setIsOffline(true);
       }
 
     } catch (error) {
-      console.error('Error loading initial data:', error);
-      setIsOffline(true);
+            setIsOffline(true);
     } finally {
       setIsLoading(false);
     }
@@ -126,9 +122,8 @@ export const DataProvider = ({ children }) => {
     if (!isOffline) {
       try {
         // TODO: Add API endpoint for shift types
-        console.warn('Shift type API not implemented yet, using local state');
-      } catch (error) {
-        console.error('Failed to create shift type:', error);
+              } catch (error) {
+        addNotification('Eroare la gestionarea tipului de tură', 'warning');
       }
     }
     
@@ -140,9 +135,8 @@ export const DataProvider = ({ children }) => {
     if (!isOffline) {
       try {
         // TODO: Add API endpoint for shift types
-        console.warn('Shift type API not implemented yet, using local state');
-      } catch (error) {
-        console.error('Failed to update shift type:', error);
+              } catch (error) {
+        addNotification('Eroare la gestionarea tipului de tură', 'warning');
       }
     }
     
@@ -159,9 +153,8 @@ export const DataProvider = ({ children }) => {
     if (!isOffline) {
       try {
         // TODO: Add API endpoint for shift types
-        console.warn('Shift type API not implemented yet, using local state');
-      } catch (error) {
-        console.error('Failed to delete shift type:', error);
+              } catch (error) {
+        addNotification('Eroare la gestionarea tipului de tură', 'warning');
       }
     }
     
@@ -193,8 +186,7 @@ export const DataProvider = ({ children }) => {
         return staffMember;
       }
     } catch (error) {
-      console.error('Failed to add staff:', error);
-      addNotification('Eroare la adăugarea personalului. Salvat local.', 'warning');
+            addNotification('Eroare la adăugarea personalului. Salvat local.', 'warning');
       // Fallback to local state on error
       const staffMember = {
         id: Date.now(),
@@ -217,7 +209,7 @@ export const DataProvider = ({ children }) => {
         setStaff(prev => prev.map(s => s.id === id ? { ...s, ...updates } : s));
       }
     } catch (error) {
-      console.error('Failed to update staff:', error);
+      addNotification('Eroare la actualizarea personalului. Modificări salvate local.', 'warning');
       // Fallback to local state on error
       setStaff(prev => prev.map(s => s.id === id ? { ...s, ...updates } : s));
     }
@@ -233,7 +225,7 @@ export const DataProvider = ({ children }) => {
         setStaff(prev => prev.filter(s => s.id !== id));
       }
     } catch (error) {
-      console.error('Failed to delete staff:', error);
+      addNotification('Eroare la ștergerea personalului. Modificări salvate local.', 'warning');
       // Fallback to local state on error
       setStaff(prev => prev.filter(s => s.id !== id));
     }
@@ -256,8 +248,7 @@ export const DataProvider = ({ children }) => {
         return newHospital;
       }
     } catch (error) {
-      console.error('Failed to add hospital:', error);
-      addNotification('Eroare la adăugarea spitalului. Salvat local.', 'warning');
+            addNotification('Eroare la adăugarea spitalului. Salvat local.', 'warning');
       // Fallback to local state on error
       const newHospital = {
         id: `spital${Date.now()}`,
@@ -279,7 +270,7 @@ export const DataProvider = ({ children }) => {
         setHospitals(prev => prev.map(h => h.id === id ? { ...h, name } : h));
       }
     } catch (error) {
-      console.error('Failed to update hospital:', error);
+      addNotification('Eroare la actualizarea spitalului. Modificări salvate local.', 'warning');
       // Fallback to local state on error
       setHospitals(prev => prev.map(h => h.id === id ? { ...h, name } : h));
     }
@@ -287,8 +278,7 @@ export const DataProvider = ({ children }) => {
 
   const deleteHospital = async (id) => {
     if (hospitals.length <= 1) {
-      console.warn('Cannot delete last hospital');
-      return;
+            return;
     }
 
     try {
@@ -300,13 +290,11 @@ export const DataProvider = ({ children }) => {
         setHospitals(prev => prev.filter(h => h.id !== id));
       }
     } catch (error) {
-      console.error('Failed to delete hospital:', error);
+      addNotification('Eroare la ștergerea spitalului. Modificări salvate local.', 'warning');
       // Fallback to local state on error
       setHospitals(prev => prev.filter(h => h.id !== id));
     }
   };
-
-
 
   // Fair scheduling engine methods
   const generateFairSchedule = async (hospitalId, date) => {
@@ -314,8 +302,7 @@ export const DataProvider = ({ children }) => {
 
     const hospitalStaff = staff.filter(s => s.hospital === hospitalId);
     if (hospitalStaff.length === 0) {
-      console.warn('No medical staff available for fair scheduling');
-      addNotification('Nu există personal disponibil pentru generarea programului.', 'error');
+            addNotification('Nu există personal disponibil pentru generarea programului.', 'error');
       return;
     }
 
@@ -367,12 +354,10 @@ export const DataProvider = ({ children }) => {
       // Merge with existing shifts from other months/hospitals
       setShifts(prevShifts => ({ ...prevShifts, ...newShifts }));
       
-      console.log('Fair schedule generated successfully with hospital-specific patterns');
-      addNotification('Program generat cu succes', 'success');
+            addNotification('Program generat cu succes', 'success');
       return { shifts: newShifts };
     } catch (error) {
-      console.error('Error generating fair schedule:', error);
-      addNotification('Eroare la generarea programului', 'error');
+            addNotification('Eroare la generarea programului', 'error');
       throw error;
     }
   };
@@ -384,17 +369,7 @@ export const DataProvider = ({ children }) => {
   const deleteShift = async (shiftId) => {
     try {
       if (!isOffline) {
-        const response = await fetch(`/api/shifts?shiftId=${shiftId}`, {
-          method: 'DELETE',
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
-            'Content-Type': 'application/json'
-          }
-        });
-
-        if (!response.ok) {
-          throw new Error('Failed to delete shift');
-        }
+        await apiClient.deleteShift(shiftId);
       }
 
       // Remove shift from local state
@@ -413,9 +388,8 @@ export const DataProvider = ({ children }) => {
         return newShifts;
       });
 
-      console.log('Shift deleted successfully');
     } catch (error) {
-      console.error('Failed to delete shift:', error);
+      addNotification('Eroare la ștergerea turei', 'error');
       throw error;
     }
   };
@@ -431,6 +405,7 @@ export const DataProvider = ({ children }) => {
         if (startDate) params.append('startDate', startDate);
         if (endDate) params.append('endDate', endDate);
         
+        // Use direct fetch for DELETE with query params
         const response = await fetch(`/api/shifts?${params}`, {
           method: 'DELETE',
           headers: {
@@ -462,9 +437,8 @@ export const DataProvider = ({ children }) => {
         }
       });
 
-      console.log('All shifts cleared successfully');
     } catch (error) {
-      console.error('Failed to clear shifts:', error);
+      addNotification('Eroare la ștergerea turelor', 'error');
       throw error;
     }
   };
@@ -491,12 +465,10 @@ export const DataProvider = ({ children }) => {
       // Generate fresh schedule using V2 engine
       await generateFairSchedule(hospitalId, date);
       
-      console.log('Schedule regenerated from scratch successfully');
-      addNotification('Program regenerat cu succes', 'success');
+            addNotification('Program regenerat cu succes', 'success');
       return { shifts: shifts };
     } catch (error) {
-      console.error('Failed to regenerate schedule:', error);
-      addNotification('Eroare la regenerarea programului', 'error');
+            addNotification('Eroare la regenerarea programului', 'error');
       throw error;
     }
   };
@@ -513,7 +485,7 @@ export const DataProvider = ({ children }) => {
       }
       return [];
     } catch (error) {
-      console.error('Failed to load templates:', error);
+      // Don't show notification for template loading errors
       return [];
     }
   };
@@ -555,8 +527,7 @@ export const DataProvider = ({ children }) => {
       if (!isOffline) {
         const newTemplate = await apiClient.createTemplate(templateData);
         setTemplates(prev => [newTemplate, ...prev]);
-        console.log(`Template "${name}" saved successfully`);
-        return newTemplate;
+                return newTemplate;
       } else {
         // Local fallback
         const newTemplate = { 
@@ -568,7 +539,7 @@ export const DataProvider = ({ children }) => {
         return newTemplate;
       }
     } catch (error) {
-      console.error('Failed to save template:', error);
+      addNotification(`Eroare la salvarea template-ului: ${error.message}`, 'error');
       throw error;
     }
   };
@@ -596,10 +567,10 @@ export const DataProvider = ({ children }) => {
         ...template.templateData
       }));
 
-      console.log(`Template "${template.name}" loaded successfully`);
+      addNotification('Template încărcat cu succes', 'success');
       return template;
     } catch (error) {
-      console.error('Failed to load template:', error);
+      addNotification(`Eroare la încărcarea template-ului: ${error.message}`, 'error');
       throw error;
     }
   };
@@ -615,9 +586,9 @@ export const DataProvider = ({ children }) => {
       }
 
       setTemplates(prev => prev.filter(t => t.id !== templateId));
-      console.log('Template deleted successfully');
+      addNotification('Template șters cu succes', 'success');
     } catch (error) {
-      console.error('Failed to delete template:', error);
+      addNotification('Eroare la ștergerea template-ului', 'error');
       throw error;
     }
   };
@@ -625,20 +596,7 @@ export const DataProvider = ({ children }) => {
   // New shift management methods
   const reserveShift = async (shiftId) => {
     try {
-      const response = await fetch(`/api/shifts/${shiftId}/reserve`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to reserve shift');
-      }
-
-      const result = await response.json();
+      const result = await apiClient.reserveShift(shiftId);
       
       // Update local shifts state
       setShifts(prevShifts => {
@@ -654,28 +612,14 @@ export const DataProvider = ({ children }) => {
       addNotification('Tură rezervată cu succes', 'success');
       return result.shift;
     } catch (error) {
-      console.error('Failed to reserve shift:', error);
-      addNotification(error.message || 'Eroare la rezervarea turei', 'error');
+            addNotification(error.message || 'Eroare la rezervarea turei', 'error');
       throw error;
     }
   };
 
   const cancelReservation = async (shiftId) => {
     try {
-      const response = await fetch(`/api/shifts/${shiftId}/reserve`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to cancel reservation');
-      }
-
-      const result = await response.json();
+      const result = await apiClient.cancelReservation(shiftId);
       
       // Update local shifts state
       setShifts(prevShifts => {
@@ -691,29 +635,14 @@ export const DataProvider = ({ children }) => {
       addNotification('Rezervare anulată cu succes', 'success');
       return result.shift;
     } catch (error) {
-      console.error('Failed to cancel reservation:', error);
-      addNotification(error.message || 'Eroare la anularea rezervării', 'error');
+            addNotification(error.message || 'Eroare la anularea rezervării', 'error');
       throw error;
     }
   };
 
   const createSwapRequest = async (swapData) => {
     try {
-      const response = await fetch('/api/shifts/swap', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(swapData)
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to create swap request');
-      }
-
-      const result = await response.json();
+      const result = await apiClient.createSwapRequest(swapData);
       
       // Update local swap requests
       await loadSwapRequests();
@@ -721,50 +650,25 @@ export const DataProvider = ({ children }) => {
       addNotification('Cerere de schimb creată cu succes', 'success');
       return result.swapRequest;
     } catch (error) {
-      console.error('Failed to create swap request:', error);
-      addNotification(error.message || 'Eroare la crearea cererii de schimb', 'error');
+            addNotification(error.message || 'Eroare la crearea cererii de schimb', 'error');
       throw error;
     }
   };
 
   const loadSwapRequests = async () => {
     try {
-      const response = await fetch('/api/shifts/swap', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to load swap requests');
-      }
-
-      const requests = await response.json();
+      const requests = await apiClient.getSwapRequests();
       setSwapRequests(requests);
       return requests;
     } catch (error) {
-      console.error('Failed to load swap requests:', error);
+      // Silent error - this is called frequently
       return [];
     }
   };
 
   const updateSwapRequest = async (requestId, status, reviewComment) => {
     try {
-      const response = await fetch(`/api/shifts/swap/${requestId}`, {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ status, reviewComment })
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to update swap request');
-      }
-
-      const result = await response.json();
+      const result = await apiClient.updateSwapRequest(requestId, status, reviewComment);
       
       // Reload swap requests and shifts
       await Promise.all([loadSwapRequests(), loadInitialData()]);
@@ -772,30 +676,18 @@ export const DataProvider = ({ children }) => {
       addNotification(`Cerere de schimb ${status === 'approved' ? 'aprobată' : 'respinsă'} cu succes`, 'success');
       return result.swapRequest;
     } catch (error) {
-      console.error('Failed to update swap request:', error);
-      addNotification(error.message || 'Eroare la actualizarea cererii de schimb', 'error');
+            addNotification(error.message || 'Eroare la actualizarea cererii de schimb', 'error');
       throw error;
     }
   };
 
   const loadHospitalConfig = async (hospitalId) => {
     try {
-      const response = await fetch(`/api/hospitals/${hospitalId}/config`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to load hospital config');
-      }
-
-      const config = await response.json();
+      const config = await apiClient.getHospitalConfig(hospitalId);
       setHospitalConfigs(prev => ({ ...prev, [hospitalId]: config }));
       return config;
     } catch (error) {
-      console.error('Failed to load hospital config:', error);
-      // Return default config based on hospital
+            // Return default config based on hospital
       if (hospitalId === 'spital2') {
         // Spitalul "Prof. Dr. Eduard Apetrei" Buhuși - only 24h shifts
         return {
@@ -836,28 +728,13 @@ export const DataProvider = ({ children }) => {
 
   const updateHospitalConfig = async (hospitalId, config) => {
     try {
-      const response = await fetch(`/api/hospitals/${hospitalId}/config`, {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(config)
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to update hospital config');
-      }
-
-      const result = await response.json();
+      const result = await apiClient.updateHospitalConfig(hospitalId, config);
       setHospitalConfigs(prev => ({ ...prev, [hospitalId]: result.config }));
       
       addNotification('Configurație spital actualizată cu succes', 'success');
       return result.config;
     } catch (error) {
-      console.error('Failed to update hospital config:', error);
-      addNotification(error.message || 'Eroare la actualizarea configurației spitalului', 'error');
+            addNotification(error.message || 'Eroare la actualizarea configurației spitalului', 'error');
       throw error;
     }
   };

@@ -17,8 +17,7 @@ const SwapApprovalPanel = ({ selectedHospital }) => {
       try {
         await loadSwapRequests();
       } catch (error) {
-        console.error('Failed to load swap requests:', error);
-      } finally {
+              } finally {
         setLoading(false);
       }
     };
@@ -35,8 +34,7 @@ const SwapApprovalPanel = ({ selectedHospital }) => {
       setReviewComment('');
       await loadRequests();
     } catch (error) {
-      console.error('Failed to update swap request:', error);
-    }
+          }
   };
 
   const filteredRequests = swapRequests.filter(request => {

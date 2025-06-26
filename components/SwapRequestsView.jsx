@@ -15,8 +15,7 @@ export const SwapRequestsView = ({ selectedHospital }) => {
       try {
         await loadSwapRequests();
       } catch (error) {
-        console.error('Failed to load swap requests:', error);
-      } finally {
+              } finally {
         setLoading(false);
       }
     };
@@ -29,8 +28,7 @@ export const SwapRequestsView = ({ selectedHospital }) => {
     try {
       await loadSwapRequests();
     } catch (error) {
-      console.error('Failed to load swap requests:', error);
-    } finally {
+          } finally {
       setLoading(false);
     }
   };

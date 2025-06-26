@@ -8,8 +8,7 @@ export default async function handler(req, res) {
 
   try {
     // Allow database initialization for initial setup
-    console.log('Initializing database for first-time setup...');
-
+    
     // Initialize database tables
     await initializeTables();
     
@@ -21,8 +20,7 @@ export default async function handler(req, res) {
       note: 'Default admin credentials have been created with secure passwords'
     });
   } catch (error) {
-    console.error('Database initialization error:', error);
-    res.status(500).json({ 
+        res.status(500).json({ 
       error: 'Failed to initialize database'
     });
   }

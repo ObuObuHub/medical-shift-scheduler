@@ -15,8 +15,7 @@ export default async function handler(req, res) {
         return res.status(405).json({ error: 'Method not allowed' });
     }
   } catch (error) {
-    console.error('Staff API error:', error);
-    return res.status(500).json({ error: 'Internal server error' });
+        return res.status(500).json({ error: 'Internal server error' });
   }
 }
 
@@ -45,8 +44,7 @@ async function getStaff(req, res) {
 
     res.status(200).json(legacyStaff);
   } catch (error) {
-    console.error('Get staff error:', error);
-    res.status(500).json({ error: 'Failed to fetch staff' });
+        res.status(500).json({ error: 'Failed to fetch staff' });
   }
 }
 
@@ -79,7 +77,6 @@ async function createStaff(req, res) {
 
     res.status(201).json(newStaff);
   } catch (error) {
-    console.error('Create staff error:', error);
-    res.status(500).json({ error: 'Failed to create staff member' });
+        res.status(500).json({ error: 'Failed to create staff member' });
   }
 }

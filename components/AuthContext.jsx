@@ -46,8 +46,7 @@ export const AuthProvider = ({ children }) => {
         const user = JSON.parse(savedUser);
         setCurrentUser(user);
       } catch (error) {
-        console.error('Error parsing saved user:', error);
-        localStorage.removeItem('currentUser');
+                localStorage.removeItem('currentUser');
         apiClient.logout();
       }
     }
@@ -89,8 +88,7 @@ export const AuthProvider = ({ children }) => {
       setCurrentUser(userSession);
       return { success: true, user: userSession };
     } catch (error) {
-      console.error('Login error:', error);
-      return { success: false, error: error.message || 'Eroare la autentificare' };
+            return { success: false, error: error.message || 'Eroare la autentificare' };
     }
   };
 

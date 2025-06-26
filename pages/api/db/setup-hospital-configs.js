@@ -163,7 +163,6 @@ export default async function handler(req, res) {
       }
     });
   } catch (error) {
-    console.error('Setup error:', error);
-    res.status(500).json({ error: 'Failed to setup configurations', details: error.message });
+        res.status(500).json({ error: 'Failed to setup configurations', details: error.message });
   }
 }

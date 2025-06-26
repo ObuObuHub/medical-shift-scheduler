@@ -256,8 +256,7 @@ export const StaffDashboard = ({
       try {
         await reserveShift(openShift.id);
       } catch (error) {
-        console.error('Failed to reserve shift:', error);
-      }
+              }
     }
   };
 

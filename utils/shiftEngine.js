@@ -302,8 +302,7 @@ export function convertScheduleToShifts(days, staff, shiftTypes) {
         break;
 
       default:
-        console.warn(`Unknown coverage type: ${day.coverageType}`);
-        break;
+                break;
     }
   });
 

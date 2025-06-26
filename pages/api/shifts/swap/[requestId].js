@@ -54,8 +54,7 @@ export default async function handler(req, res) {
 
       res.status(200).json(rows[0]);
     } catch (error) {
-      console.error('Error fetching swap request:', error);
-      res.status(500).json({ error: 'Failed to fetch swap request' });
+            res.status(500).json({ error: 'Failed to fetch swap request' });
     }
   } else if (req.method === 'PUT') {
     // Update swap request (approve/reject/cancel)
@@ -204,8 +203,7 @@ export default async function handler(req, res) {
         throw error;
       }
     } catch (error) {
-      console.error('Error updating swap request:', error);
-      res.status(500).json({ error: 'Failed to update swap request' });
+            res.status(500).json({ error: 'Failed to update swap request' });
     }
   } else {
     res.status(405).json({ error: 'Method not allowed' });

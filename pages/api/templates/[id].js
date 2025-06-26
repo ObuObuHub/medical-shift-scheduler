@@ -20,8 +20,7 @@ export default async function handler(req, res) {
         return res.status(405).json({ error: 'Method not allowed' });
     }
   } catch (error) {
-    console.error('Template API error:', error);
-    return res.status(500).json({ error: 'Internal server error' });
+        return res.status(500).json({ error: 'Internal server error' });
   }
 }
 
@@ -50,8 +49,7 @@ async function getTemplate(req, res, id) {
 
     res.status(200).json(templateData);
   } catch (error) {
-    console.error('Get template error:', error);
-    res.status(500).json({ error: 'Failed to fetch template' });
+        res.status(500).json({ error: 'Failed to fetch template' });
   }
 }
 
@@ -96,8 +94,7 @@ async function updateTemplate(req, res, id) {
 
     res.status(200).json(updatedTemplateResult);
   } catch (error) {
-    console.error('Update template error:', error);
-    res.status(500).json({ error: 'Failed to update template' });
+        res.status(500).json({ error: 'Failed to update template' });
   }
 }
 
@@ -116,7 +113,6 @@ async function deleteTemplate(req, res, id) {
 
     res.status(200).json({ message: 'Template deleted successfully' });
   } catch (error) {
-    console.error('Delete template error:', error);
-    res.status(500).json({ error: 'Failed to delete template' });
+        res.status(500).json({ error: 'Failed to delete template' });
   }
 }
