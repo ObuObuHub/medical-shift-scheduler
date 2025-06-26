@@ -41,7 +41,7 @@ export default async function handler(req, res) {
           h.name as hospital_name
         FROM hospital_shift_config hsc
         JOIN hospitals h ON hsc.hospital_id = h.hospital_id
-        WHERE hsc.hospital_id = ${hospitalId} AND hsc.is_active = true
+        WHERE hsc.hospital_id = ${hospitalId}
       `;
 
       if (rows.length === 0) {
@@ -116,7 +116,7 @@ export default async function handler(req, res) {
       // Check if configuration exists
       const { rows: existingRows } = await sql`
         SELECT id FROM hospital_shift_config 
-        WHERE hospital_id = ${hospitalId} AND is_active = true
+        WHERE hospital_id = ${hospitalId}
       `;
 
       let result;
@@ -136,7 +136,7 @@ export default async function handler(req, res) {
             rules = ${JSON.stringify(rules)},
             updated_at = CURRENT_TIMESTAMP,
             created_by = ${req.user.username}
-          WHERE hospital_id = ${hospitalId} AND is_active = true
+          WHERE hospital_id = ${hospitalId}
           RETURNING *
         `;
       } else {
@@ -187,8 +187,7 @@ export default async function handler(req, res) {
 
     try {
       await sql`
-        UPDATE hospital_shift_config
-        SET is_active = false, updated_at = CURRENT_TIMESTAMP
+        DELETE FROM hospital_shift_config
         WHERE hospital_id = ${hospitalId}
       `;
 

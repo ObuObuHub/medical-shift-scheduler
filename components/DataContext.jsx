@@ -780,22 +780,42 @@ export const DataProvider = ({ children }) => {
       return config;
     } catch (error) {
       console.error('Failed to load hospital config:', error);
-      // Return default config
-      return {
-        hospital_id: hospitalId,
-        shift_pattern: 'standard_12_24',
-        weekday_shifts: ['NOAPTE'],
-        weekend_shifts: ['GARDA_ZI', 'NOAPTE', 'GARDA_24'],
-        holiday_shifts: ['GARDA_24'],
-        min_staff_per_shift: 1,
-        max_consecutive_nights: 1,
-        max_shifts_per_month: 10,
-        shift_types: shiftTypes,
-        rules: {
-          allow_consecutive_weekends: false,
-          min_rest_hours: 12
-        }
-      };
+      // Return default config based on hospital
+      if (hospitalId === 'spital2') {
+        // Spitalul "Prof. Dr. Eduard Apetrei" Buhuși - only 24h shifts
+        return {
+          hospital_id: hospitalId,
+          shift_pattern: 'only_24',
+          weekday_shifts: ['GARDA_24'],
+          weekend_shifts: ['GARDA_24'],
+          holiday_shifts: ['GARDA_24'],
+          min_staff_per_shift: 1,
+          max_consecutive_nights: 1,
+          max_shifts_per_month: 10,
+          shift_types: shiftTypes,
+          rules: {
+            allow_consecutive_weekends: false,
+            min_rest_hours: 24
+          }
+        };
+      } else {
+        // Spitalul Județean de Urgență Piatra-Neamț - complex pattern
+        return {
+          hospital_id: hospitalId,
+          shift_pattern: 'standard_12_24',
+          weekday_shifts: ['NOAPTE'],
+          weekend_shifts: ['GARDA_ZI', 'NOAPTE', 'GARDA_24'],
+          holiday_shifts: ['GARDA_24'],
+          min_staff_per_shift: 1,
+          max_consecutive_nights: 2,
+          max_shifts_per_month: 10,
+          shift_types: shiftTypes,
+          rules: {
+            allow_consecutive_weekends: true,
+            min_rest_hours: 12
+          }
+        };
+      }
     }
   };
 
