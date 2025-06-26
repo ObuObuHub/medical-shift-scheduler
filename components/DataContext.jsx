@@ -186,7 +186,8 @@ export const DataProvider = ({ children }) => {
         return staffMember;
       }
     } catch (error) {
-            addNotification('Eroare la adăugarea personalului. Salvat local.', 'warning');
+      console.error('Staff creation error:', error);
+      addNotification(`Eroare la adăugarea personalului: ${error.message}. Salvat local.`, 'warning');
       // Fallback to local state on error
       const staffMember = {
         id: Date.now(),

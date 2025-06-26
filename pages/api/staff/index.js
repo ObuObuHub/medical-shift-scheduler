@@ -56,11 +56,19 @@ async function createStaff(req, res) {
       return res.status(400).json({ error: 'Name, specialization, and hospital are required' });
     }
 
+    // Log the request for debugging
+    console.log('Creating staff:', { name, type, specialization, hospital, role, user: req.user.username });
+
     const result = await sql`
       INSERT INTO staff (name, type, specialization, hospital, role, max_guards_per_month, created_by)
       VALUES (${name.trim()}, ${type || 'medic'}, ${specialization}, ${hospital}, ${role || 'staff'}, ${maxGuardsPerMonth || 10}, ${req.user.id})
       RETURNING *;
     `;
+
+    if (!result || result.length === 0) {
+      console.error('No result returned from INSERT');
+      return res.status(500).json({ error: 'Database insert failed - no result returned' });
+    }
 
     const staff = result[0];
 
@@ -77,6 +85,7 @@ async function createStaff(req, res) {
 
     res.status(201).json(newStaff);
   } catch (error) {
-        res.status(500).json({ error: 'Failed to create staff member' });
+    console.error('Error creating staff:', error);
+    res.status(500).json({ error: `Failed to create staff member: ${error.message}` });
   }
 }
