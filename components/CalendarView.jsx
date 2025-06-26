@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { ChevronLeft, ChevronRight, Plus, Wand2, Save, Download, Trash2, RefreshCw, UserCheck } from './Icons';
-import { TemplateModal } from './TemplateModal';
 import SwapRequestModal from './SwapRequestModal';
 import { useData } from './DataContext';
 import { exportShiftsToText, downloadTextFile, generateExportFilename } from '../utils/exportUtils';
@@ -31,8 +30,6 @@ export const CalendarView = ({
   // Get context methods
   const { reserveShift, cancelReservation, createSwapRequest } = useData();
   
-  // Template modal state
-  const [templateModal, setTemplateModal] = useState({ isOpen: false, mode: null });
   
   // Swap modal state - use props if provided, otherwise local state
   const [localSwapModal, setLocalSwapModal] = useState({ isOpen: false, shift: null });
@@ -40,17 +37,17 @@ export const CalendarView = ({
   const setSwapModal = propsSetSwapModal || setLocalSwapModal;
 
   return (
-    <div className="bg-white rounded-xl shadow-lg p-6">
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center space-x-3">
-          <h2 className="text-2xl font-bold text-gray-800">
+    <div className="bg-white rounded-xl shadow-lg p-3 sm:p-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 sm:mb-6 space-y-3 sm:space-y-0">
+        <div className="flex items-center justify-between sm:justify-start sm:space-x-3">
+          <h2 className="text-lg sm:text-2xl font-bold text-gray-800">
             {months[currentDate.getMonth()]} {currentDate.getFullYear()}
           </h2>
           <div className="flex items-center space-x-1">
-            <button onClick={() => navigateMonth(-1)} className="p-2 hover:bg-gray-100 rounded-lg">
+            <button onClick={() => navigateMonth(-1)} className="p-2 hover:bg-gray-100 rounded-lg touch-manipulation">
               <ChevronLeft className="w-5 h-5" />
             </button>
-            <button onClick={() => navigateMonth(1)} className="p-2 hover:bg-gray-100 rounded-lg">
+            <button onClick={() => navigateMonth(1)} className="p-2 hover:bg-gray-100 rounded-lg touch-manipulation">
               <ChevronRight className="w-5 h-5" />
             </button>
           </div>
@@ -63,52 +60,23 @@ export const CalendarView = ({
               const filename = generateExportFilename(currentDate);
               downloadTextFile(exportContent, filename);
             }} 
-            className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 flex items-center"
+            className="px-3 sm:px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 flex items-center text-sm sm:text-base touch-manipulation"
             title="Exportă programul în format text"
           >
-            <Download className="w-4 h-4 mr-2" />
-            Export
+            <Download className="w-4 h-4 sm:mr-2" />
+            <span className="hidden sm:inline">Export</span>
           </button>
           
           {hasPermission('generate_shifts') && (
             <>
               <button 
                 onClick={() => generateFairSchedule(selectedHospital, currentDate)} 
-                className="ml-4 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center"
+                className="sm:ml-4 px-3 sm:px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center text-sm sm:text-base touch-manipulation"
                 title="Generează program echitabil cu distribuție corectă a turilor"
               >
-                <Wand2 className="w-4 h-4 mr-2" />
-                Genereaza
+                <Wand2 className="w-4 h-4 sm:mr-2" />
+                <span className="hidden sm:inline">Generează</span>
               </button>
-              
-              <div className="flex items-center space-x-2 ml-4">
-                <button 
-                  onClick={() => setTemplateModal({ isOpen: true, mode: 'save' })}
-                  className="px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center text-sm"
-                  title="Salvează programul curent ca șablon"
-                >
-                  <Save className="w-4 h-4 mr-1" />
-                  Salvează Șablon
-                </button>
-                
-                <button 
-                  onClick={() => setTemplateModal({ isOpen: true, mode: 'load' })}
-                  className="px-3 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 flex items-center text-sm"
-                  title="Încarcă șablon salvat"
-                >
-                  <Download className="w-4 h-4 mr-1" />
-                  Încarcă Șablon
-                </button>
-                
-                <button 
-                  onClick={() => setTemplateModal({ isOpen: true, mode: 'delete' })}
-                  className="px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 flex items-center text-sm"
-                  title="Șterge șablon salvat"
-                >
-                  <Trash2 className="w-4 h-4 mr-1" />
-                  Șterge Șablon
-                </button>
-              </div>
             </>
           )}
         </div>
@@ -122,45 +90,23 @@ export const CalendarView = ({
         ))}
       </div>
 
-      <div className="grid grid-cols-7 gap-2">
+      <div className="grid grid-cols-7 gap-1 sm:gap-2">
         {days.map((date, index) => {
           const isCurrentMonth = date.getMonth() === currentDate.getMonth();
           const isToday = date.toDateString() === new Date().toDateString();
           const dayShifts = isCurrentMonth ? (shifts[date.toISOString().split('T')[0]] || []) : [];
           
-          // Simple coverage check based on shift count
-          let coverageInfo = null;
-          if (isCurrentMonth && dayShifts.length > 0) {
-            const hasFullCoverage = dayShifts.some(s => s.type.duration === 24) || 
-                                  (dayShifts.some(s => s.type.id === 'GARDA_ZI') && 
-                                   dayShifts.some(s => s.type.id === 'NOAPTE'));
-            
-            coverageInfo = {
-              score: hasFullCoverage ? 90 : 60,
-              warnings: hasFullCoverage ? 0 : 1,
-              className: hasFullCoverage ? 'bg-green-50 border-green-200' : 'bg-yellow-50 border-yellow-200',
-              icon: hasFullCoverage ? '✓' : '!'
-            };
-          }
 
           return (
             <div
               key={index}
-              className={`relative p-2 h-36 border-2 rounded-lg transition-all duration-200 cursor-pointer overflow-hidden
+              className={`relative p-2 min-h-[100px] sm:h-36 border-2 rounded-lg transition-all duration-200 cursor-pointer overflow-hidden touch-manipulation
                 ${!isCurrentMonth ? 'bg-gray-50 text-gray-400' : 'bg-white'}
                 ${isToday ? 'ring-2 ring-blue-400' : 'border-gray-200'}
-                ${coverageInfo ? coverageInfo.className : ''}
                 ${hasPermission('assign_staff') ? 'hover:ring-2 hover:ring-blue-200' : ''}`}
               onClick={(e) => handleCellClick(date, dayShifts, e)}
               title={`${date.toLocaleDateString('ro-RO', { weekday: 'long', day: 'numeric', month: 'long' })}`}
             >
-              {coverageInfo && isCurrentMonth && (
-                <div className="absolute top-1 right-1 w-6 h-6 rounded-full bg-white border-2 flex items-center justify-center text-xs font-bold"
-                     style={{ borderColor: coverageInfo.className.includes('green') ? '#10B981' : 
-                                           coverageInfo.className.includes('yellow') ? '#F59E0B' : '#EF4444' }}>
-                  {coverageInfo.icon}
-                </div>
-              )}
               
               <div className="flex items-center justify-between mb-1">
                 <div className="font-semibold text-sm">{date.getDate()}</div>
@@ -443,14 +389,6 @@ export const CalendarView = ({
         })}
       </div>
 
-      {/* Template Modal */}
-      <TemplateModal
-        isOpen={templateModal.isOpen}
-        onClose={() => setTemplateModal({ isOpen: false, mode: null })}
-        selectedHospital={selectedHospital}
-        mode={templateModal.mode}
-      />
-      
       {/* Swap Request Modal */}
       <SwapRequestModal
         isOpen={swapModal.isOpen}

@@ -31,15 +31,6 @@ export const LoginForm = ({ onSuccess }) => {
     }
   };
 
-  const handleDemoLogin = (role) => {
-    if (role === 'admin') {
-      setUsername('admin');
-      setPassword('admin123');
-    } else if (role === 'manager') {
-      setUsername('manager');
-      setPassword('manager123');
-    }
-  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
@@ -124,26 +115,6 @@ export const LoginForm = ({ onSuccess }) => {
             </button>
           </form>
 
-          {/* Demo credentials */}
-          <div className="mt-8 pt-6 border-t border-gray-200">
-            <p className="text-sm text-gray-600 text-center mb-4">Conturi demo:</p>
-            <div className="space-y-2">
-              <button
-                onClick={() => handleDemoLogin('admin')}
-                className="w-full text-left p-3 bg-purple-50 hover:bg-purple-100 rounded-lg text-sm transition-colors"
-              >
-                <div className="font-semibold text-purple-800">Administrator</div>
-                <div className="text-purple-600">Utilizator: admin | Parolă: admin123</div>
-              </button>
-              <button
-                onClick={() => handleDemoLogin('manager')}
-                className="w-full text-left p-3 bg-blue-50 hover:bg-blue-100 rounded-lg text-sm transition-colors"
-              >
-                <div className="font-semibold text-blue-800">Manager</div>
-                <div className="text-blue-600">Utilizator: manager | Parolă: manager123</div>
-              </button>
-            </div>
-          </div>
         </div>
 
         {/* Footer */}

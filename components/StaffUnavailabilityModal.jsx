@@ -9,12 +9,39 @@ export const StaffUnavailabilityModal = ({
   const { setStaffUnavailability } = useData();
   const [unavailableDates, setUnavailableDates] = useState(staffMember?.unavailable || []);
   const [newDate, setNewDate] = useState('');
+  const [selectedDates, setSelectedDates] = useState(new Set());
+  const [selectMode, setSelectMode] = useState(false);
 
   const handleAddDate = () => {
     if (newDate && !unavailableDates.includes(newDate)) {
       setUnavailableDates(prev => [...prev, newDate].sort());
       setNewDate('');
     }
+  };
+  
+  const handleToggleDate = (date) => {
+    const dateStr = date.toISOString().split('T')[0];
+    const newSelected = new Set(selectedDates);
+    
+    if (newSelected.has(dateStr)) {
+      newSelected.delete(dateStr);
+    } else {
+      newSelected.add(dateStr);
+    }
+    
+    setSelectedDates(newSelected);
+  };
+  
+  const handleAddSelected = () => {
+    const newDates = [...unavailableDates];
+    selectedDates.forEach(date => {
+      if (!newDates.includes(date)) {
+        newDates.push(date);
+      }
+    });
+    setUnavailableDates(newDates.sort());
+    setSelectedDates(new Set());
+    setSelectMode(false);
   };
 
   const handleRemoveDate = (dateToRemove) => {
@@ -24,6 +51,72 @@ export const StaffUnavailabilityModal = ({
   const handleSave = () => {
     setStaffUnavailability(staffMember.id, unavailableDates);
     onClose();
+  };
+  
+  const renderCalendar = () => {
+    const today = new Date();
+    const currentMonth = today.getMonth();
+    const currentYear = today.getFullYear();
+    const firstDay = new Date(currentYear, currentMonth, 1);
+    const lastDay = new Date(currentYear, currentMonth + 1, 0);
+    const days = [];
+    
+    // Get day of week for first day (0-6)
+    const startDayOfWeek = firstDay.getDay();
+    
+    // Add empty cells for days before month starts
+    for (let i = 0; i < startDayOfWeek; i++) {
+      days.push(null);
+    }
+    
+    // Add all days of the month
+    for (let i = 1; i <= lastDay.getDate(); i++) {
+      days.push(new Date(currentYear, currentMonth, i));
+    }
+    
+    return (
+      <div className="mt-4">
+        <div className="grid grid-cols-7 gap-1 mb-2">
+          {['D', 'L', 'M', 'M', 'J', 'V', 'S'].map((day, i) => (
+            <div key={i} className="text-center text-xs font-semibold text-gray-600 p-1">
+              {day}
+            </div>
+          ))}
+        </div>
+        <div className="grid grid-cols-7 gap-1">
+          {days.map((date, index) => {
+            if (!date) {
+              return <div key={`empty-${index}`} className="p-2"></div>;
+            }
+            
+            const dateStr = date.toISOString().split('T')[0];
+            const isUnavailable = unavailableDates.includes(dateStr);
+            const isSelected = selectedDates.has(dateStr);
+            const isPast = date < new Date(new Date().setHours(0,0,0,0));
+            
+            return (
+              <button
+                key={dateStr}
+                onClick={() => !isPast && !isUnavailable && handleToggleDate(date)}
+                disabled={isPast || isUnavailable}
+                className={`p-2 text-sm rounded transition-colors ${
+                  isUnavailable
+                    ? 'bg-red-100 text-red-600 cursor-not-allowed'
+                    : isSelected
+                    ? 'bg-blue-500 text-white'
+                    : isPast
+                    ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                    : 'hover:bg-gray-100 cursor-pointer'
+                }`}
+                title={isUnavailable ? 'Deja marcat indisponibil' : isPast ? 'Data trecută' : 'Click pentru a selecta'}
+              >
+                {date.getDate()}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    );
   };
 
   const formatDate = (dateString) => {
@@ -63,27 +156,55 @@ export const StaffUnavailabilityModal = ({
             </button>
           </div>
 
-          {/* Add new date */}
+          {/* Toggle between single and multiple selection */}
           <div className="mb-6">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Adaugă dată indisponibilă
-            </label>
-            <div className="flex gap-2">
-              <input
-                type="date"
-                value={newDate}
-                onChange={(e) => setNewDate(e.target.value)}
-                className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                min={new Date().toISOString().split('T')[0]}
-              />
+            <div className="flex items-center justify-between mb-4">
+              <label className="text-sm font-medium text-gray-700">
+                Adaugă zile indisponibile
+              </label>
               <button
-                onClick={handleAddDate}
-                disabled={!newDate || unavailableDates.includes(newDate)}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                onClick={() => setSelectMode(!selectMode)}
+                className="text-sm text-blue-600 hover:text-blue-700"
               >
-                Adaugă
+                {selectMode ? 'Selectare simplă' : 'Selectare multiplă'}
               </button>
             </div>
+            
+            {!selectMode ? (
+              <div className="flex gap-2">
+                <input
+                  type="date"
+                  value={newDate}
+                  onChange={(e) => setNewDate(e.target.value)}
+                  className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  min={new Date().toISOString().split('T')[0]}
+                />
+                <button
+                  onClick={handleAddDate}
+                  disabled={!newDate || unavailableDates.includes(newDate)}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                >
+                  Adaugă
+                </button>
+              </div>
+            ) : (
+              <div>
+                {renderCalendar()}
+                {selectedDates.size > 0 && (
+                  <div className="mt-4 flex items-center justify-between">
+                    <span className="text-sm text-gray-600">
+                      {selectedDates.size} zi{selectedDates.size !== 1 ? 'le' : ''} selectate
+                    </span>
+                    <button
+                      onClick={handleAddSelected}
+                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                    >
+                      Adaugă selectate
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Current unavailable dates */}
