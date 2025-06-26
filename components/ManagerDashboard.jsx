@@ -273,6 +273,8 @@ export const ManagerDashboard = () => {
       {editingStaff && (
         <StaffEditModal
           staff={editingStaff}
+          selectedHospital={selectedHospital}
+          hospitals={hospitals}
           onClose={() => setEditingStaff(null)}
         />
       )}

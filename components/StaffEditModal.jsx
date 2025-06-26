@@ -4,14 +4,16 @@ import { X, Save, User } from './Icons';
 
 export const StaffEditModal = ({ 
   staff: editingStaff, 
+  selectedHospital,
+  hospitals,
   onClose 
 }) => {
-  const { addStaff, updateStaff, hospitals } = useData();
+  const { addStaff, updateStaff } = useData();
   const [formData, setFormData] = useState({
     name: '',
     type: 'medic',
     specialization: '',
-    hospital: 'spital1',
+    hospital: selectedHospital || 'spital1',
     role: 'staff',
     maxGuardsPerMonth: 10
   });
@@ -33,12 +35,12 @@ export const StaffEditModal = ({
         name: '',
         type: 'medic',
         specialization: '',
-        hospital: 'spital1',
+        hospital: selectedHospital || 'spital1',
         role: 'staff',
         maxGuardsPerMonth: 10
       });
     }
-  }, [editingStaff]);
+  }, [editingStaff, selectedHospital]);
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -86,11 +88,18 @@ export const StaffEditModal = ({
         <div className="p-6">
           {/* Header */}
           <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center">
-              <User className="w-6 h-6 mr-3 text-blue-600" />
-              <h3 className="text-xl font-bold text-gray-800">
-                {editingStaff.id ? 'Editare Personal' : 'Adăugare Personal'}
-              </h3>
+            <div className="flex flex-col">
+              <div className="flex items-center">
+                <User className="w-6 h-6 mr-3 text-blue-600" />
+                <h3 className="text-xl font-bold text-gray-800">
+                  {editingStaff.id ? 'Editare Personal' : 'Adăugare Personal'}
+                </h3>
+              </div>
+              {selectedHospital && hospitals && (
+                <p className="text-sm text-gray-600 ml-9 mt-1">
+                  Context: {hospitals.find(h => h.id === selectedHospital)?.name}
+                </p>
+              )}
             </div>
             <button
               onClick={onClose}
@@ -157,7 +166,10 @@ export const StaffEditModal = ({
               <select
                 value={formData.hospital}
                 onChange={(e) => setFormData(prev => ({ ...prev, hospital: e.target.value }))}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 ${
+                  !editingStaff?.id ? 'bg-gray-100 cursor-not-allowed' : ''
+                }`}
+                disabled={!editingStaff?.id}
               >
                 {hospitals.map(hospital => (
                   <option key={hospital.id} value={hospital.id}>
@@ -165,6 +177,11 @@ export const StaffEditModal = ({
                   </option>
                 ))}
               </select>
+              {!editingStaff?.id && (
+                <p className="text-xs text-gray-500 mt-1">
+                  Personalul nou va fi adăugat la spitalul curent selectat
+                </p>
+              )}
             </div>
 
             {/* Role */}
