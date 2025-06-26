@@ -300,7 +300,7 @@ export const MatrixView = ({
   }
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200 flex flex-col h-[calc(100vh-10rem)] sm:h-auto sm:max-h-[calc(100vh-8rem)]">
+    <div className="bg-white rounded-lg shadow-sm border border-gray-200 flex flex-col h-[calc(100vh-10rem)] landscape:h-[calc(100vh-8rem)] sm:h-auto sm:max-h-[calc(100vh-8rem)]">
       {/* Header with filters - Mobile Responsive */}
       <div className="p-2 sm:p-4 border-b border-gray-200 flex-shrink-0">
         {/* Title with Month Navigation */}
@@ -468,8 +468,8 @@ export const MatrixView = ({
       </div>
       
       {/* Legend - Fixed at bottom */}
-      <div className="p-4 border-t border-gray-200 bg-gray-50 flex-shrink-0">
-        <div className="flex flex-wrap items-center justify-between">
+      <div className="p-3 landscape:p-2 sm:p-4 border-t border-gray-200 bg-gray-50 flex-shrink-0">
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center space-x-6">
             <div className="text-sm font-medium text-gray-700">Tipuri de ture:</div>
             {Object.values(shiftTypes).map(shiftType => (
@@ -483,7 +483,7 @@ export const MatrixView = ({
             ))}
           </div>
           
-          <div className="flex items-center space-x-6 mt-2 lg:mt-0">
+          <div className="hidden landscape:hidden sm:flex items-center space-x-6 mt-2 lg:mt-0">
             <div className="text-sm font-medium text-gray-700">Acoperire vizuală:</div>
             <div className="flex items-center">
               <div className="w-4 h-4 mr-2 border border-gray-300 relative overflow-hidden">
