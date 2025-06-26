@@ -298,12 +298,21 @@ export const DataProvider = ({ children }) => {
   };
 
   // Fair scheduling engine methods
-  const generateFairSchedule = async (hospitalId, date) => {
+  const generateFairSchedule = async (hospitalId, date, department = null) => {
     if (!hospitalId || !date) return;
 
-    const hospitalStaff = staff.filter(s => s.hospital === hospitalId);
+    let hospitalStaff = staff.filter(s => s.hospital === hospitalId);
+    
+    // Filter by department if specified
+    if (department) {
+      hospitalStaff = hospitalStaff.filter(s => s.specialization === department);
+    }
+    
     if (hospitalStaff.length === 0) {
-            addNotification('Nu există personal disponibil pentru generarea programului.', 'error');
+      const message = department 
+        ? `Nu există personal disponibil în departamentul ${department}.`
+        : 'Nu există personal disponibil pentru generarea programului.';
+      addNotification(message, 'error');
       return;
     }
 
@@ -339,12 +348,17 @@ export const DataProvider = ({ children }) => {
         }
         
         daySchedule.shifts.forEach(shift => {
+          // Get the department from the assigned staff member
+          const assignedStaff = shift.assigneeId ? hospitalStaff.find(s => s.id === shift.assigneeId) : null;
+          const shiftDepartment = department || (assignedStaff ? assignedStaff.specialization : null);
+          
           newShifts[daySchedule.date].push({
             id: shift.shiftId || `${daySchedule.date}-${shift.type.id}-${Date.now()}`,
             date: daySchedule.date,
             type: shift.type,
             staffIds: shift.assigneeId ? [shift.assigneeId] : [],
             hospital: hospitalId,
+            department: shiftDepartment,
             status: shift.status || 'open',
             assignee: shift.assignee,
             assigneeId: shift.assigneeId
@@ -355,7 +369,10 @@ export const DataProvider = ({ children }) => {
       // Merge with existing shifts from other months/hospitals
       setShifts(prevShifts => ({ ...prevShifts, ...newShifts }));
       
-            addNotification('Program generat cu succes', 'success');
+      const successMessage = department 
+        ? `Program generat cu succes pentru departamentul ${department}`
+        : 'Program generat cu succes pentru toate departamentele';
+      addNotification(successMessage, 'success');
       return { shifts: newShifts };
     } catch (error) {
             addNotification('Eroare la generarea programului', 'error');
@@ -444,15 +461,24 @@ export const DataProvider = ({ children }) => {
     }
   };
 
-  const regenerateFromScratch = async (hospitalId, date) => {
+  const regenerateFromScratch = async (hospitalId, date, department = null) => {
     try {
       if (!hospitalId || !date) {
         throw new Error('Hospital ID and date are required');
       }
 
-      const hospitalStaff = staff.filter(s => s.hospital === hospitalId);
+      let hospitalStaff = staff.filter(s => s.hospital === hospitalId);
+      
+      // Filter by department if specified
+      if (department) {
+        hospitalStaff = hospitalStaff.filter(s => s.specialization === department);
+      }
+      
       if (hospitalStaff.length === 0) {
-        throw new Error('No medical staff available for regeneration');
+        const errorMsg = department 
+          ? `No medical staff available in department ${department}`
+          : 'No medical staff available for regeneration';
+        throw new Error(errorMsg);
       }
 
       // Clear existing shifts for this month first
@@ -463,8 +489,8 @@ export const DataProvider = ({ children }) => {
       
       await clearAllShifts(hospitalId, startDate, endDate);
       
-      // Generate fresh schedule using V2 engine
-      await generateFairSchedule(hospitalId, date);
+      // Generate fresh schedule using V2 engine with department if specified
+      await generateFairSchedule(hospitalId, date, department);
       
             addNotification('Program regenerat cu succes', 'success');
       return { shifts: shifts };

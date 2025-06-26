@@ -1,14 +1,14 @@
 import React, { useState, useMemo } from 'react';
 import { useData } from './DataContext';
 import { useAuth } from './AuthContext';
-import { Users, Plus, Trash2, ChevronLeft, ChevronRight, X } from './Icons';
+import { Users, Plus, Trash2, ChevronLeft, ChevronRight, X, Wand2 } from './Icons';
 
 export const MatrixView = ({ 
   selectedHospital, 
   currentDate, 
   onDateChange
 }) => {
-  const { staff, shifts, shiftTypes, setShifts, deleteShift } = useData();
+  const { staff, shifts, shiftTypes, setShifts, deleteShift, generateFairSchedule } = useData();
   const { hasPermission } = useAuth();
   
   const [selectedDepartment, setSelectedDepartment] = useState('');
@@ -330,18 +330,31 @@ export const MatrixView = ({
           </div>
         </div>
         
-        {/* Department Filter Only */}
-        <div className="flex items-center">
-          <select
-            value={selectedDepartment}
-            onChange={(e) => setSelectedDepartment(e.target.value)}
-            className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
-          >
-            <option value="">Toate departamentele</option>
-            {departments.map(dept => (
-              <option key={dept} value={dept}>{dept}</option>
-            ))}
-          </select>
+        {/* Department Filter and Generate */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-2">
+            <select
+              value={selectedDepartment}
+              onChange={(e) => setSelectedDepartment(e.target.value)}
+              className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">Toate departamentele</option>
+              {departments.map(dept => (
+                <option key={dept} value={dept}>{dept}</option>
+              ))}
+            </select>
+            
+            {hasPermission('generate_shifts') && (
+              <button 
+                onClick={() => generateFairSchedule(selectedHospital, currentDate, selectedDepartment)} 
+                className="px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center text-sm touch-manipulation"
+                title={selectedDepartment ? `Generează program pentru ${selectedDepartment}` : "Generează program pentru toate departamentele"}
+              >
+                <Wand2 className="w-4 h-4 mr-1" />
+                <span>Generează</span>
+              </button>
+            )}
+          </div>
           
           {hasPermission('assign_staff') && (
             <div className="ml-4 text-sm text-gray-600">

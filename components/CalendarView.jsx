@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { ChevronLeft, ChevronRight, Plus, Wand2, Save, Download, Trash2, RefreshCw, UserCheck } from './Icons';
 import SwapRequestModal from './SwapRequestModal';
 import { useData } from './DataContext';
@@ -29,6 +29,15 @@ export const CalendarView = ({
   
   // Get context methods
   const { reserveShift, cancelReservation, createSwapRequest } = useData();
+  
+  // State for department selection
+  const [selectedDepartment, setSelectedDepartment] = useState('');
+  
+  // Get unique departments from staff
+  const departments = useMemo(() => {
+    const hospitalStaff = staff.filter(s => s.hospital === selectedHospital);
+    return [...new Set(hospitalStaff.map(s => s.specialization))].sort();
+  }, [staff, selectedHospital]);
   
   
   // Swap modal state - use props if provided, otherwise local state
@@ -69,10 +78,22 @@ export const CalendarView = ({
           
           {hasPermission('generate_shifts') && (
             <>
+              <select
+                value={selectedDepartment}
+                onChange={(e) => setSelectedDepartment(e.target.value)}
+                className="px-2 sm:px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-green-500"
+                title="Selectează departamentul pentru generare"
+              >
+                <option value="">Toate departamentele</option>
+                {departments.map(dept => (
+                  <option key={dept} value={dept}>{dept}</option>
+                ))}
+              </select>
+              
               <button 
-                onClick={() => generateFairSchedule(selectedHospital, currentDate)} 
-                className="sm:ml-4 px-3 sm:px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center text-sm sm:text-base touch-manipulation"
-                title="Generează program echitabil cu distribuție corectă a turilor"
+                onClick={() => generateFairSchedule(selectedHospital, currentDate, selectedDepartment)} 
+                className="px-3 sm:px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center text-sm sm:text-base touch-manipulation"
+                title={selectedDepartment ? `Generează program pentru ${selectedDepartment}` : "Generează program pentru toate departamentele"}
               >
                 <Wand2 className="w-4 h-4 sm:mr-2" />
                 <span className="hidden sm:inline">Generează</span>
