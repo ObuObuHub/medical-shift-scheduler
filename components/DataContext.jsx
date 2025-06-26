@@ -100,10 +100,22 @@ export const DataProvider = ({ children }) => {
     }
   };
 
-  // Add notification - DISABLED
+  // Add notification
   const addNotification = (message, type = 'info') => {
-    // Notifications disabled - no action taken
-    return;
+    const id = Date.now();
+    const notification = {
+      id,
+      message,
+      type,
+      timestamp: new Date()
+    };
+    
+    setNotifications(prev => [...prev, notification]);
+    
+    // Auto-remove after 5 seconds
+    setTimeout(() => {
+      setNotifications(prev => prev.filter(n => n.id !== id));
+    }, 5000);
   };
 
   // Shift type management
@@ -182,6 +194,7 @@ export const DataProvider = ({ children }) => {
       }
     } catch (error) {
       console.error('Failed to add staff:', error);
+      addNotification('Eroare la adăugarea personalului. Salvat local.', 'warning');
       // Fallback to local state on error
       const staffMember = {
         id: Date.now(),
@@ -244,6 +257,7 @@ export const DataProvider = ({ children }) => {
       }
     } catch (error) {
       console.error('Failed to add hospital:', error);
+      addNotification('Eroare la adăugarea spitalului. Salvat local.', 'warning');
       // Fallback to local state on error
       const newHospital = {
         id: `spital${Date.now()}`,
@@ -301,6 +315,7 @@ export const DataProvider = ({ children }) => {
     const hospitalStaff = staff.filter(s => s.hospital === hospitalId);
     if (hospitalStaff.length === 0) {
       console.warn('No medical staff available for fair scheduling');
+      addNotification('Nu există personal disponibil pentru generarea programului.', 'error');
       return;
     }
 

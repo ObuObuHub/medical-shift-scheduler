@@ -2,11 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { HospitalSelector } from './HospitalSelector';
 import { StaffSelector } from './StaffSelector';
 import { StaffDashboard } from './StaffDashboard';
+import { NotificationContainer } from './NotificationContainer';
 import { useData } from './DataContext';
 import { useAuth } from './AuthContext';
 
 export const AppRouter = () => {
-  const { hospitals, staff, isLoading } = useData();
+  const { hospitals, staff, isLoading, notifications, setNotifications } = useData();
   const { selectedStaff, selectStaff, clearStaffSelection, currentUser } = useAuth();
   
   const [selectedHospital, setSelectedHospital] = useState(null);
@@ -91,42 +92,63 @@ export const AppRouter = () => {
 
   // If authenticated as admin/manager, skip selection and go directly to dashboard
   if (currentUser && (currentUser.role === 'admin' || currentUser.role === 'manager')) {
-    return <StaffDashboard />;
-  }
-
-  // Step 1: Hospital Selection
-  if (!selectedHospital) {
     return (
-      <HospitalSelector
-        hospitals={hospitals}
-        staff={staff}
-        onSelectHospital={handleSelectHospital}
-      />
+      <>
+        <StaffDashboard />
+        <NotificationContainer 
+          notifications={notifications} 
+          onDismiss={(id) => setNotifications(prev => prev.filter(n => n.id !== id))}
+        />
+      </>
     );
   }
 
-  // Step 2: Staff Selection
-  if (!selectedStaff && !isGuest) {
+  // Render the appropriate component with notifications
+  const renderContent = () => {
+    // Step 1: Hospital Selection
+    if (!selectedHospital) {
+      return (
+        <HospitalSelector
+          hospitals={hospitals}
+          staff={staff}
+          onSelectHospital={handleSelectHospital}
+        />
+      );
+    }
+
+    // Step 2: Staff Selection
+    if (!selectedStaff && !isGuest) {
+      return (
+        <StaffSelector
+          hospital={selectedHospital}
+          hospitals={hospitals}
+          staff={staff}
+          onSelectStaff={handleSelectStaff}
+          onBack={handleBackToHospitalSelection}
+          onContinueAsGuest={handleContinueAsGuest}
+        />
+      );
+    }
+
+    // Step 3: Staff Dashboard
     return (
-      <StaffSelector
-        hospital={selectedHospital}
-        hospitals={hospitals}
-        staff={staff}
-        onSelectStaff={handleSelectStaff}
-        onBack={handleBackToHospitalSelection}
-        onContinueAsGuest={handleContinueAsGuest}
+      <StaffDashboard
+        selectedHospital={selectedHospital}
+        selectedStaff={selectedStaff}
+        isGuest={isGuest}
+        onChangeHospital={handleBackToHospitalSelection}
+        onChangeStaff={handleChangeStaff}
       />
     );
-  }
+  };
 
-  // Step 3: Staff Dashboard
   return (
-    <StaffDashboard
-      selectedHospital={selectedHospital}
-      selectedStaff={selectedStaff}
-      isGuest={isGuest}
-      onChangeHospital={handleBackToHospitalSelection}
-      onChangeStaff={handleChangeStaff}
-    />
+    <>
+      {renderContent()}
+      <NotificationContainer 
+        notifications={notifications} 
+        onDismiss={(id) => setNotifications(prev => prev.filter(n => n.id !== id))}
+      />
+    </>
   );
 };
