@@ -300,7 +300,7 @@ export const MatrixView = ({
   }
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200 flex flex-col max-h-[calc(100vh-8rem)]">
+    <div className="bg-white rounded-lg shadow-sm border border-gray-200 flex flex-col h-[calc(100vh-10rem)] sm:h-auto sm:max-h-[calc(100vh-8rem)]">
       {/* Header with filters - Mobile Responsive */}
       <div className="p-2 sm:p-4 border-b border-gray-200 flex-shrink-0">
         {/* Title with Month Navigation */}
@@ -353,7 +353,7 @@ export const MatrixView = ({
       </div>
 
       {/* Matrix Table - Mobile Optimized with vertical scroll */}
-      <div className="flex-1 overflow-hidden relative min-h-0">
+      <div className="flex-1 overflow-hidden relative">
         <div className="absolute inset-0 overflow-auto matrix-scroll-container touch-scroll no-bounce">
           <table className="w-full min-w-max select-none">
           {/* Date Headers */}
@@ -468,47 +468,47 @@ export const MatrixView = ({
       </div>
       
       {/* Legend - Fixed at bottom */}
-      <div className="p-2 sm:p-4 border-t border-gray-200 bg-gray-50 flex-shrink-0">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
-            <div className="text-xs sm:text-sm font-medium text-gray-700">Tipuri:</div>
+      <div className="p-4 border-t border-gray-200 bg-gray-50 flex-shrink-0">
+        <div className="flex flex-wrap items-center justify-between">
+          <div className="flex items-center space-x-6">
+            <div className="text-sm font-medium text-gray-700">Tipuri de ture:</div>
             {Object.values(shiftTypes).map(shiftType => (
               <div key={shiftType.id} className="flex items-center">
                 <div 
-                  className="w-3 h-3 sm:w-4 sm:h-4 rounded mr-1 sm:mr-2 opacity-60"
+                  className="w-4 h-4 rounded mr-2 opacity-60"
                   style={{ backgroundColor: shiftType.color }}
                 />
-                <span className="text-xs sm:text-sm text-gray-600">{shiftType.name}</span>
+                <span className="text-sm text-gray-600">{shiftType.name}</span>
               </div>
             ))}
           </div>
           
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
-            <div className="text-xs sm:text-sm font-medium text-gray-700">Acoperire:</div>
+          <div className="flex items-center space-x-6 mt-2 lg:mt-0">
+            <div className="text-sm font-medium text-gray-700">Acoperire vizuală:</div>
             <div className="flex items-center">
-              <div className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2 border border-gray-300 relative overflow-hidden">
+              <div className="w-4 h-4 mr-2 border border-gray-300 relative overflow-hidden">
                 <div 
                   className="absolute top-0 left-0 w-full h-1/2 opacity-60"
                   style={{ backgroundColor: shiftTypes.GARDA_ZI ? shiftTypes.GARDA_ZI.color : '#3B82F6' }}
                 ></div>
               </div>
-              <span className="text-xs text-gray-600">Zi</span>
+              <span className="text-xs text-gray-600">Gardă zi</span>
             </div>
             <div className="flex items-center">
-              <div className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2 border border-gray-300 relative overflow-hidden">
+              <div className="w-4 h-4 mr-2 border border-gray-300 relative overflow-hidden">
                 <div 
                   className="absolute bottom-0 left-0 w-full h-1/2 opacity-60"
                   style={{ backgroundColor: shiftTypes.NOAPTE ? shiftTypes.NOAPTE.color : '#8B5CF6' }}
                 ></div>
               </div>
-              <span className="text-xs text-gray-600">Noapte</span>
+              <span className="text-xs text-gray-600">Gardă noapte</span>
             </div>
             <div className="flex items-center">
               <div 
-                className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2 border border-gray-300 opacity-60"
+                className="w-4 h-4 mr-2 border border-gray-300 opacity-60"
                 style={{ backgroundColor: shiftTypes.GARDA_24 ? shiftTypes.GARDA_24.color : '#10B981' }}
               ></div>
-              <span className="text-xs text-gray-600">24h</span>
+              <span className="text-xs text-gray-600">Gardă 24h</span>
             </div>
           </div>
           
