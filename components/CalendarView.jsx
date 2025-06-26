@@ -130,7 +130,7 @@ export const CalendarView = ({
                 ${coverageInfo ? coverageInfo.className : ''}
                 ${hasPermission('assign_staff') ? 'hover:ring-2 hover:ring-blue-200' : ''}`}
               onClick={(e) => handleCellClick(date, dayShifts, e)}
-              title={coverageInfo ? `Acoperire: ${coverageInfo.score}% - ${coverageInfo.warnings} avertismente` : ''}
+              title={`${date.toLocaleDateString('ro-RO', { weekday: 'long', day: 'numeric', month: 'long' })}`}
             >
               {coverageInfo && isCurrentMonth && (
                 <div className="absolute top-1 right-1 w-6 h-6 rounded-full bg-white border-2 flex items-center justify-center text-xs font-bold"

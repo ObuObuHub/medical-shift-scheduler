@@ -597,25 +597,6 @@ export const MatrixView = ({
             </div>
           </div>
           
-          <div className="flex items-center space-x-4 mt-2 lg:mt-0">
-            <div className="text-sm text-gray-600">Acoperire:</div>
-            <div className="flex items-center">
-              <CheckCircle className="w-4 h-4 text-green-500 mr-1" />
-              <span className="text-xs text-gray-600">Excelentă</span>
-            </div>
-            <div className="flex items-center">
-              <CheckCircle className="w-4 h-4 text-blue-500 mr-1" />
-              <span className="text-xs text-gray-600">Bună</span>
-            </div>
-            <div className="flex items-center">
-              <AlertCircle className="w-4 h-4 text-yellow-500 mr-1" />
-              <span className="text-xs text-gray-600">Minimă</span>
-            </div>
-            <div className="flex items-center">
-              <AlertCircle className="w-4 h-4 text-red-500 mr-1" />
-              <span className="text-xs text-gray-600">Insuficientă</span>
-            </div>
-          </div>
         </div>
       </div>
 
