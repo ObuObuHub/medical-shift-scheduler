@@ -59,11 +59,38 @@ async function createStaff(req, res) {
     // Log the request for debugging
     console.log('Creating staff:', { name, type, specialization, hospital, role, user: req.user.username });
 
-    const result = await sql`
-      INSERT INTO staff (name, type, specialization, hospital, role, max_guards_per_month, created_by)
-      VALUES (${name.trim()}, ${type || 'medic'}, ${specialization}, ${hospital}, ${role || 'staff'}, ${maxGuardsPerMonth || 10}, ${req.user.id})
-      RETURNING *;
-    `;
+    // Check if max_guards_per_month column exists
+    let hasMaxGuardsColumn = true;
+    try {
+      const columnCheck = await sql`
+        SELECT column_name 
+        FROM information_schema.columns 
+        WHERE table_name = 'staff' 
+        AND column_name = 'max_guards_per_month'
+        LIMIT 1;
+      `;
+      hasMaxGuardsColumn = columnCheck.length > 0;
+    } catch (e) {
+      console.log('Column check error:', e.message);
+      hasMaxGuardsColumn = false;
+    }
+
+    let result;
+    if (hasMaxGuardsColumn) {
+      result = await sql`
+        INSERT INTO staff (name, type, specialization, hospital, role, max_guards_per_month, created_by)
+        VALUES (${name.trim()}, ${type || 'medic'}, ${specialization}, ${hospital}, ${role || 'staff'}, ${maxGuardsPerMonth || 10}, ${req.user.id})
+        RETURNING *;
+      `;
+    } else {
+      // Insert without max_guards_per_month if column doesn't exist
+      console.log('Inserting without max_guards_per_month column');
+      result = await sql`
+        INSERT INTO staff (name, type, specialization, hospital, role, created_by)
+        VALUES (${name.trim()}, ${type || 'medic'}, ${specialization}, ${hospital}, ${role || 'staff'}, ${req.user.id})
+        RETURNING *;
+      `;
+    }
 
     if (!result || result.length === 0) {
       console.error('No result returned from INSERT');
@@ -80,7 +107,7 @@ async function createStaff(req, res) {
       hospital: staff.hospital,
       role: staff.role,
       unavailable: staff.unavailable || [],
-      maxGuardsPerMonth: staff.max_guards_per_month || 10
+      maxGuardsPerMonth: staff.max_guards_per_month || maxGuardsPerMonth || 10
     };
 
     res.status(201).json(newStaff);
