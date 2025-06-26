@@ -32,6 +32,7 @@ export const CalendarView = ({
   
   // State for department selection
   const [selectedDepartment, setSelectedDepartment] = useState('');
+  const [viewDepartmentFilter, setViewDepartmentFilter] = useState(''); // Separate filter for viewing
   
   // Get unique departments from staff
   const departments = useMemo(() => {
@@ -97,11 +98,12 @@ export const CalendarView = ({
           </button>
           
           {hasPermission('generate_shifts') && (
-            <>
+            <div className="flex items-center space-x-2 border-l pl-2">
+              <span className="text-xs text-gray-500 hidden sm:inline">Generare:</span>
               <select
                 value={selectedDepartment}
                 onChange={(e) => setSelectedDepartment(e.target.value)}
-                className="px-2 sm:px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-green-500"
+                className="px-2 sm:px-3 py-2 border border-green-300 rounded-lg text-sm focus:ring-2 focus:ring-green-500 bg-green-50"
                 title="Selectează departamentul pentru generare"
               >
                 <option value="">Selectează departament</option>
@@ -138,7 +140,7 @@ export const CalendarView = ({
                   <span className="hidden sm:inline">Șterge</span>
                 </button>
               )}
-            </>
+            </div>
           )}
         </div>
       </div>
@@ -166,6 +168,37 @@ export const CalendarView = ({
           </div>
         </div>
       )}
+      
+      {/* View Filter */}
+      <div className="mb-3 flex items-center justify-between bg-blue-50 p-2 rounded-lg">
+        <div className="flex items-center space-x-2">
+          <span className="text-sm text-gray-700 font-medium">Filtru vizualizare:</span>
+          <select
+            value={viewDepartmentFilter}
+            onChange={(e) => setViewDepartmentFilter(e.target.value)}
+            className="px-3 py-1 border border-blue-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 bg-white"
+          >
+            <option value="">Toate departamentele</option>
+            {departments.map(dept => (
+              <option key={dept} value={dept}>{dept}</option>
+            ))}
+          </select>
+          {viewDepartmentFilter && (
+            <button
+              onClick={() => setViewDepartmentFilter('')}
+              className="px-2 py-1 text-xs text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded"
+              title="Afișează toate departamentele"
+            >
+              ✕ Resetare
+            </button>
+          )}
+        </div>
+        <div className="text-xs text-gray-500">
+          {viewDepartmentFilter 
+            ? `Afișare: ${viewDepartmentFilter}` 
+            : 'Afișare: Toate departamentele'}
+        </div>
+      </div>
 
       <div className="grid grid-cols-7 gap-2 mb-2 sm:mb-4">
         {weekDays.map(day => (
@@ -179,7 +212,12 @@ export const CalendarView = ({
         {days.map((date, index) => {
           const isCurrentMonth = date.getMonth() === currentDate.getMonth();
           const isToday = date.toDateString() === new Date().toDateString();
-          const dayShifts = isCurrentMonth ? (shifts[date.toISOString().split('T')[0]] || []) : [];
+          let dayShifts = isCurrentMonth ? (shifts[date.toISOString().split('T')[0]] || []) : [];
+          
+          // Apply view filter
+          if (viewDepartmentFilter) {
+            dayShifts = dayShifts.filter(shift => shift.department === viewDepartmentFilter);
+          }
           
 
           return (
