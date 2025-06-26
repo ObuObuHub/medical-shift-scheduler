@@ -283,7 +283,6 @@ export const CalendarView = ({
                   } else {
                     // Show individual shifts (partial coverage)
                     return dayShifts.slice(0, 2).map((shift) => {
-                      const isPartial = dayShifts.length === 1;
                       const staffId = selectedStaff?.id || currentUser?.id;
                       const isMyShift = staffId && (shift.staffIds?.includes(staffId) || shift.reservedBy === staffId);
                       const isReserved = shift.status === 'reserved';
@@ -320,7 +319,6 @@ export const CalendarView = ({
                           <div className="text-xs mt-auto">
                             {isSwapRequested && <span className="text-blue-600">🔄</span>}
                             {isReserved && !isSwapRequested && <span className="text-green-600">🔒</span>}
-                            {isPartial && <span className="text-orange-500">⚠️ Parțial</span>}
                           </div>
                           
                           {/* Action buttons on hover - only show if not guest */}
