@@ -484,19 +484,28 @@ export const MatrixView = ({
           <div className="flex items-center space-x-6 mt-2 lg:mt-0">
             <div className="text-sm font-medium text-gray-700">Acoperire vizuală:</div>
             <div className="flex items-center">
-              <div className="w-4 h-4 mr-2 border border-gray-300 relative">
-                <div className="absolute top-0 left-0 w-full h-1/2 bg-blue-400 opacity-60"></div>
+              <div className="w-4 h-4 mr-2 border border-gray-300 relative overflow-hidden">
+                <div 
+                  className="absolute top-0 left-0 w-full h-1/2 opacity-60"
+                  style={{ backgroundColor: shiftTypes.GARDA_ZI ? shiftTypes.GARDA_ZI.color : '#3B82F6' }}
+                ></div>
               </div>
               <span className="text-xs text-gray-600">Gardă zi</span>
             </div>
             <div className="flex items-center">
-              <div className="w-4 h-4 mr-2 border border-gray-300 relative">
-                <div className="absolute bottom-0 left-0 w-full h-1/2 bg-yellow-400 opacity-60"></div>
+              <div className="w-4 h-4 mr-2 border border-gray-300 relative overflow-hidden">
+                <div 
+                  className="absolute bottom-0 left-0 w-full h-1/2 opacity-60"
+                  style={{ backgroundColor: shiftTypes.NOAPTE ? shiftTypes.NOAPTE.color : '#8B5CF6' }}
+                ></div>
               </div>
               <span className="text-xs text-gray-600">Gardă noapte</span>
             </div>
             <div className="flex items-center">
-              <div className="w-4 h-4 mr-2 border border-gray-300 bg-green-400 opacity-60"></div>
+              <div 
+                className="w-4 h-4 mr-2 border border-gray-300 opacity-60"
+                style={{ backgroundColor: shiftTypes.GARDA_24 ? shiftTypes.GARDA_24.color : '#10B981' }}
+              ></div>
               <span className="text-xs text-gray-600">Gardă 24h</span>
             </div>
           </div>

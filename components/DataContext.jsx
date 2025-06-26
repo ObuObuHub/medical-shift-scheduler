@@ -6,9 +6,9 @@ import { generateCompleteSchedule, regenerateCompleteSchedule } from '../utils/f
 
 // Default fallback data (used only when API is not available)
 const DEFAULT_SHIFT_TYPES = {
-  GARDA_ZI: { id: 'garda_zi', name: 'Gardă de Zi (12h)', start: '08:00', end: '20:00', color: '#10B981', duration: 12 },
-  NOAPTE: { id: 'noapte', name: 'Tură de Noapte (12h)', start: '20:00', end: '08:00', color: '#F59E0B', duration: 12 },
-  GARDA_24: { id: 'garda_24', name: 'Gardă 24 ore', start: '08:00', end: '08:00', color: '#EF4444', duration: 24 }
+  GARDA_ZI: { id: 'garda_zi', name: 'Gardă de Zi (12h)', start: '08:00', end: '20:00', color: '#3B82F6', duration: 12 },
+  NOAPTE: { id: 'noapte', name: 'Tură de Noapte (12h)', start: '20:00', end: '08:00', color: '#8B5CF6', duration: 12 },
+  GARDA_24: { id: 'garda_24', name: 'Gardă 24 ore', start: '08:00', end: '08:00', color: '#10B981', duration: 24 }
 };
 
 const DEFAULT_HOSPITALS = [
