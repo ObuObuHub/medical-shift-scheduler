@@ -105,7 +105,7 @@ export const ManagerDashboard = () => {
                     <div>
                       <div className="font-semibold text-gray-900">{member.name}</div>
                       <div className="text-sm text-gray-600">
-                        {member.specialization} • Rol: {member.role} • Max garzi: {member.maxGuardsPerMonth || 10}
+                        {member.specialization} • Rol: {member.role} • Max garzi: {member.maxGuardsPerMonth || 'Nesetat'}
                       </div>
                     </div>
                   </div>

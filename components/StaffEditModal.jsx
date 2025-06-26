@@ -15,7 +15,7 @@ export const StaffEditModal = ({
     specialization: '',
     hospital: selectedHospital || 'spital1',
     role: 'staff',
-    maxGuardsPerMonth: 10
+    maxGuardsPerMonth: ''
   });
 
   useEffect(() => {
@@ -27,7 +27,7 @@ export const StaffEditModal = ({
         specialization: editingStaff.specialization || '',
         hospital: editingStaff.hospital || 'spital1',
         role: editingStaff.role || 'staff',
-        maxGuardsPerMonth: editingStaff.maxGuardsPerMonth || 10
+        maxGuardsPerMonth: editingStaff.maxGuardsPerMonth || ''
       });
     } else {
       // Adding new staff
@@ -37,7 +37,7 @@ export const StaffEditModal = ({
         specialization: '',
         hospital: selectedHospital || 'spital1',
         role: 'staff',
-        maxGuardsPerMonth: 10
+        maxGuardsPerMonth: ''
       });
     }
   }, [editingStaff, selectedHospital]);
@@ -45,8 +45,8 @@ export const StaffEditModal = ({
   const handleSubmit = (e) => {
     e.preventDefault();
     
-    if (!formData.name || !formData.specialization) {
-      alert('Numele și specializarea sunt obligatorii!');
+    if (!formData.name || !formData.specialization || !formData.maxGuardsPerMonth) {
+      alert('Numele, specializarea și numărul maxim de garzi sunt obligatorii!');
       return;
     }
 
@@ -203,16 +203,17 @@ export const StaffEditModal = ({
             {/* Max Guards Per Month */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Numărul maxim de garzi pe lună
+                Numărul maxim de garzi pe lună *
               </label>
               <input
                 type="number"
                 min="1"
                 max="31"
                 value={formData.maxGuardsPerMonth}
-                onChange={(e) => setFormData(prev => ({ ...prev, maxGuardsPerMonth: parseInt(e.target.value) || 10 }))}
+                onChange={(e) => setFormData(prev => ({ ...prev, maxGuardsPerMonth: parseInt(e.target.value) || '' }))}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                placeholder="10"
+                placeholder="ex: 8, 12, 15"
+                required
               />
               <p className="text-xs text-gray-500 mt-1">
                 Numărul maxim de garzi pe care acest medic le poate avea într-o lună
