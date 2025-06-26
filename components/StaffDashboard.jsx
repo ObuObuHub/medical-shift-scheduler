@@ -2,18 +2,22 @@ import React, { useState } from 'react';
 import Head from 'next/head';
 import { useAuth } from './AuthContext';
 import { useData } from './DataContext';
-import { Calendar, User, Clock, LogOut, ChevronLeft, ChevronRight, Download, Shield, Settings } from './Icons';
+import { Calendar, User, Clock, LogOut, ChevronLeft, ChevronRight, Download, Shield, Settings, CalendarDays } from './Icons';
 import { formatMonthYear, addMonths } from '../utils/dateHelpers';
 import { LoginForm } from './LoginForm';
 import { AdminDashboard } from './AdminDashboard';
 import { ManagerDashboard } from './ManagerDashboard';
+import { CalendarView } from './CalendarView';
+import { AddShiftModal } from './AddShiftModal';
 
 export const StaffDashboard = () => {
-  const { currentUser, logout, isAuthenticated } = useAuth();
-  const { shifts, staff, shiftTypes } = useData();
+  const { currentUser, logout, isAuthenticated, hasPermission } = useAuth();
+  const { shifts, staff, shiftTypes, hospitals, generateFairSchedule, deleteShift } = useData();
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [currentView, setCurrentView] = useState('schedule');
+  const [currentView, setCurrentView] = useState('calendar'); // Default to Planificare view
   const [showLoginModal, setShowLoginModal] = useState(false);
+  const [addShiftModalData, setAddShiftModalData] = useState(null);
+  const [selectedHospital, setSelectedHospital] = useState(currentUser?.hospital || 'spital1');
 
   // If authenticated as admin or manager, show their dashboard
   if (isAuthenticated && currentUser) {
@@ -183,14 +187,60 @@ export const StaffDashboard = () => {
     </div>
   );
 
+  const getDaysInMonth = () => {
+    const year = currentDate.getFullYear();
+    const month = currentDate.getMonth();
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+    const days = [];
+    
+    // Add padding days from previous month
+    const startPadding = firstDay.getDay();
+    for (let i = startPadding - 1; i >= 0; i--) {
+      const date = new Date(year, month, -i);
+      days.push(date);
+    }
+    
+    // Add all days of current month
+    for (let i = 1; i <= lastDay.getDate(); i++) {
+      days.push(new Date(year, month, i));
+    }
+    
+    // Add padding days from next month
+    const endPadding = 6 - lastDay.getDay();
+    for (let i = 1; i <= endPadding; i++) {
+      days.push(new Date(year, month + 1, i));
+    }
+    
+    return days;
+  };
+
+  const handleCellClick = (date, dayShifts, e) => {
+    // Staff can view shift details
+    // Reservation and swap actions are handled by hover buttons in CalendarView
+    console.log('Shift details for', date, dayShifts);
+  };
+
+  const getStaffName = (staffId) => {
+    const member = staff.find(s => s.id === staffId);
+    return member ? member.name : 'Unknown';
+  };
+
   const renderCalendarView = () => (
-    <div className="space-y-4 sm:space-y-6">
-      <h2 className="text-lg sm:text-2xl font-bold text-gray-900">Vezi toate turile</h2>
-      <div className="bg-white rounded-lg p-4">
-        <p className="text-gray-600">Toate turile sunt afișate în secțiunea &quot;Programul Meu&quot; de mai sus.</p>
-        <p className="text-sm text-gray-500 mt-2">Pentru funcții avansate, autentificați-vă ca Administrator sau Manager.</p>
-      </div>
-    </div>
+    <CalendarView
+      currentDate={currentDate}
+      navigateMonth={navigateMonth}
+      generateFairSchedule={generateFairSchedule}
+      getDaysInMonth={getDaysInMonth}
+      handleCellClick={handleCellClick}
+      getStaffName={getStaffName}
+      hasPermission={hasPermission}
+      staff={staff}
+      shifts={shifts}
+      setAddShiftModalData={setAddShiftModalData}
+      selectedHospital={selectedHospital}
+      currentUser={currentUser}
+    />
   );
 
   return (
@@ -211,17 +261,6 @@ export const StaffDashboard = () => {
             <div className="flex items-center space-x-2">
               <div className="flex space-x-1">
                 <button
-                  onClick={() => setCurrentView('schedule')}
-                  className={`px-2 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors touch-manipulation ${
-                    currentView === 'schedule'
-                      ? 'bg-blue-100 text-blue-700'
-                      : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
-                  }`}
-                >
-                  <span className="sm:hidden">Program</span>
-                  <span className="hidden sm:inline">Programul Meu</span>
-                </button>
-                <button
                   onClick={() => setCurrentView('calendar')}
                   className={`px-2 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors touch-manipulation ${
                     currentView === 'calendar'
@@ -229,8 +268,20 @@ export const StaffDashboard = () => {
                       : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
                   }`}
                 >
-                  <span className="sm:hidden">Calendar</span>
-                  <span className="hidden sm:inline">Calendar Complet</span>
+                  <CalendarDays className="w-4 h-4 sm:w-5 sm:h-5 inline mr-1" />
+                  <span>Planificare</span>
+                </button>
+                <button
+                  onClick={() => setCurrentView('schedule')}
+                  className={`px-2 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors touch-manipulation ${
+                    currentView === 'schedule'
+                      ? 'bg-blue-100 text-blue-700'
+                      : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                  }`}
+                >
+                  <Calendar className="w-4 h-4 sm:w-5 sm:h-5 inline mr-1" />
+                  <span className="sm:hidden">Ture</span>
+                  <span className="hidden sm:inline">Turele Mele</span>
                 </button>
               </div>
 
@@ -294,6 +345,17 @@ export const StaffDashboard = () => {
             <LoginForm onSuccess={() => setShowLoginModal(false)} />
           </div>
         </div>
+      )}
+
+      {/* Add Shift Modal (disabled for staff) */}
+      {addShiftModalData && (
+        <AddShiftModal
+          selectedDate={addShiftModalData.date}
+          editingShift={addShiftModalData.editingShift}
+          onClose={() => setAddShiftModalData(null)}
+          selectedHospital={selectedHospital}
+          onShiftDeleted={(shiftId) => deleteShift(shiftId)}
+        />
       )}
     </div>
   );

@@ -311,7 +311,7 @@ export const DataProvider = ({ children }) => {
 
 
   // Fair scheduling engine methods
-  const generateFairSchedule = (hospitalId, date) => {
+  const generateFairSchedule = async (hospitalId, date) => {
     if (!hospitalId || !date) return;
 
     const hospitalStaff = staff.filter(s => s.hospital === hospitalId && s.type === 'medic');
@@ -321,21 +321,60 @@ export const DataProvider = ({ children }) => {
     }
 
     try {
-      // Use the new fair scheduling algorithm
-      const newShifts = generateCompleteSchedule(hospitalStaff, date, shiftTypes);
+      // Load hospital configuration first
+      const config = await loadHospitalConfig(hospitalId);
+      
+      // Use the new V2 scheduling engine with hospital-specific patterns
+      const hospitalConfigWithDefaults = {
+        ...config,
+        hospital_id: hospitalId,
+        shiftTypes: config.shift_types || shiftTypes,
+        shiftPattern: config.shift_pattern || 'standard_12_24',
+        weekdayShifts: config.weekday_shifts || ['NOAPTE'],
+        weekendShifts: config.weekend_shifts || ['GARDA_ZI', 'NOAPTE', 'GARDA_24'],
+        maxShiftsPerMonth: config.max_shifts_per_month || 10,
+        maxConsecutiveNights: config.max_consecutive_nights || 2,
+        rules: config.rules || {
+          allow_consecutive_weekends: true,
+          min_rest_hours: 12
+        }
+      };
+      
+      const days = generateDaysForMonthV2(date, hospitalConfigWithDefaults);
+      const staffWithQuotas = calculateFairQuotasV2(hospitalStaff, days, hospitalConfigWithDefaults);
+      const schedule = generateScheduleV2(staffWithQuotas, days, hospitalConfigWithDefaults, shifts);
+      
+      // Convert schedule to shifts format
+      const newShifts = {};
+      schedule.forEach(daySchedule => {
+        if (!newShifts[daySchedule.date]) {
+          newShifts[daySchedule.date] = [];
+        }
+        
+        daySchedule.shifts.forEach(shift => {
+          newShifts[daySchedule.date].push({
+            id: shift.shiftId || `${daySchedule.date}-${shift.type.id}-${Date.now()}`,
+            date: daySchedule.date,
+            type: shift.type,
+            staffIds: shift.assigneeId ? [shift.assigneeId] : [],
+            hospital: hospitalId,
+            status: shift.status || 'open',
+            assignee: shift.assignee,
+            assigneeId: shift.assigneeId
+          });
+        });
+      });
       
       // Merge with existing shifts from other months/hospitals
       setShifts(prevShifts => ({ ...prevShifts, ...newShifts }));
       
-      console.log('Fair schedule generated successfully');
+      console.log('Fair schedule generated successfully with hospital-specific patterns');
+      addNotification('Program generat cu succes', 'success');
       return { shifts: newShifts };
     } catch (error) {
       console.error('Error generating fair schedule:', error);
-      // Fallback to old method if new one fails
-      const days = generateDaysForMonth(date);
-      const newShifts = convertScheduleToShifts(days, hospitalStaff, shiftTypes);
-      setShifts(prevShifts => ({ ...prevShifts, ...newShifts }));
-      return { days, shifts: newShifts };
+      addNotification('Eroare la generarea programului', 'error');
+      throw error;
     }
   };
 
@@ -442,16 +481,23 @@ export const DataProvider = ({ children }) => {
         throw new Error('No medical staff available for regeneration');
       }
 
-      // Use the new regeneration algorithm
-      const newShifts = regenerateCompleteSchedule(shifts, hospitalStaff, date, shiftTypes);
+      // Clear existing shifts for this month first
+      const year = date.getFullYear();
+      const month = date.getMonth();
+      const startDate = new Date(year, month, 1).toISOString().split('T')[0];
+      const endDate = new Date(year, month + 1, 0).toISOString().split('T')[0];
       
-      // Update shifts state
-      setShifts(newShifts);
+      await clearAllShifts(hospitalId, startDate, endDate);
+      
+      // Generate fresh schedule using V2 engine
+      await generateFairSchedule(hospitalId, date);
       
       console.log('Schedule regenerated from scratch successfully');
-      return { shifts: newShifts };
+      addNotification('Program regenerat cu succes', 'success');
+      return { shifts: shifts };
     } catch (error) {
       console.error('Failed to regenerate schedule:', error);
+      addNotification('Eroare la regenerarea programului', 'error');
       throw error;
     }
   };

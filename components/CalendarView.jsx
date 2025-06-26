@@ -107,26 +107,18 @@ export const CalendarView = ({
           const isToday = date.toDateString() === new Date().toDateString();
           const dayShifts = isCurrentMonth ? (shifts[date.toISOString().split('T')[0]] || []) : [];
           
-          const coverage = isCurrentMonth ? getCoverageForDate(date, 'spital1') : null;
+          // Simple coverage check based on shift count
           let coverageInfo = null;
-          
-          if (coverage) {
-            const totalDoctors = Object.values(coverage).reduce((sum, slot) => sum + slot.doctors, 0);
-            const totalNurses = Object.values(coverage).reduce((sum, slot) => sum + slot.nurses, 0);
-            const warnings = Object.values(coverage).reduce((sum, slot) => sum + (slot.doctors < 1 || slot.nurses < 1 ? 1 : 0), 0);
-            
-            let score = 0;
-            if (totalDoctors >= 3 && totalNurses >= 6) score = 90;
-            else if (totalDoctors >= 2 && totalNurses >= 4) score = 75;
-            else if (totalDoctors >= 1 && totalNurses >= 2) score = 60;
-            else score = 30;
+          if (isCurrentMonth && dayShifts.length > 0) {
+            const hasFullCoverage = dayShifts.some(s => s.type.duration === 24) || 
+                                  (dayShifts.some(s => s.type.id === 'GARDA_ZI') && 
+                                   dayShifts.some(s => s.type.id === 'NOAPTE'));
             
             coverageInfo = {
-              score,
-              warnings: warnings,
-              className: score >= 80 ? 'bg-green-50 border-green-200' : 
-                        score >= 60 ? 'bg-yellow-50 border-yellow-200' : 'bg-red-50 border-red-200',
-              icon: score >= 80 ? '✓' : score >= 60 ? '!' : '✗'
+              score: hasFullCoverage ? 90 : 60,
+              warnings: hasFullCoverage ? 0 : 1,
+              className: hasFullCoverage ? 'bg-green-50 border-green-200' : 'bg-yellow-50 border-yellow-200',
+              icon: hasFullCoverage ? '✓' : '!'
             };
           }
 
