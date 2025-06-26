@@ -3,7 +3,6 @@ import { useData } from './DataContext';
 import { useAuth } from './AuthContext';
 import { Users, AlertCircle, CheckCircle, Plus, Trash2, Wand2, Download, ChevronLeft, ChevronRight, X } from './Icons';
 import { exportShiftsToText, downloadTextFile, generateExportFilename } from '../utils/exportUtils';
-import { generateCompleteSchedule, regenerateCompleteSchedule } from '../utils/fairScheduling';
 
 export const MatrixView = ({ 
   selectedHospital, 
@@ -14,7 +13,7 @@ export const MatrixView = ({
   onRegenerateFromScratch,
   onGenerateShifts
 }) => {
-  const { staff, shifts, shiftTypes, setShifts } = useData();
+  const { staff, shifts, shiftTypes, setShifts, generateFairSchedule, regenerateFromScratch } = useData();
   const { hasPermission } = useAuth();
   
   const [selectedDepartment, setSelectedDepartment] = useState('');
@@ -249,14 +248,12 @@ export const MatrixView = ({
       if (hasExistingShifts) {
         // Regenerate existing schedule
         if (confirm('Există deja ture pentru această lună. Doriți să regenerați complet programul? Toate turile existente vor fi înlocuite.')) {
-          const newShifts = regenerateCompleteSchedule(shifts, hospitalStaff, currentDate, shiftTypes);
-          setShifts(newShifts);
+          await regenerateFromScratch(selectedHospital, currentDate);
         }
       } else {
-        // Generate new schedule
+        // Generate new schedule using the same method as Calendar View
         if (confirm('Generați ture noi pentru această lună cu distribuție echitabilă?')) {
-          const newShifts = generateCompleteSchedule(hospitalStaff, currentDate, shiftTypes);
-          setShifts(prevShifts => ({ ...prevShifts, ...newShifts }));
+          await generateFairSchedule(selectedHospital, currentDate);
         }
       }
     } catch (error) {

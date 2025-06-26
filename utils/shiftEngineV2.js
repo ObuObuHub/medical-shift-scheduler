@@ -67,7 +67,9 @@ export function generateSchedule(staff, days, hospitalConfig, existingShifts = {
       let candidates = pool.filter(p => {
         // Basic eligibility
         if (p.unavailable?.includes(day.date)) return false;
-        if (p.totalAssigned >= hospitalConfig.maxShiftsPerMonth) return false;
+        // Use individual staff max guards limit or fall back to hospital config
+        const maxShifts = p.maxGuardsPerMonth || p.max_guards_per_month || hospitalConfig.maxShiftsPerMonth || 10;
+        if (p.totalAssigned >= maxShifts) return false;
         
         // Shift type preferences
         if (p.preferences?.avoidedShiftTypes?.includes(shiftType.id)) {
@@ -100,7 +102,8 @@ export function generateSchedule(staff, days, hospitalConfig, existingShifts = {
         // Relax some constraints if no one is available
         candidates = pool.filter(p => {
           if (p.unavailable?.includes(day.date)) return false;
-          if (p.totalAssigned >= hospitalConfig.maxShiftsPerMonth + 2) return false; // Allow slight overflow
+          const maxShifts = p.maxGuardsPerMonth || p.max_guards_per_month || hospitalConfig.maxShiftsPerMonth || 10;
+          if (p.totalAssigned >= maxShifts + 2) return false; // Allow slight overflow in emergency
           return true;
         });
       }
@@ -327,9 +330,13 @@ export function validateSchedule(schedule, hospitalConfig) {
 
     let consecutiveNights = 0;
     let totalShifts = assignments.length;
+    
+    // Find staff member to get their individual limit
+    const staffMember = staffSchedule.staff?.find(s => s.id === parseInt(staffId)) || {};
+    const maxShifts = staffMember.maxGuardsPerMonth || staffMember.max_guards_per_month || hospitalConfig.maxShiftsPerMonth || 10;
 
-    if (totalShifts > hospitalConfig.maxShiftsPerMonth) {
-      warnings.push(`Staff ${staffId} has ${totalShifts} shifts (max: ${hospitalConfig.maxShiftsPerMonth})`);
+    if (totalShifts > maxShifts) {
+      warnings.push(`Staff ${staffMember.name || staffId} has ${totalShifts} shifts (max: ${maxShifts})`);
     }
 
     for (let i = 0; i < assignments.length; i++) {

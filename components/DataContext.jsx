@@ -18,17 +18,17 @@ const DEFAULT_HOSPITALS = [
 
 const DEFAULT_STAFF = [
   // Spitalul Județean de Urgență Piatra-Neamț - Laboratorul de analize medicale
-  { id: 1, name: 'Dr. Zugun Eduard', type: 'medic', specialization: 'Laborator', hospital: 'spital1', role: 'staff', unavailable: [] },
-  { id: 2, name: 'Dr. Gîlea Arina', type: 'medic', specialization: 'Laborator', hospital: 'spital1', role: 'staff', unavailable: [] },
-  { id: 3, name: 'Dr. Manole Anca', type: 'medic', specialization: 'Laborator', hospital: 'spital1', role: 'staff', unavailable: [] },
-  { id: 4, name: 'Biol. Alforei Magda Elena', type: 'biolog', specialization: 'Laborator', hospital: 'spital1', role: 'staff', unavailable: [] },
-  { id: 5, name: 'Dr. Rusica Iovu Elena', type: 'medic', specialization: 'Laborator', hospital: 'spital1', role: 'staff', unavailable: [] },
-  { id: 6, name: 'Dr. Grădinariu Cristina', type: 'medic', specialization: 'Laborator', hospital: 'spital1', role: 'staff', unavailable: [] },
-  { id: 7, name: 'Dr. Ciorsac Alina', type: 'medic', specialization: 'Laborator', hospital: 'spital1', role: 'staff', unavailable: [] },
-  { id: 8, name: 'Dr. Constantinescu Raluca', type: 'medic', specialization: 'Laborator', hospital: 'spital1', role: 'staff', unavailable: [] },
-  { id: 9, name: 'Dr. Dobrea Letiția', type: 'medic', specialization: 'Laborator', hospital: 'spital1', role: 'staff', unavailable: [] },
-  { id: 10, name: 'Ch. Dobre Liliana Gabriela', type: 'chimist', specialization: 'Laborator', hospital: 'spital1', role: 'staff', unavailable: [] },
-  { id: 11, name: 'Dr. Chiper Leferman Andrei', type: 'medic', specialization: 'Laborator', hospital: 'spital1', role: 'manager', unavailable: [] }
+  { id: 1, name: 'Dr. Zugun Eduard', type: 'medic', specialization: 'Laborator', hospital: 'spital1', role: 'staff', unavailable: [], maxGuardsPerMonth: 10 },
+  { id: 2, name: 'Dr. Gîlea Arina', type: 'medic', specialization: 'Laborator', hospital: 'spital1', role: 'staff', unavailable: [], maxGuardsPerMonth: 10 },
+  { id: 3, name: 'Dr. Manole Anca', type: 'medic', specialization: 'Laborator', hospital: 'spital1', role: 'staff', unavailable: [], maxGuardsPerMonth: 10 },
+  { id: 4, name: 'Biol. Alforei Magda Elena', type: 'biolog', specialization: 'Laborator', hospital: 'spital1', role: 'staff', unavailable: [], maxGuardsPerMonth: 10 },
+  { id: 5, name: 'Dr. Rusica Iovu Elena', type: 'medic', specialization: 'Laborator', hospital: 'spital1', role: 'staff', unavailable: [], maxGuardsPerMonth: 10 },
+  { id: 6, name: 'Dr. Grădinariu Cristina', type: 'medic', specialization: 'Laborator', hospital: 'spital1', role: 'staff', unavailable: [], maxGuardsPerMonth: 10 },
+  { id: 7, name: 'Dr. Ciorsac Alina', type: 'medic', specialization: 'Laborator', hospital: 'spital1', role: 'staff', unavailable: [], maxGuardsPerMonth: 10 },
+  { id: 8, name: 'Dr. Constantinescu Raluca', type: 'medic', specialization: 'Laborator', hospital: 'spital1', role: 'staff', unavailable: [], maxGuardsPerMonth: 10 },
+  { id: 9, name: 'Dr. Dobrea Letiția', type: 'medic', specialization: 'Laborator', hospital: 'spital1', role: 'staff', unavailable: [], maxGuardsPerMonth: 10 },
+  { id: 10, name: 'Ch. Dobre Liliana Gabriela', type: 'chimist', specialization: 'Laborator', hospital: 'spital1', role: 'staff', unavailable: [], maxGuardsPerMonth: 10 },
+  { id: 11, name: 'Dr. Chiper Leferman Andrei', type: 'medic', specialization: 'Laborator', hospital: 'spital1', role: 'manager', unavailable: [], maxGuardsPerMonth: 10 }
 ];
 
 const DataContext = createContext();
