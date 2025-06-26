@@ -338,7 +338,7 @@ export const MatrixView = ({
               onChange={(e) => setSelectedDepartment(e.target.value)}
               className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
             >
-              <option value="">Toate departamentele</option>
+              <option value="">Selectează departament</option>
               {departments.map(dept => (
                 <option key={dept} value={dept}>{dept}</option>
               ))}
@@ -346,9 +346,14 @@ export const MatrixView = ({
             
             {hasPermission('generate_shifts') && (
               <button 
-                onClick={() => generateFairSchedule(selectedHospital, currentDate, selectedDepartment)} 
-                className="px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center text-sm touch-manipulation"
-                title={selectedDepartment ? `Generează program pentru ${selectedDepartment}` : "Generează program pentru toate departamentele"}
+                onClick={() => selectedDepartment && generateFairSchedule(selectedHospital, currentDate, selectedDepartment)} 
+                className={`px-3 py-2 rounded-lg flex items-center text-sm touch-manipulation ${
+                  selectedDepartment 
+                    ? 'bg-green-600 text-white hover:bg-green-700' 
+                    : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                }`}
+                disabled={!selectedDepartment}
+                title={selectedDepartment ? `Generează program pentru ${selectedDepartment}` : "Selectează un departament"}
               >
                 <Wand2 className="w-4 h-4 mr-1" />
                 <span>Generează</span>

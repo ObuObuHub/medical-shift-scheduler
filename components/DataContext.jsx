@@ -300,19 +300,20 @@ export const DataProvider = ({ children }) => {
   // Fair scheduling engine methods
   const generateFairSchedule = async (hospitalId, date, department = null) => {
     if (!hospitalId || !date) return;
+    
+    // Department is now required
+    if (!department) {
+      addNotification('Selectează un departament pentru generare.', 'warning');
+      return;
+    }
 
     let hospitalStaff = staff.filter(s => s.hospital === hospitalId);
     
-    // Filter by department if specified
-    if (department) {
-      hospitalStaff = hospitalStaff.filter(s => s.specialization === department);
-    }
+    // Filter by department
+    hospitalStaff = hospitalStaff.filter(s => s.specialization === department);
     
     if (hospitalStaff.length === 0) {
-      const message = department 
-        ? `Nu există personal disponibil în departamentul ${department}.`
-        : 'Nu există personal disponibil pentru generarea programului.';
-      addNotification(message, 'error');
+      addNotification(`Nu există personal disponibil în departamentul ${department}.`, 'error');
       return;
     }
 
@@ -366,13 +367,28 @@ export const DataProvider = ({ children }) => {
         });
       });
       
-      // Merge with existing shifts from other months/hospitals
-      setShifts(prevShifts => ({ ...prevShifts, ...newShifts }));
+      // Merge with existing shifts, preserving other departments
+      setShifts(prevShifts => {
+        const updatedShifts = { ...prevShifts };
+        
+        // For each date with new shifts
+        Object.keys(newShifts).forEach(date => {
+          // Get existing shifts for this date
+          const existingShifts = prevShifts[date] || [];
+          
+          // Keep shifts from other departments
+          const otherDeptShifts = existingShifts.filter(shift => 
+            shift.department && shift.department !== department
+          );
+          
+          // Combine other department shifts with new department shifts
+          updatedShifts[date] = [...otherDeptShifts, ...newShifts[date]];
+        });
+        
+        return updatedShifts;
+      });
       
-      const successMessage = department 
-        ? `Program generat cu succes pentru departamentul ${department}`
-        : 'Program generat cu succes pentru toate departamentele';
-      addNotification(successMessage, 'success');
+      addNotification(`Program generat cu succes pentru departamentul ${department}`, 'success');
       return { shifts: newShifts };
     } catch (error) {
             addNotification('Eroare la generarea programului', 'error');
@@ -408,6 +424,46 @@ export const DataProvider = ({ children }) => {
 
     } catch (error) {
       addNotification('Eroare la ștergerea turei', 'error');
+      throw error;
+    }
+  };
+
+  const clearDepartmentSchedule = async (hospitalId, date, department) => {
+    try {
+      if (!hospitalId || !date || !department) {
+        throw new Error('Hospital ID, date, and department are required');
+      }
+
+      const year = date.getFullYear();
+      const month = date.getMonth();
+      const startDate = new Date(year, month, 1);
+      const endDate = new Date(year, month + 1, 0);
+
+      // Remove shifts for the specified department only
+      setShifts(prevShifts => {
+        const updatedShifts = { ...prevShifts };
+        
+        Object.keys(updatedShifts).forEach(dateKey => {
+          const shiftDate = new Date(dateKey);
+          if (shiftDate >= startDate && shiftDate <= endDate) {
+            // Keep only shifts from other departments
+            updatedShifts[dateKey] = updatedShifts[dateKey].filter(shift => 
+              shift.department !== department
+            );
+            
+            // Remove empty date entries
+            if (updatedShifts[dateKey].length === 0) {
+              delete updatedShifts[dateKey];
+            }
+          }
+        });
+        
+        return updatedShifts;
+      });
+
+      addNotification(`Program șters pentru departamentul ${department}`, 'success');
+    } catch (error) {
+      addNotification('Eroare la ștergerea programului departamentului', 'error');
       throw error;
     }
   };
@@ -800,6 +856,7 @@ export const DataProvider = ({ children }) => {
     setStaffUnavailability,
     deleteShift,
     clearAllShifts,
+    clearDepartmentSchedule,
     regenerateFromScratch,
     // New shift management
     reserveShift,

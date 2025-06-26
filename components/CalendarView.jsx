@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { ChevronLeft, ChevronRight, Plus, Wand2, Save, Download, Trash2, RefreshCw, UserCheck } from './Icons';
+import { ChevronLeft, ChevronRight, Plus, Wand2, Save, Download, Trash2, RefreshCw, UserCheck, X } from './Icons';
 import SwapRequestModal from './SwapRequestModal';
 import { useData } from './DataContext';
 import { exportShiftsToText, downloadTextFile, generateExportFilename } from '../utils/exportUtils';
@@ -28,7 +28,7 @@ export const CalendarView = ({
   const days = getDaysInMonth();
   
   // Get context methods
-  const { reserveShift, cancelReservation, createSwapRequest } = useData();
+  const { reserveShift, cancelReservation, createSwapRequest, clearDepartmentSchedule } = useData();
   
   // State for department selection
   const [selectedDepartment, setSelectedDepartment] = useState('');
@@ -38,6 +38,26 @@ export const CalendarView = ({
     const hospitalStaff = staff.filter(s => s.hospital === selectedHospital);
     return [...new Set(hospitalStaff.map(s => s.specialization))].sort();
   }, [staff, selectedHospital]);
+  
+  // Check which departments have schedules for current month
+  const departmentsWithSchedules = useMemo(() => {
+    const deptSet = new Set();
+    const year = currentDate.getFullYear();
+    const month = currentDate.getMonth();
+    
+    Object.entries(shifts).forEach(([date, dayShifts]) => {
+      const shiftDate = new Date(date);
+      if (shiftDate.getFullYear() === year && shiftDate.getMonth() === month) {
+        dayShifts.forEach(shift => {
+          if (shift.department) {
+            deptSet.add(shift.department);
+          }
+        });
+      }
+    });
+    
+    return deptSet;
+  }, [shifts, currentDate]);
   
   
   // Swap modal state - use props if provided, otherwise local state
@@ -84,24 +104,68 @@ export const CalendarView = ({
                 className="px-2 sm:px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-green-500"
                 title="Selectează departamentul pentru generare"
               >
-                <option value="">Toate departamentele</option>
+                <option value="">Selectează departament</option>
                 {departments.map(dept => (
                   <option key={dept} value={dept}>{dept}</option>
                 ))}
               </select>
               
               <button 
-                onClick={() => generateFairSchedule(selectedHospital, currentDate, selectedDepartment)} 
-                className="px-3 sm:px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center text-sm sm:text-base touch-manipulation"
-                title={selectedDepartment ? `Generează program pentru ${selectedDepartment}` : "Generează program pentru toate departamentele"}
+                onClick={() => selectedDepartment && generateFairSchedule(selectedHospital, currentDate, selectedDepartment)} 
+                className={`px-3 sm:px-4 py-2 rounded-lg flex items-center text-sm sm:text-base touch-manipulation ${
+                  selectedDepartment 
+                    ? 'bg-green-600 text-white hover:bg-green-700' 
+                    : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                }`}
+                disabled={!selectedDepartment}
+                title={selectedDepartment ? `Generează program pentru ${selectedDepartment}` : "Selectează un departament"}
               >
                 <Wand2 className="w-4 h-4 sm:mr-2" />
                 <span className="hidden sm:inline">Generează</span>
               </button>
+              
+              {selectedDepartment && departmentsWithSchedules.has(selectedDepartment) && (
+                <button 
+                  onClick={() => {
+                    if (confirm(`Ești sigur că vrei să ștergi programul pentru departamentul ${selectedDepartment}?`)) {
+                      clearDepartmentSchedule(selectedHospital, currentDate, selectedDepartment);
+                    }
+                  }} 
+                  className="px-3 sm:px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 flex items-center text-sm sm:text-base touch-manipulation"
+                  title={`Șterge programul pentru ${selectedDepartment}`}
+                >
+                  <Trash2 className="w-4 h-4 sm:mr-2" />
+                  <span className="hidden sm:inline">Șterge</span>
+                </button>
+              )}
             </>
           )}
         </div>
       </div>
+
+      {/* Department Schedule Status */}
+      {hasPermission('generate_shifts') && departments.length > 0 && (
+        <div className="mb-3 p-2 bg-gray-50 rounded-lg">
+          <div className="text-sm text-gray-600 mb-1">Status departamente:</div>
+          <div className="flex flex-wrap gap-2">
+            {departments.map(dept => {
+              const hasSchedule = departmentsWithSchedules.has(dept);
+              return (
+                <div 
+                  key={dept}
+                  className={`inline-flex items-center px-2 py-1 rounded-full text-xs ${
+                    hasSchedule 
+                      ? 'bg-green-100 text-green-800' 
+                      : 'bg-gray-200 text-gray-600'
+                  }`}
+                >
+                  {hasSchedule ? '✓' : '○'} {dept}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-7 gap-2 mb-2 sm:mb-4">
         {weekDays.map(day => (
