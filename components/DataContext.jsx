@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import apiClient from '../lib/apiClient';
 import { generateSchedule, generateDaysForMonth, calculateFairQuotas, convertScheduleToShifts } from '../utils/shiftEngine';
+import { generateSchedule as generateScheduleV2, generateDaysForMonth as generateDaysForMonthV2, calculateFairQuotas as calculateFairQuotasV2, validateSchedule } from '../utils/shiftEngineV2';
 import { generateCompleteSchedule, regenerateCompleteSchedule } from '../utils/fairScheduling';
 
 // Default fallback data (used only when API is not available)
@@ -64,6 +65,8 @@ export const DataProvider = ({ children }) => {
   const [notifications, setNotifications] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isOffline, setIsOffline] = useState(false);
+  const [swapRequests, setSwapRequests] = useState([]);
+  const [hospitalConfigs, setHospitalConfigs] = useState({});
 
   // Load initial data from API
   useEffect(() => {
@@ -574,6 +577,226 @@ export const DataProvider = ({ children }) => {
     }
   };
 
+  // New shift management methods
+  const reserveShift = async (shiftId) => {
+    try {
+      const response = await fetch(`/api/shifts/${shiftId}/reserve`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to reserve shift');
+      }
+
+      const result = await response.json();
+      
+      // Update local shifts state
+      setShifts(prevShifts => {
+        const newShifts = { ...prevShifts };
+        Object.keys(newShifts).forEach(date => {
+          newShifts[date] = newShifts[date].map(shift => 
+            shift.id === shiftId ? { ...shift, status: 'reserved', reservedBy: result.shift.reserved_by } : shift
+          );
+        });
+        return newShifts;
+      });
+
+      addNotification('Tură rezervată cu succes', 'success');
+      return result.shift;
+    } catch (error) {
+      console.error('Failed to reserve shift:', error);
+      addNotification(error.message || 'Eroare la rezervarea turei', 'error');
+      throw error;
+    }
+  };
+
+  const cancelReservation = async (shiftId) => {
+    try {
+      const response = await fetch(`/api/shifts/${shiftId}/reserve`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to cancel reservation');
+      }
+
+      const result = await response.json();
+      
+      // Update local shifts state
+      setShifts(prevShifts => {
+        const newShifts = { ...prevShifts };
+        Object.keys(newShifts).forEach(date => {
+          newShifts[date] = newShifts[date].map(shift => 
+            shift.id === shiftId ? { ...shift, status: 'open', reservedBy: null } : shift
+          );
+        });
+        return newShifts;
+      });
+
+      addNotification('Rezervare anulată cu succes', 'success');
+      return result.shift;
+    } catch (error) {
+      console.error('Failed to cancel reservation:', error);
+      addNotification(error.message || 'Eroare la anularea rezervării', 'error');
+      throw error;
+    }
+  };
+
+  const createSwapRequest = async (swapData) => {
+    try {
+      const response = await fetch('/api/shifts/swap', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(swapData)
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to create swap request');
+      }
+
+      const result = await response.json();
+      
+      // Update local swap requests
+      await loadSwapRequests();
+      
+      addNotification('Cerere de schimb creată cu succes', 'success');
+      return result.swapRequest;
+    } catch (error) {
+      console.error('Failed to create swap request:', error);
+      addNotification(error.message || 'Eroare la crearea cererii de schimb', 'error');
+      throw error;
+    }
+  };
+
+  const loadSwapRequests = async () => {
+    try {
+      const response = await fetch('/api/shifts/swap', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to load swap requests');
+      }
+
+      const requests = await response.json();
+      setSwapRequests(requests);
+      return requests;
+    } catch (error) {
+      console.error('Failed to load swap requests:', error);
+      return [];
+    }
+  };
+
+  const updateSwapRequest = async (requestId, status, reviewComment) => {
+    try {
+      const response = await fetch(`/api/shifts/swap/${requestId}`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ status, reviewComment })
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to update swap request');
+      }
+
+      const result = await response.json();
+      
+      // Reload swap requests and shifts
+      await Promise.all([loadSwapRequests(), loadInitialData()]);
+      
+      addNotification(`Cerere de schimb ${status === 'approved' ? 'aprobată' : 'respinsă'} cu succes`, 'success');
+      return result.swapRequest;
+    } catch (error) {
+      console.error('Failed to update swap request:', error);
+      addNotification(error.message || 'Eroare la actualizarea cererii de schimb', 'error');
+      throw error;
+    }
+  };
+
+  const loadHospitalConfig = async (hospitalId) => {
+    try {
+      const response = await fetch(`/api/hospitals/${hospitalId}/config`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to load hospital config');
+      }
+
+      const config = await response.json();
+      setHospitalConfigs(prev => ({ ...prev, [hospitalId]: config }));
+      return config;
+    } catch (error) {
+      console.error('Failed to load hospital config:', error);
+      // Return default config
+      return {
+        hospital_id: hospitalId,
+        shift_pattern: 'standard_12_24',
+        weekday_shifts: ['NOAPTE'],
+        weekend_shifts: ['GARDA_ZI', 'NOAPTE', 'GARDA_24'],
+        holiday_shifts: ['GARDA_24'],
+        min_staff_per_shift: 1,
+        max_consecutive_nights: 1,
+        max_shifts_per_month: 10,
+        shift_types: shiftTypes,
+        rules: {
+          allow_consecutive_weekends: false,
+          min_rest_hours: 12
+        }
+      };
+    }
+  };
+
+  const updateHospitalConfig = async (hospitalId, config) => {
+    try {
+      const response = await fetch(`/api/hospitals/${hospitalId}/config`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(config)
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to update hospital config');
+      }
+
+      const result = await response.json();
+      setHospitalConfigs(prev => ({ ...prev, [hospitalId]: result.config }));
+      
+      addNotification('Configurație spital actualizată cu succes', 'success');
+      return result.config;
+    } catch (error) {
+      console.error('Failed to update hospital config:', error);
+      addNotification(error.message || 'Eroare la actualizarea configurației spitalului', 'error');
+      throw error;
+    }
+  };
+
   const value = {
     // Data
     shiftTypes,
@@ -584,6 +807,8 @@ export const DataProvider = ({ children }) => {
     templates,
     isLoading,
     isOffline,
+    swapRequests,
+    hospitalConfigs,
     // Setters
     setShifts,
     setNotifications,
@@ -607,6 +832,14 @@ export const DataProvider = ({ children }) => {
     deleteShift,
     clearAllShifts,
     regenerateFromScratch,
+    // New shift management
+    reserveShift,
+    cancelReservation,
+    createSwapRequest,
+    loadSwapRequests,
+    updateSwapRequest,
+    loadHospitalConfig,
+    updateHospitalConfig,
     // Fair scheduling utilities
     generateCompleteSchedule: (hospitalId, date) => {
       const hospitalStaff = staff.filter(s => s.hospital === hospitalId && s.type === 'medic');

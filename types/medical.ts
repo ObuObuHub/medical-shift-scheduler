@@ -47,6 +47,10 @@ export interface Shift {
   type: ShiftType;
   staffIds: number[];
   department?: string;
+  status?: 'open' | 'reserved' | 'confirmed' | 'swap_requested';
+  reservedBy?: number;
+  reservedAt?: Date;
+  swapRequestId?: number;
 }
 
 export interface User {
@@ -79,4 +83,53 @@ export interface ShiftExchange {
   };
   status: 'pending' | 'approved' | 'rejected';
   reason: string;
+}
+
+export interface ShiftSwapRequest {
+  id: number;
+  requesterId: number;
+  targetStaffId?: number;
+  shiftId: string;
+  shiftDate: string;
+  shiftType: ShiftType;
+  requestedShiftId?: string;
+  requestedShiftDate?: string;
+  requestedShiftType?: ShiftType;
+  reason?: string;
+  status: 'pending' | 'approved' | 'rejected' | 'cancelled';
+  reviewedBy?: number;
+  reviewedAt?: Date;
+  reviewComment?: string;
+  hospital: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface HospitalShiftConfig {
+  id: number;
+  hospitalId: string;
+  shiftPattern: 'standard_12_24' | 'only_24' | 'custom';
+  weekdayShifts: string[];
+  weekendShifts: string[];
+  holidayShifts: string[];
+  minStaffPerShift: number;
+  maxConsecutiveNights: number;
+  maxShiftsPerMonth: number;
+  shiftTypes: Record<string, ShiftType>;
+  rules: {
+    allowConsecutiveWeekends?: boolean;
+    minRestHours?: number;
+    maxConsecutive24h?: number;
+    [key: string]: any;
+  };
+  isActive: boolean;
+}
+
+export interface StaffShiftPreferences {
+  id: number;
+  staffId: number;
+  preferredShiftTypes?: string[];
+  avoidedShiftTypes?: string[];
+  preferredDays?: number[];
+  notes?: string;
 }

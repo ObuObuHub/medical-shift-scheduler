@@ -1,6 +1,8 @@
-import React, { useState } from 'react';
-import { ChevronLeft, ChevronRight, Plus, Wand2, Save, Download, Trash2 } from './Icons';
+import React, { useState, useContext } from 'react';
+import { ChevronLeft, ChevronRight, Plus, Wand2, Save, Download, Trash2, RefreshCw, UserCheck } from './Icons';
 import { TemplateModal } from './TemplateModal';
+import SwapRequestModal from './SwapRequestModal';
+import { DataContext } from './DataContext';
 
 export const CalendarView = ({ 
   currentDate,
@@ -13,15 +15,22 @@ export const CalendarView = ({
   staff,
   shifts,
   setAddShiftModalData,
-  selectedHospital
+  selectedHospital,
+  currentUser
 }) => {
   const months = ['Ianuarie', 'Februarie', 'Martie', 'Aprilie', 'Mai', 'Iunie',
                   'Iulie', 'August', 'Septembrie', 'Octombrie', 'Noiembrie', 'Decembrie'];
   const weekDays = ['Dum', 'Lun', 'Mar', 'Mie', 'Joi', 'Vin', 'Sâm'];
   const days = getDaysInMonth();
   
+  // Get context methods
+  const { reserveShift, cancelReservation, createSwapRequest } = useContext(DataContext);
+  
   // Template modal state
   const [templateModal, setTemplateModal] = useState({ isOpen: false, mode: null });
+  
+  // Swap modal state
+  const [swapModal, setSwapModal] = useState({ isOpen: false, shift: null });
 
   return (
     <div className="bg-white rounded-xl shadow-lg p-6">
@@ -166,10 +175,14 @@ export const CalendarView = ({
                   // Priority: 24h shift > combined 12h shifts > individual shifts
                   if (fullDayShift) {
                     // Show single 24-hour shift
+                    const isMyShift = fullDayShift.staffIds?.includes(currentUser?.id) || fullDayShift.reservedBy === currentUser?.id;
+                    const isReserved = fullDayShift.status === 'reserved';
+                    const isSwapRequested = fullDayShift.status === 'swap_requested';
+                    
                     return (
                       <div 
                         key={fullDayShift.id} 
-                        className="shift-item text-xs p-1 rounded flex flex-col hover:shadow-sm transition-shadow border-2"
+                        className="shift-item text-xs p-1 rounded flex flex-col hover:shadow-sm transition-shadow border-2 relative group"
                         style={{ 
                           backgroundColor: fullDayShift.type.color + '30', 
                           borderColor: fullDayShift.type.color 
@@ -180,7 +193,69 @@ export const CalendarView = ({
                           <span className="truncate font-medium">24h Gardă</span>
                           <span className="text-xs text-gray-600">{fullDayShift.staffIds.length}👨‍⚕️</span>
                         </div>
-                        <span className="text-xs text-gray-500">Acoperire completă</span>
+                        <span className="text-xs text-gray-500">
+                          {isReserved && '🔒 Rezervat'}
+                          {isSwapRequested && '🔄 Schimb cerut'}
+                          {!isReserved && !isSwapRequested && 'Acoperire completă'}
+                        </span>
+                        
+                        {/* Action buttons on hover */}
+                        {currentUser && (
+                          <div className="absolute -top-8 right-0 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
+                            {isMyShift && !isSwapRequested && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setSwapModal({ 
+                                    isOpen: true, 
+                                    shift: { 
+                                      ...fullDayShift, 
+                                      date: date.toISOString().split('T')[0],
+                                      assigneeId: currentUser.id,
+                                      hospital: selectedHospital
+                                    } 
+                                  });
+                                }}
+                                className="p-1 bg-blue-500 text-white rounded hover:bg-blue-600"
+                                title="Cere schimb"
+                              >
+                                <RefreshCw className="w-3 h-3" />
+                              </button>
+                            )}
+                            {!isMyShift && fullDayShift.status === 'open' && (
+                              <button
+                                onClick={async (e) => {
+                                  e.stopPropagation();
+                                  try {
+                                    await reserveShift(fullDayShift.id);
+                                  } catch (error) {
+                                    console.error('Failed to reserve shift:', error);
+                                  }
+                                }}
+                                className="p-1 bg-green-500 text-white rounded hover:bg-green-600"
+                                title="Rezervă tură"
+                              >
+                                <UserCheck className="w-3 h-3" />
+                              </button>
+                            )}
+                            {isReserved && fullDayShift.reservedBy === currentUser?.id && (
+                              <button
+                                onClick={async (e) => {
+                                  e.stopPropagation();
+                                  try {
+                                    await cancelReservation(fullDayShift.id);
+                                  } catch (error) {
+                                    console.error('Failed to cancel reservation:', error);
+                                  }
+                                }}
+                                className="p-1 bg-red-500 text-white rounded hover:bg-red-600"
+                                title="Anulează rezervarea"
+                              >
+                                ✕
+                              </button>
+                            )}
+                          </div>
+                        )}
                       </div>
                     );
                   } else if (dayShift && nightShift) {
@@ -207,10 +282,14 @@ export const CalendarView = ({
                     // Show individual shifts (partial coverage)
                     return dayShifts.slice(0, 2).map((shift) => {
                       const isPartial = dayShifts.length === 1;
+                      const isMyShift = shift.staffIds?.includes(currentUser?.id) || shift.reservedBy === currentUser?.id;
+                      const isReserved = shift.status === 'reserved';
+                      const isSwapRequested = shift.status === 'swap_requested';
+                      
                       return (
                         <div 
                           key={shift.id} 
-                          className="shift-item text-xs p-1 rounded flex flex-col hover:shadow-sm transition-shadow border-l-4"
+                          className="shift-item text-xs p-1 rounded flex flex-col hover:shadow-sm transition-shadow border-l-4 relative group"
                           style={{ 
                             backgroundColor: shift.type.color + '20', 
                             borderLeftColor: shift.type.color 
@@ -221,7 +300,69 @@ export const CalendarView = ({
                             <span className="truncate font-medium">{shift.type.name.split(' ')[0]}</span>
                             <span className="text-xs text-gray-600">{shift.staffIds.length}👨‍⚕️</span>
                           </div>
-                          {isPartial && <span className="text-xs text-orange-500">Parțial</span>}
+                          <span className="text-xs">
+                            {isReserved && '🔒 '}
+                            {isSwapRequested && '🔄 '}
+                            {isPartial && <span className="text-orange-500">Parțial</span>}
+                          </span>
+                          
+                          {/* Action buttons on hover */}
+                          {currentUser && (
+                            <div className="absolute -top-8 right-0 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
+                              {isMyShift && !isSwapRequested && (
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSwapModal({ 
+                                      isOpen: true, 
+                                      shift: { 
+                                        ...shift, 
+                                        date: date.toISOString().split('T')[0],
+                                        assigneeId: currentUser.id,
+                                        hospital: selectedHospital
+                                      } 
+                                    });
+                                  }}
+                                  className="p-1 bg-blue-500 text-white rounded hover:bg-blue-600"
+                                  title="Cere schimb"
+                                >
+                                  <RefreshCw className="w-3 h-3" />
+                                </button>
+                              )}
+                              {!isMyShift && shift.status === 'open' && (
+                                <button
+                                  onClick={async (e) => {
+                                    e.stopPropagation();
+                                    try {
+                                      await reserveShift(shift.id);
+                                    } catch (error) {
+                                      console.error('Failed to reserve shift:', error);
+                                    }
+                                  }}
+                                  className="p-1 bg-green-500 text-white rounded hover:bg-green-600"
+                                  title="Rezervă tură"
+                                >
+                                  <UserCheck className="w-3 h-3" />
+                                </button>
+                              )}
+                              {isReserved && shift.reservedBy === currentUser?.id && (
+                                <button
+                                  onClick={async (e) => {
+                                    e.stopPropagation();
+                                    try {
+                                      await cancelReservation(shift.id);
+                                    } catch (error) {
+                                      console.error('Failed to cancel reservation:', error);
+                                    }
+                                  }}
+                                  className="p-1 bg-red-500 text-white rounded hover:bg-red-600"
+                                  title="Anulează rezervarea"
+                                >
+                                  ✕
+                                </button>
+                              )}
+                            </div>
+                          )}
                         </div>
                       );
                     });
@@ -239,6 +380,17 @@ export const CalendarView = ({
         onClose={() => setTemplateModal({ isOpen: false, mode: null })}
         selectedHospital={selectedHospital}
         mode={templateModal.mode}
+      />
+      
+      {/* Swap Request Modal */}
+      <SwapRequestModal
+        isOpen={swapModal.isOpen}
+        onClose={() => setSwapModal({ isOpen: false, shift: null })}
+        myShift={swapModal.shift}
+        onSuccess={() => {
+          setSwapModal({ isOpen: false, shift: null });
+          // Refresh shifts will happen automatically through context
+        }}
       />
     </div>
   );

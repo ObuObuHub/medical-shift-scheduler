@@ -4,13 +4,14 @@ import { useAuth } from './AuthContext';
 import { useData } from './DataContext';
 import { 
   Calendar, Users, BarChart3, Settings, LogOut, 
-  Menu, X, Shield, Plus, Edit2, Trash2
+  Menu, X, Shield, Plus, Edit2, Trash2, RefreshCw
 } from './Icons';
 import { MatrixView } from './MatrixView';
 import { StaffView } from './StaffView';
 import { StaffEditModal } from './StaffEditModal';
 import { AddShiftModal } from './AddShiftModal';
 import { HospitalSwitchModal } from './HospitalSwitchModal';
+import SwapApprovalPanel from './SwapApprovalPanel';
 import { formatMonthYear, addMonths } from '../utils/dateHelpers';
 
 export const ManagerDashboard = () => {
@@ -72,6 +73,7 @@ export const ManagerDashboard = () => {
   const menuItems = [
     { id: 'matrix', label: 'Planificare', icon: BarChart3 },
     { id: 'staff', label: 'Personal', icon: Users },
+    { id: 'swaps', label: 'Cereri Schimb', icon: RefreshCw },
     { id: 'management', label: 'Gestionare', icon: Settings }
   ];
 
@@ -180,6 +182,14 @@ export const ManagerDashboard = () => {
       
       case 'management':
         return renderManagementView();
+      
+      case 'swaps':
+        return (
+          <SwapApprovalPanel 
+            selectedHospital={selectedHospital}
+            currentUser={currentUser}
+          />
+        );
       
       default:
         return <div>View not found</div>;
