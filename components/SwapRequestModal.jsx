@@ -1,8 +1,8 @@
-import React, { useState, useContext } from 'react';
-import { DataContext } from './DataContext';
+import React, { useState } from 'react';
+import { useData } from './DataContext';
 
 const SwapRequestModal = ({ isOpen, onClose, myShift, onSuccess }) => {
-  const { staff, shifts, createSwapRequest } = useContext(DataContext);
+  const { staff, shifts, createSwapRequest } = useData();
   const [selectedTargetStaff, setSelectedTargetStaff] = useState('');
   const [selectedTargetShift, setSelectedTargetShift] = useState('');
   const [reason, setReason] = useState('');

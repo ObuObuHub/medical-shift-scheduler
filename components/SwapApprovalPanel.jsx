@@ -12,21 +12,21 @@ const SwapApprovalPanel = ({ selectedHospital }) => {
   const [filter, setFilter] = useState('pending'); // pending, approved, rejected, all
 
   useEffect(() => {
+    const loadRequests = async () => {
+      setLoading(true);
+      try {
+        await loadSwapRequests();
+      } catch (error) {
+        console.error('Failed to load swap requests:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
     if (selectedHospital) {
       loadRequests();
     }
   }, [selectedHospital, loadSwapRequests]);
-
-  const loadRequests = async () => {
-    setLoading(true);
-    try {
-      await loadSwapRequests();
-    } catch (error) {
-      console.error('Failed to load swap requests:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleApproval = async (requestId, status) => {
     try {

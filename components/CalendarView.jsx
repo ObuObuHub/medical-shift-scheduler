@@ -1,8 +1,8 @@
-import React, { useState, useContext } from 'react';
+import React, { useState } from 'react';
 import { ChevronLeft, ChevronRight, Plus, Wand2, Save, Download, Trash2, RefreshCw, UserCheck } from './Icons';
 import { TemplateModal } from './TemplateModal';
 import SwapRequestModal from './SwapRequestModal';
-import { DataContext } from './DataContext';
+import { useData } from './DataContext';
 
 export const CalendarView = ({ 
   currentDate,
@@ -24,7 +24,7 @@ export const CalendarView = ({
   const days = getDaysInMonth();
   
   // Get context methods
-  const { reserveShift, cancelReservation, createSwapRequest } = useContext(DataContext);
+  const { reserveShift, cancelReservation, createSwapRequest } = useData();
   
   // Template modal state
   const [templateModal, setTemplateModal] = useState({ isOpen: false, mode: null });
