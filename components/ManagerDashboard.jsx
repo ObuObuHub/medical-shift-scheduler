@@ -10,6 +10,7 @@ import { MatrixView } from './MatrixView';
 import { StaffView } from './StaffView';
 import { StaffEditModal } from './StaffEditModal';
 import { AddShiftModal } from './AddShiftModal';
+import { HospitalSwitchModal } from './HospitalSwitchModal';
 import { formatMonthYear, addMonths } from '../utils/dateHelpers';
 
 export const ManagerDashboard = () => {
@@ -27,6 +28,10 @@ export const ManagerDashboard = () => {
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [editingStaff, setEditingStaff] = useState(null);
   const [addShiftModalData, setAddShiftModalData] = useState(null);
+  
+  // Hospital switch authentication state
+  const [showHospitalSwitchModal, setShowHospitalSwitchModal] = useState(false);
+  const [pendingHospital, setPendingHospital] = useState(null);
 
   const navigateMonth = (direction) => {
     setCurrentDate(prev => addMonths(prev, direction));
@@ -36,6 +41,31 @@ export const ManagerDashboard = () => {
     if (!hasPermission('assign_staff')) return;
     e.preventDefault();
     setAddShiftModalData({ date, editingShift: null });
+  };
+
+  // Hospital switching handlers
+  const handleHospitalDropdownChange = (e) => {
+    const newHospital = e.target.value;
+    
+    if (newHospital === selectedHospital) {
+      return; // No change needed
+    }
+    
+    // Show authentication modal for hospital switch
+    setPendingHospital(newHospital);
+    setShowHospitalSwitchModal(true);
+  };
+
+  const handleHospitalSwitchConfirm = (targetHospital) => {
+    setSelectedHospital(targetHospital);
+    setShowHospitalSwitchModal(false);
+    setPendingHospital(null);
+  };
+
+  const handleHospitalSwitchCancel = () => {
+    setShowHospitalSwitchModal(false);
+    setPendingHospital(null);
+    // Keep the dropdown at current hospital
   };
 
   // Menu items for managers
@@ -198,7 +228,7 @@ export const ManagerDashboard = () => {
             <div className="flex items-center space-x-4">
               <select
                 value={selectedHospital}
-                onChange={(e) => setSelectedHospital(e.target.value)}
+                onChange={handleHospitalDropdownChange}
                 className="px-3 py-1 border border-gray-300 rounded-md text-sm"
               >
                 {hospitals.map(hospital => (
@@ -278,6 +308,16 @@ export const ManagerDashboard = () => {
           onClose={() => setEditingStaff(null)}
         />
       )}
+
+      {/* Hospital Switch Authentication Modal */}
+      <HospitalSwitchModal
+        isOpen={showHospitalSwitchModal}
+        currentHospital={selectedHospital}
+        targetHospital={pendingHospital}
+        hospitals={hospitals}
+        onConfirm={handleHospitalSwitchConfirm}
+        onCancel={handleHospitalSwitchCancel}
+      />
     </div>
   );
 };
