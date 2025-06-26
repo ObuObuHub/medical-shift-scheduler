@@ -15,17 +15,16 @@ export const MatrixView = ({
   const [showShiftTypeModal, setShowShiftTypeModal] = useState(false);
   const [selectedCell, setSelectedCell] = useState(null);
   
-  // Generate date range for current month
+  // Generate date range for current month - just the days, no padding
   const dateRange = useMemo(() => {
     try {
-      const start = new Date(currentDate);
-      start.setDate(1);
-      const end = new Date(currentDate);
-      end.setMonth(end.getMonth() + 1, 0);
+      const year = currentDate.getFullYear();
+      const month = currentDate.getMonth();
+      const lastDay = new Date(year, month + 1, 0).getDate();
       
       const dates = [];
-      for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-        dates.push(new Date(d));
+      for (let day = 1; day <= lastDay; day++) {
+        dates.push(new Date(year, month, day));
       }
       return dates;
     } catch (error) {
