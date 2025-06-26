@@ -412,11 +412,19 @@ export const StaffDashboard = ({
                   <>
                     <button
                       onClick={() => setShowLoginModal(true)}
-                      className="px-4 py-2 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors touch-manipulation flex items-center space-x-2"
-                      title="Login Admin/Manager"
+                      className="px-3 sm:px-4 py-2 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors touch-manipulation flex items-center space-x-1"
+                      title="Login Admin"
                     >
                       <Shield className="w-4 h-4" />
-                      <span>Admin</span>
+                      <span className="hidden sm:inline">Admin</span>
+                    </button>
+                    <button
+                      onClick={() => setShowLoginModal(true)}
+                      className="px-3 sm:px-4 py-2 text-sm bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors touch-manipulation flex items-center space-x-1"
+                      title="Login Manager"
+                    >
+                      <Settings className="w-4 h-4" />
+                      <span className="hidden sm:inline">Manager</span>
                     </button>
                   </>
                 )}
