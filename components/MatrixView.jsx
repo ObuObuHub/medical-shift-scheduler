@@ -300,7 +300,7 @@ export const MatrixView = ({
   }
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200 flex flex-col max-h-[calc(100vh-8rem)]">
+    <div className="bg-white rounded-lg shadow-sm border border-gray-200 flex flex-col h-[calc(100vh-10rem)] sm:h-auto sm:max-h-[calc(100vh-8rem)]">
       {/* Header with filters - Mobile Responsive */}
       <div className="p-2 sm:p-4 border-b border-gray-200 flex-shrink-0">
         {/* Title with Month Navigation */}
@@ -353,13 +353,13 @@ export const MatrixView = ({
       </div>
 
       {/* Matrix Table - Mobile Optimized with vertical scroll */}
-      <div className="overflow-auto touch-pan-y flex-1 -webkit-overflow-scrolling-touch">
-        <div className="overflow-x-auto touch-pan-x -webkit-overflow-scrolling-touch">
-          <table className="w-full min-w-max">
+      <div className="flex-1 overflow-hidden relative">
+        <div className="absolute inset-0 overflow-auto matrix-scroll-container touch-scroll no-bounce">
+          <table className="w-full min-w-max select-none">
           {/* Date Headers */}
           <thead className="sticky top-0 z-20 bg-white">
             <tr>
-              <th className="sticky left-0 z-30 px-2 sm:px-4 py-3 bg-gray-100 border-b border-gray-300 text-left text-sm font-medium text-gray-700 min-w-40 sm:min-w-48">
+              <th className="sticky left-0 z-30 px-2 sm:px-4 py-3 bg-gray-100 border-b border-gray-300 text-left text-sm font-medium text-gray-700 min-w-40 sm:min-w-48 shadow-sm">
                 Personal
               </th>
               {dateRange.map(date => (
@@ -386,7 +386,7 @@ export const MatrixView = ({
             {filteredStaff.map((person, index) => (
               <tr key={person.id} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-25'}>
                 {/* Staff Info - Mobile Responsive */}
-                <td className="sticky left-0 z-10 px-2 sm:px-4 py-2 sm:py-3 bg-white border-b border-gray-200 shadow-sm">
+                <td className="sticky left-0 z-10 px-2 sm:px-4 py-2 sm:py-3 bg-white border-b border-gray-200 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.1)]">
                   <div className="flex items-center">
                     <div className="w-2 sm:w-3 h-2 sm:h-3 rounded-full mr-2 sm:mr-3 bg-blue-500 flex-shrink-0" />
                     <div className="min-w-0 flex-1">
@@ -412,7 +412,7 @@ export const MatrixView = ({
                   return (
                     <td
                       key={`${person.id}-${date.toISOString()}`}
-                      className={`${getCellStyle(primaryShift)} ${canClick ? 'cursor-pointer touch-manipulation' : ''} h-10 sm:h-12 w-12 sm:w-16 min-w-12 sm:min-w-16 text-center border-b border-gray-200 relative ${coverageStyle.className}`}
+                      className={`${getCellStyle(primaryShift)} ${canClick ? 'cursor-pointer touch-manipulation' : ''} h-12 sm:h-12 w-14 sm:w-16 min-w-[3.5rem] sm:min-w-16 text-center border-b border-gray-200 relative ${coverageStyle.className}`}
                       style={{
                         ...coverageStyle.style,
                         borderLeftColor: coverageStyle.borderColor,

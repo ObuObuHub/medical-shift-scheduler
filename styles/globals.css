@@ -129,3 +129,32 @@ textarea:focus {
   outline: 2px solid #3B82F6;
   outline-offset: 2px;
 }
+
+/* Touch scrolling optimization for mobile */
+.touch-scroll {
+  -webkit-overflow-scrolling: touch;
+  overflow-scrolling: touch;
+  scroll-behavior: smooth;
+}
+
+/* Prevent bounce effect on iOS */
+.no-bounce {
+  overscroll-behavior: contain;
+}
+
+/* Optimize table scrolling on mobile */
+.matrix-scroll-container {
+  -webkit-overflow-scrolling: touch;
+  overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+  overscroll-behavior-x: auto;
+}
+
+/* Ensure smooth scrolling on all devices */
+@supports (-webkit-touch-callout: none) {
+  /* iOS specific styles */
+  .matrix-scroll-container {
+    -webkit-transform: translateZ(0);
+    transform: translateZ(0);
+  }
+}
