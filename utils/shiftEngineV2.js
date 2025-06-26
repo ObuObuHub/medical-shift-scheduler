@@ -192,31 +192,41 @@ export function generateDaysForMonth(date, hospitalConfig) {
       requiredShifts = hospitalConfig.shiftTypes['GARDA_24'] ? 
         [hospitalConfig.shiftTypes['GARDA_24']] : [];
     } else if (hospitalConfig.shiftPattern === 'standard_12_24') {
-      // Standard pattern with 12h and 24h shifts
+      // Pattern based on real Spitalul Județean schedule
       if (dayOfWeek >= 1 && dayOfWeek <= 5) {
-        // Weekdays
-        const weekdayShiftIds = hospitalConfig.weekdayShifts || ['NOAPTE'];
-        requiredShifts = weekdayShiftIds
-          .map(id => hospitalConfig.shiftTypes[id])
-          .filter(Boolean);
-      } else {
-        // Weekends
-        const weekendShiftIds = hospitalConfig.weekendShifts || ['GARDA_ZI', 'NOAPTE'];
+        // Monday-Friday: Only night shifts (20:00-08:00)
+        requiredShifts = [hospitalConfig.shiftTypes['NOAPTE']].filter(Boolean);
+      } else if (dayOfWeek === 6) {
+        // Saturday logic
+        const weekOfMonth = Math.ceil(day / 7);
         
-        // Some Saturdays might have 24h shifts instead
-        if (dayOfWeek === 6) {
-          const saturdayOfMonth = Math.ceil(day / 7);
-          if (saturdayOfMonth % 2 === 0 && hospitalConfig.shiftTypes['GARDA_24']) {
-            requiredShifts = [hospitalConfig.shiftTypes['GARDA_24']];
-          } else {
-            requiredShifts = weekendShiftIds
-              .map(id => hospitalConfig.shiftTypes[id])
-              .filter(Boolean);
-          }
+        // 2nd and 3rd Saturdays: 24-hour shifts
+        if (weekOfMonth === 2 || weekOfMonth === 3) {
+          requiredShifts = [hospitalConfig.shiftTypes['GARDA_24']].filter(Boolean);
         } else {
-          requiredShifts = weekendShiftIds
-            .map(id => hospitalConfig.shiftTypes[id])
-            .filter(Boolean);
+          // Other Saturdays: Day + Night shifts
+          requiredShifts = [
+            hospitalConfig.shiftTypes['GARDA_ZI'],
+            hospitalConfig.shiftTypes['NOAPTE']
+          ].filter(Boolean);
+        }
+      } else if (dayOfWeek === 0) {
+        // Sunday: Always Day + Night shifts
+        requiredShifts = [
+          hospitalConfig.shiftTypes['GARDA_ZI'],
+          hospitalConfig.shiftTypes['NOAPTE']
+        ].filter(Boolean);
+      } else if (dayOfWeek === 5) {
+        // Friday: Occasionally 24h shift (last Friday of month)
+        const lastFriday = new Date(year, month + 1, 0);
+        while (lastFriday.getDay() !== 5) {
+          lastFriday.setDate(lastFriday.getDate() - 1);
+        }
+        
+        if (day === lastFriday.getDate()) {
+          requiredShifts = [hospitalConfig.shiftTypes['GARDA_24']].filter(Boolean);
+        } else {
+          requiredShifts = [hospitalConfig.shiftTypes['NOAPTE']].filter(Boolean);
         }
       }
     } else if (hospitalConfig.shiftPattern === 'custom') {

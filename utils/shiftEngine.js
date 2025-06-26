@@ -119,11 +119,19 @@ export function generateDaysForMonth(date) {
     if (dayOfWeek >= 1 && dayOfWeek <= 5) {
       // Monday to Friday: Single night guard (20-8, 12h)
       coverageType = "WEEKDAY_NIGHT";
+      
+      // Special case: Last Friday of month can be 24h
+      const lastFriday = new Date(year, month + 1, 0);
+      while (lastFriday.getDay() !== 5) {
+        lastFriday.setDate(lastFriday.getDate() - 1);
+      }
+      if (dayOfWeek === 5 && day === lastFriday.getDate()) {
+        coverageType = "FRIDAY_24H";
+      }
     } else if (dayOfWeek === 6) {
-      // Saturday: Alternate between 24h guard and day+night guards
-      // Every 2nd Saturday gets 24h guard for efficiency
-      const saturdayOfMonth = Math.ceil(day / 7);
-      if (saturdayOfMonth % 2 === 0) {
+      // Saturday: 2nd and 3rd Saturdays get 24h shifts
+      const weekOfMonth = Math.ceil(day / 7);
+      if (weekOfMonth === 2 || weekOfMonth === 3) {
         coverageType = "SATURDAY_24H";
       } else {
         coverageType = "WEEKEND_DAY_NIGHT";
@@ -276,7 +284,8 @@ export function convertScheduleToShifts(days, staff, shiftTypes) {
         break;
 
       case "SATURDAY_24H":
-        // Saturday: Single 8-8 guard (24h)
+      case "FRIDAY_24H":
+        // Saturday or Friday: Single 8-8 guard (24h)
         const guardStaff = findAvailableStaff();
         if (guardStaff) {
           shifts[day.date].push({
