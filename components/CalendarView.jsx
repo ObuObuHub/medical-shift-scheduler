@@ -37,8 +37,8 @@ export const CalendarView = ({
   const setSwapModal = propsSetSwapModal || setLocalSwapModal;
 
   return (
-    <div className="bg-white rounded-xl shadow-lg p-3 sm:p-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 sm:mb-6 space-y-3 sm:space-y-0">
+    <div className="bg-white rounded-xl shadow-lg p-2 sm:p-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-2 sm:mb-6 space-y-3 sm:space-y-0">
         <div className="flex items-center justify-between sm:justify-start sm:space-x-3">
           <h2 className="text-lg sm:text-2xl font-bold text-gray-800">
             {months[currentDate.getMonth()]} {currentDate.getFullYear()}
@@ -82,15 +82,15 @@ export const CalendarView = ({
         </div>
       </div>
 
-      <div className="grid grid-cols-7 gap-2 mb-4">
+      <div className="grid grid-cols-7 gap-2 mb-2 sm:mb-4">
         {weekDays.map(day => (
-          <div key={day} className="text-center font-semibold text-gray-600 py-2">
+          <div key={day} className="text-center font-semibold text-gray-600 py-1 sm:py-2">
             {day}
           </div>
         ))}
       </div>
 
-      <div className="grid grid-cols-7 gap-1 sm:gap-2">
+      <div className="grid grid-cols-7 gap-0.5 sm:gap-2">
         {days.map((date, index) => {
           const isCurrentMonth = date.getMonth() === currentDate.getMonth();
           const isToday = date.toDateString() === new Date().toDateString();
@@ -100,7 +100,7 @@ export const CalendarView = ({
           return (
             <div
               key={index}
-              className={`relative p-2 min-h-[100px] sm:h-36 border-2 rounded-lg transition-all duration-200 cursor-pointer overflow-hidden touch-manipulation
+              className={`relative p-1 min-h-[80px] sm:h-36 border-2 rounded-lg transition-all duration-200 cursor-pointer overflow-hidden touch-manipulation
                 ${!isCurrentMonth ? 'bg-gray-50 text-gray-400' : 'bg-white'}
                 ${isToday ? 'ring-2 ring-blue-400' : 'border-gray-200'}
                 ${hasPermission('assign_staff') ? 'hover:ring-2 hover:ring-blue-200' : ''}`}
@@ -108,8 +108,8 @@ export const CalendarView = ({
               title={`${date.toLocaleDateString('ro-RO', { weekday: 'long', day: 'numeric', month: 'long' })}`}
             >
               
-              <div className="flex items-center justify-between mb-1">
-                <div className="font-semibold text-sm">{date.getDate()}</div>
+              <div className="flex items-center justify-between mb-0.5">
+                <div className="font-semibold text-xs sm:text-sm">{date.getDate()}</div>
                 {hasPermission('assign_staff') && isCurrentMonth && (
                   <button 
                     onClick={(e) => {
@@ -124,7 +124,7 @@ export const CalendarView = ({
                 )}
               </div>
               
-              <div className="space-y-1">
+              <div className="space-y-0.5">
                 {(() => {
                   // Group shifts logically: One cell = One logical shift
                   const dayShift = dayShifts.find(s => s.type.duration === 12 && s.type.start === '08:00');
@@ -142,7 +142,7 @@ export const CalendarView = ({
                     return (
                       <div 
                         key={fullDayShift.id} 
-                        className="shift-item text-xs p-2 rounded-lg flex flex-col hover:shadow-md transition-shadow border-2 relative group h-full"
+                        className="shift-item text-xs p-1 rounded-lg flex flex-col hover:shadow-md transition-shadow border-2 relative group h-full"
                         style={{ 
                           backgroundColor: fullDayShift.type.color + '20', 
                           borderColor: fullDayShift.type.color 
@@ -233,11 +233,11 @@ export const CalendarView = ({
                     // Show combined day + night shifts as one logical unit
                     const totalStaff = new Set([...dayShift.staffIds, ...nightShift.staffIds]).size;
                     return (
-                      <div className="space-y-1 h-full">
+                      <div className="space-y-0.5 h-full">
                         {/* Day Shift */}
                         {dayShift && (
                           <div 
-                            className="shift-item text-xs p-1.5 rounded flex flex-col hover:shadow-sm transition-shadow border-l-4"
+                            className="shift-item text-xs p-1 rounded flex flex-col hover:shadow-sm transition-shadow border-l-4"
                             style={{ 
                               backgroundColor: dayShift.type.color + '20', 
                               borderLeftColor: dayShift.type.color 
@@ -259,7 +259,7 @@ export const CalendarView = ({
                         {/* Night Shift */}
                         {nightShift && (
                           <div 
-                            className="shift-item text-xs p-1.5 rounded flex flex-col hover:shadow-sm transition-shadow border-l-4"
+                            className="shift-item text-xs p-1 rounded flex flex-col hover:shadow-sm transition-shadow border-l-4"
                             style={{ 
                               backgroundColor: nightShift.type.color + '20', 
                               borderLeftColor: nightShift.type.color 
@@ -291,7 +291,7 @@ export const CalendarView = ({
                       return (
                         <div 
                           key={shift.id} 
-                          className="shift-item text-xs p-1.5 rounded-lg flex flex-col hover:shadow-sm transition-shadow border-l-4 relative group"
+                          className="shift-item text-xs p-1 rounded-lg flex flex-col hover:shadow-sm transition-shadow border-l-4 relative group"
                           style={{ 
                             backgroundColor: shift.type.color + '20', 
                             borderLeftColor: shift.type.color 
