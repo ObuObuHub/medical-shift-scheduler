@@ -367,6 +367,65 @@ export const DataProvider = ({ children }) => {
         });
       });
       
+      // First, clear existing shifts for this department from the database
+      const year = date.getFullYear();
+      const month = date.getMonth();
+      const startDate = new Date(year, month, 1).toISOString().split('T')[0];
+      const endDate = new Date(year, month + 1, 0).toISOString().split('T')[0];
+      
+      // Delete existing shifts for this department in the date range
+      if (!isOffline) {
+        try {
+          // Get all existing shifts for the month
+          const existingShifts = await apiClient.getShifts();
+          
+          // Filter shifts that need to be deleted (same department, same month)
+          const shiftsToDelete = [];
+          Object.entries(existingShifts).forEach(([shiftDate, dayShifts]) => {
+            if (shiftDate >= startDate && shiftDate <= endDate) {
+              dayShifts.forEach(shift => {
+                if (shift.department === department) {
+                  shiftsToDelete.push(shift.id);
+                }
+              });
+            }
+          });
+          
+          // Delete them
+          await Promise.all(shiftsToDelete.map(shiftId => 
+            apiClient.deleteShift(shiftId).catch(err => {
+              console.error('Failed to delete old shift:', err);
+            })
+          ));
+        } catch (err) {
+          console.error('Failed to clear old shifts:', err);
+        }
+      }
+
+      // Save new shifts to database
+      const savePromises = [];
+      Object.keys(newShifts).forEach(date => {
+        newShifts[date].forEach(shift => {
+          const shiftData = {
+            id: shift.id,
+            date: shift.date,
+            type: shift.type,
+            staffIds: shift.staffIds,
+            department: shift.department,
+            requirements: shift.requirements || { minDoctors: 1, specializations: [] },
+            coverage: shift.coverage || { adequate: true, warnings: [], recommendations: [], staffBreakdown: { doctors: 1, total: 1 } },
+            hospital: hospitalId
+          };
+          savePromises.push(apiClient.createShift(shiftData).catch(err => {
+            console.error('Failed to save shift:', err);
+            return null; // Continue with other saves even if one fails
+          }));
+        });
+      });
+
+      // Wait for all saves to complete
+      await Promise.all(savePromises);
+      
       // Merge with existing shifts, preserving other departments
       setShifts(prevShifts => {
         const updatedShifts = { ...prevShifts };
@@ -398,6 +457,53 @@ export const DataProvider = ({ children }) => {
 
   const setStaffUnavailability = (staffId, unavailableDates) => {
     updateStaff(staffId, { unavailable: unavailableDates });
+  };
+
+  const createShift = async (shiftData) => {
+    try {
+      // Save to database if online
+      if (!isOffline) {
+        await apiClient.createShift({
+          id: shiftData.id,
+          date: shiftData.date || shiftData.id.split('-')[0], // Extract date from ID if not provided
+          type: shiftData.type,
+          staffIds: shiftData.staffIds,
+          department: shiftData.department,
+          requirements: shiftData.requirements || { minDoctors: 1, specializations: [] },
+          coverage: shiftData.coverage || { adequate: true, warnings: [], recommendations: [], staffBreakdown: { doctors: 1, total: 1 } },
+          hospital: shiftData.hospital || 'spital1'
+        });
+      }
+
+      // Add to local state
+      const dateKey = shiftData.date || shiftData.id.split('-')[0];
+      setShifts(prevShifts => {
+        const newShifts = { ...prevShifts };
+        if (!newShifts[dateKey]) {
+          newShifts[dateKey] = [];
+        }
+        newShifts[dateKey].push(shiftData);
+        return newShifts;
+      });
+
+      return shiftData;
+    } catch (error) {
+      console.error('Failed to create shift:', error);
+      addNotification('Eroare la crearea turei. Salvat doar local.', 'warning');
+      
+      // Still add to local state even if database save fails
+      const dateKey = shiftData.date || shiftData.id.split('-')[0];
+      setShifts(prevShifts => {
+        const newShifts = { ...prevShifts };
+        if (!newShifts[dateKey]) {
+          newShifts[dateKey] = [];
+        }
+        newShifts[dateKey].push(shiftData);
+        return newShifts;
+      });
+      
+      throw error;
+    }
   };
 
   const deleteShift = async (shiftId) => {
@@ -854,6 +960,7 @@ export const DataProvider = ({ children }) => {
     // Fair scheduling
     generateFairSchedule,
     setStaffUnavailability,
+    createShift,
     deleteShift,
     clearAllShifts,
     clearDepartmentSchedule,

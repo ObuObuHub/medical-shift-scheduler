@@ -11,7 +11,7 @@ export const AddShiftModal = ({
   onClose, 
   onSave 
 }) => {
-  const { shiftTypes, staff, shifts, setShifts } = useData();
+  const { shiftTypes, staff, shifts, setShifts, createShift } = useData();
   const { hasPermission, currentUser } = useAuth();
   
   const [formData, setFormData] = useState({
@@ -178,42 +178,45 @@ export const AddShiftModal = ({
     proceedWithSave();
   };
 
-  const proceedWithSave = () => {
+  const proceedWithSave = async () => {
 
     const selectedShiftType = Object.values(shiftTypes).find(st => st.id === formData.shiftTypeId);
     const dateKey = selectedDate.toISOString().split('T')[0];
 
     const shiftData = {
       id: editingShift?.id || `${dateKey}-${formData.shiftTypeId}-${Date.now()}`,
+      date: dateKey,
       type: selectedShiftType,
       department: formData.department,
       staffIds: formData.staffIds,
       requirements: formData.requirements,
-      coverage: coverageAnalysis
+      coverage: coverageAnalysis,
+      hospital: currentUser?.hospital || 'spital1'
     };
 
-    const updatedShifts = { ...shifts };
-    if (!updatedShifts[dateKey]) {
-      updatedShifts[dateKey] = [];
-    }
-
-    if (editingShift) {
-      // Update existing shift
-      const shiftIndex = updatedShifts[dateKey].findIndex(s => s.id === editingShift.id);
-      if (shiftIndex !== -1) {
-        updatedShifts[dateKey][shiftIndex] = shiftData;
+    try {
+      if (editingShift) {
+        // For editing, we need to delete old and create new
+        // This is a simplified approach - ideally we'd have an updateShift method
+        const updatedShifts = { ...shifts };
+        if (updatedShifts[dateKey]) {
+          const shiftIndex = updatedShifts[dateKey].findIndex(s => s.id === editingShift.id);
+          if (shiftIndex !== -1) {
+            updatedShifts[dateKey][shiftIndex] = shiftData;
+          }
+        }
+        setShifts(updatedShifts);
+      } else {
+        // Add new shift
+        await createShift(shiftData);
       }
-    } else {
-      // Add new shift
-      updatedShifts[dateKey].push(shiftData);
+      
+      if (onSave) onSave(shiftData);
+      onClose();
+    } catch (error) {
+      // Error already handled by createShift
+      console.error('Failed to save shift:', error);
     }
-
-    setShifts(updatedShifts);
-    
-    // Shift saved silently
-    
-    if (onSave) onSave(shiftData);
-    onClose();
   };
 
   const getCoverageStatusIcon = () => {

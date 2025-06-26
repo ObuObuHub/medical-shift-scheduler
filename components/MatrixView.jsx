@@ -8,7 +8,7 @@ export const MatrixView = ({
   currentDate, 
   onDateChange
 }) => {
-  const { staff, shifts, shiftTypes, setShifts, deleteShift, generateFairSchedule } = useData();
+  const { staff, shifts, shiftTypes, setShifts, createShift, deleteShift, generateFairSchedule } = useData();
   const { hasPermission } = useAuth();
   
   const [selectedDepartment, setSelectedDepartment] = useState('');
@@ -143,7 +143,7 @@ export const MatrixView = ({
   };
 
   // Handle shift type selection
-  const handleShiftTypeSelect = (shiftType) => {
+  const handleShiftTypeSelect = async (shiftType) => {
     if (!selectedCell) return;
     
     const { staffId, date } = selectedCell;
@@ -151,21 +151,22 @@ export const MatrixView = ({
     
     const newShift = {
       id: `${dateKey}-${shiftType.id}-${staffId}-${Date.now()}`,
+      date: dateKey,
       type: shiftType,
       staffIds: [staffId],
       department: staff.find(s => s.id === staffId)?.specialization || '',
-      requirements: { minDoctors: 1, specializations: [] }
+      requirements: { minDoctors: 1, specializations: [] },
+      hospital: selectedHospital
     };
 
-    const updatedShifts = { ...shifts };
-    if (!updatedShifts[dateKey]) {
-      updatedShifts[dateKey] = [];
+    try {
+      await createShift(newShift);
+      setShowShiftTypeModal(false);
+      setSelectedCell(null);
+    } catch (error) {
+      // Error already handled by createShift
+      console.error('Failed to create shift:', error);
     }
-    updatedShifts[dateKey].push(newShift);
-    setShifts(updatedShifts);
-    
-    setShowShiftTypeModal(false);
-    setSelectedCell(null);
   };
 
   // Handle shift deletion
