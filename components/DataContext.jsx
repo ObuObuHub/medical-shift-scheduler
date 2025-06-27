@@ -28,7 +28,7 @@ const DEFAULT_STAFF = [
   { id: 8, name: 'Dr. Constantinescu Raluca', type: 'medic', specialization: 'Laborator', hospital: 'spital1', role: 'staff', unavailable: [], maxGuardsPerMonth: 10 },
   { id: 9, name: 'Dr. Dobrea Letiția', type: 'medic', specialization: 'Laborator', hospital: 'spital1', role: 'staff', unavailable: [], maxGuardsPerMonth: 10 },
   { id: 10, name: 'Ch. Dobre Liliana Gabriela', type: 'chimist', specialization: 'Laborator', hospital: 'spital1', role: 'staff', unavailable: [], maxGuardsPerMonth: 10 },
-  { id: 11, name: 'Dr. Chiper Leferman Andrei', type: 'medic', specialization: 'Laborator', hospital: 'spital1', role: 'manager', unavailable: [], maxGuardsPerMonth: 10 }
+  { id: 11, name: 'Dr. Chiper Leferman Andrei', type: 'medic', specialization: 'Laborator', hospital: 'spital1', role: 'staff', unavailable: [], maxGuardsPerMonth: 10 }
 ];
 
 const DataContext = createContext();

@@ -41,7 +41,7 @@ export const AuthProvider = ({ children }) => {
     // Clear any existing session data on mount
     localStorage.removeItem('currentUser');
     localStorage.removeItem('authToken');
-    apiClient.logout();
+    // Don't call logout here as it might interfere with the app flow
     setIsLoading(false);
   }, []);
 
@@ -83,7 +83,9 @@ export const AuthProvider = ({ children }) => {
 
   // Staff selection methods
   const selectStaff = (staffMember) => {
-    setSelectedStaff(staffMember);
+    if (staffMember) {
+      setSelectedStaff(staffMember);
+    }
   };
 
   const clearStaffSelection = () => {

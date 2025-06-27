@@ -19,8 +19,8 @@ export const AppRouter = () => {
     localStorage.removeItem('selectedHospital');
     localStorage.removeItem('selectedStaffId');
     localStorage.removeItem('isGuest');
-    clearStaffSelection();
-  }, [clearStaffSelection]); // Empty dependency array means this runs only once on mount
+    // Don't clear staff selection here as it interferes with the selection flow
+  }, []); // Empty dependency array means this runs only once on mount
 
   // Handle hospital selection
   const handleSelectHospital = (hospitalId) => {
