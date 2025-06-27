@@ -13,25 +13,14 @@ export const AppRouter = () => {
   const [selectedHospital, setSelectedHospital] = useState(null);
   const [isGuest, setIsGuest] = useState(false);
 
-  // Load saved selections from localStorage
+  // Clear saved selections on initial load to force hospital selection
   useEffect(() => {
-    const savedHospital = localStorage.getItem('selectedHospital');
-    const savedStaffId = localStorage.getItem('selectedStaffId');
-    const savedIsGuest = localStorage.getItem('isGuest') === 'true';
-
-    if (savedHospital) {
-      setSelectedHospital(savedHospital);
-    }
-
-    if (savedStaffId && !savedIsGuest) {
-      const staffMember = staff.find(s => s.id === parseInt(savedStaffId));
-      if (staffMember) {
-        selectStaff(staffMember);
-      }
-    }
-
-    setIsGuest(savedIsGuest);
-  }, [staff, selectStaff]);
+    // Always start fresh with hospital selection
+    localStorage.removeItem('selectedHospital');
+    localStorage.removeItem('selectedStaffId');
+    localStorage.removeItem('isGuest');
+    clearStaffSelection();
+  }, []); // Empty dependency array means this runs only once on mount
 
   // Handle hospital selection
   const handleSelectHospital = (hospitalId) => {
@@ -90,18 +79,7 @@ export const AppRouter = () => {
     );
   }
 
-  // If authenticated as admin/manager, skip selection and go directly to dashboard
-  if (currentUser && (currentUser.role === 'admin' || currentUser.role === 'manager')) {
-    return (
-      <>
-        <StaffDashboard />
-        <NotificationContainer 
-          notifications={notifications} 
-          onDismiss={(id) => setNotifications(prev => prev.filter(n => n.id !== id))}
-        />
-      </>
-    );
-  }
+  // Removed automatic skip for admin/manager - everyone starts with hospital selection
 
   // Render the appropriate component with notifications
   const renderContent = () => {
