@@ -1,7 +1,7 @@
 {
-  "name": "medical-shift-scheduler",
+  "name": "degarda",
   "version": "1.0.0",
-  "description": "Hospital Medical Shift Scheduling Application",
+  "description": "DeGarda - Aplicație pentru Programarea Gărzilor Medicale",
   "scripts": {
     "dev": "next dev",
     "build": "next build",

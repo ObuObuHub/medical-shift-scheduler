@@ -12,9 +12,13 @@ export const HospitalSelector = ({ hospitals, staff, onSelectHospital }) => {
       <div className="max-w-6xl w-full">
         {/* Header */}
         <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-gray-800 mb-3">
+          <div className="mb-4">
+            <h1 className="text-5xl font-bold text-blue-600 mb-2">DeGarda</h1>
+            <p className="text-sm text-gray-500">Aplicație pentru Programarea Gărzilor Medicale</p>
+          </div>
+          <h2 className="text-3xl font-semibold text-gray-800 mb-3">
             Selectează Spitalul
-          </h1>
+          </h2>
           <p className="text-lg text-gray-600">
             Alege spitalul pentru a vizualiza și gestiona programul de ture
           </p>

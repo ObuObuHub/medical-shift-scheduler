@@ -35,7 +35,7 @@ export default async function handler(req, res) {
       const legacyUsers = [
         { 
           username: 'admin', 
-          passwordHash: '8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918',
+          passwordHash: '240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9',
           name: 'Administrator Principal',
           role: 'admin',
           hospital: 'spital1',
@@ -44,7 +44,7 @@ export default async function handler(req, res) {
         { 
           username: 'manager', 
           passwordHash: '866485796cfa8d7c0cf7111640205b83076433547577511d81f8030ae99ecea5',
-          name: 'Manager Spital',
+          name: 'Manager Gărzi',
           role: 'manager',
           hospital: 'spital1',
           type: 'medic'

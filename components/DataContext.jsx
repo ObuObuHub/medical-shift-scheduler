@@ -571,7 +571,7 @@ export const DataProvider = ({ children }) => {
         const response = await fetch(`/api/shifts/permanent-delete?hospital=${hospitalId}&month=${month + 1}&year=${year}&force=true`, {
           method: 'DELETE',
           headers: {
-            'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+            'Authorization': `Bearer ${apiClient.getToken()}`,
             'Content-Type': 'application/json'
           }
         });
@@ -626,7 +626,7 @@ export const DataProvider = ({ children }) => {
           const response = await fetch(`/api/shifts/permanent-delete?hospital=${hospitalId}&month=${month}&year=${year}&force=true`, {
             method: 'DELETE',
             headers: {
-              'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+              'Authorization': `Bearer ${apiClient.getToken()}`,
               'Content-Type': 'application/json'
             }
           });
@@ -651,7 +651,7 @@ export const DataProvider = ({ children }) => {
           const response = await fetch(`/api/shifts?${params}`, {
             method: 'DELETE',
             headers: {
-              'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+              'Authorization': `Bearer ${apiClient.getToken()}`,
               'Content-Type': 'application/json'
             }
           });

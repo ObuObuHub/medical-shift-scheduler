@@ -20,41 +20,31 @@ export const AppRouter = () => {
     localStorage.removeItem('selectedStaffId');
     localStorage.removeItem('isGuest');
     clearStaffSelection();
-  }, []); // Empty dependency array means this runs only once on mount
+  }, [clearStaffSelection]); // Empty dependency array means this runs only once on mount
 
   // Handle hospital selection
   const handleSelectHospital = (hospitalId) => {
     setSelectedHospital(hospitalId);
-    localStorage.setItem('selectedHospital', hospitalId);
     // Clear staff selection when changing hospital
     clearStaffSelection();
-    localStorage.removeItem('selectedStaffId');
-    localStorage.removeItem('isGuest');
     setIsGuest(false);
   };
 
   // Handle staff selection
   const handleSelectStaff = (staffMember) => {
     selectStaff(staffMember);
-    localStorage.setItem('selectedStaffId', staffMember.id);
-    localStorage.setItem('isGuest', 'false');
     setIsGuest(false);
   };
 
   // Handle guest mode
   const handleContinueAsGuest = () => {
     setIsGuest(true);
-    localStorage.setItem('isGuest', 'true');
-    localStorage.removeItem('selectedStaffId');
     clearStaffSelection();
   };
 
   // Handle back navigation
   const handleBackToHospitalSelection = () => {
     setSelectedHospital(null);
-    localStorage.removeItem('selectedHospital');
-    localStorage.removeItem('selectedStaffId');
-    localStorage.removeItem('isGuest');
     clearStaffSelection();
     setIsGuest(false);
   };
@@ -62,8 +52,6 @@ export const AppRouter = () => {
   // Handle staff change
   const handleChangeStaff = () => {
     clearStaffSelection();
-    localStorage.removeItem('selectedStaffId');
-    localStorage.removeItem('isGuest');
     setIsGuest(false);
   };
 

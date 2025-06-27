@@ -1,4 +1,4 @@
-# Medical Shift Scheduler
+# DeGarda
 
 A modern hospital shift scheduling application built with Next.js and Tailwind CSS, specifically designed for Romanian medical facilities. Features intelligent shift scheduling, fair workload distribution, and comprehensive staff management.
 

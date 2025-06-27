@@ -15,7 +15,7 @@ const DEFAULT_USERS = {
     id: 'manager',
     username: 'manager', 
     passwordHash: '866485796cfa8d7c0cf7111640205b83076433547577511d81f8030ae99ecea5', // sha256('manager123')
-    name: 'Dr. Chiper Leferman Andrei',
+    name: 'Manager Gărzi',
     role: 'manager',
     hospital: 'spital1' // Spitalul Județean de Urgență Piatra-Neamț
   }
@@ -36,31 +36,14 @@ export const AuthProvider = ({ children }) => {
   const [selectedStaff, setSelectedStaff] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Check for existing session on mount
+  // No session persistence - always require fresh login
   useEffect(() => {
-    const token = apiClient.getToken();
-    const savedUser = localStorage.getItem('currentUser');
-    
-    if (token && savedUser) {
-      try {
-        const user = JSON.parse(savedUser);
-        setCurrentUser(user);
-      } catch (error) {
-                localStorage.removeItem('currentUser');
-        apiClient.logout();
-      }
-    }
+    // Clear any existing session data on mount
+    localStorage.removeItem('currentUser');
+    localStorage.removeItem('authToken');
+    apiClient.logout();
     setIsLoading(false);
   }, []);
-
-  // Save user to localStorage when currentUser changes
-  useEffect(() => {
-    if (currentUser) {
-      localStorage.setItem('currentUser', JSON.stringify(currentUser));
-    } else {
-      localStorage.removeItem('currentUser');
-    }
-  }, [currentUser]);
 
   // Simple hash function for demo purposes (use proper crypto in production)
   const hashPassword = async (password) => {
@@ -95,7 +78,6 @@ export const AuthProvider = ({ children }) => {
   const logout = () => {
     setCurrentUser(null);
     setSelectedStaff(null);
-    localStorage.removeItem('currentUser');
     apiClient.logout();
   };
 
