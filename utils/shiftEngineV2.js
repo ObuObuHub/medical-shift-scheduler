@@ -158,7 +158,7 @@ export function generateSchedule(staff, days, hospitalConfig, existingShifts = {
         chosen.lastNight = true;
       } else {
         // Only reset consecutive nights if there's been a full day of rest
-        if (p.lastShiftDate && calculateHoursBetween(p.lastShiftDate, day.date, p.lastShiftType, shiftType) >= 24) {
+        if (chosen.lastShiftDate && calculateHoursBetween(chosen.lastShiftDate, day.date, chosen.lastShiftType, shiftType) >= 24) {
           chosen.consecutiveNights = 0;
         }
         chosen.lastNight = false;
