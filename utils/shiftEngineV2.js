@@ -39,7 +39,7 @@ export function generateSchedule(staff, days, hospitalConfig, existingShifts = {
 
     // Process each required shift for this day
     for (const shiftType of day.requiredShifts) {
-      const shiftId = `${day.date}-${shiftType.id}`;
+      const shiftId = `${day.date}-${shiftType.id}-${Math.random().toString(36).substr(2, 9)}`;
       
       // Check if this shift is already reserved or confirmed
       const existingShift = existingShifts[shiftId];

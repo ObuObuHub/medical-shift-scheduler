@@ -58,7 +58,13 @@ export const ShiftTypeEditModal = ({ editingShiftType, setEditingShiftType }) =>
   const handleSubmit = () => {
     if (!validateForm()) return;
 
-    const duration = calculateDuration(formData.start, formData.end);
+    let duration = calculateDuration(formData.start, formData.end);
+    
+    // Force NOAPTE to always be 12 hours
+    if (editingShiftType?.id === 'noapte' || editingShiftType?.id === 'NOAPTE') {
+      duration = 12;
+    }
+    
     const shiftTypeData = {
       ...formData,
       duration,
@@ -82,16 +88,30 @@ export const ShiftTypeEditModal = ({ editingShiftType, setEditingShiftType }) =>
   };
 
   const handleTimeChange = (field, value) => {
-    const newFormData = { ...formData, [field]: value };
-    setFormData(newFormData);
-    
-    // Auto-calculate duration when times change
-    if (field === 'start' || field === 'end') {
-      const duration = calculateDuration(
-        field === 'start' ? value : formData.start,
-        field === 'end' ? value : formData.end
-      );
-      setFormData(prev => ({ ...prev, duration }));
+    // For NOAPTE (night shift), enforce fixed 12-hour duration
+    if (editingShiftType?.id === 'noapte' || editingShiftType?.id === 'NOAPTE') {
+      if (field === 'start') {
+        // If changing start time, auto-adjust end time to maintain 12 hours
+        const [hour, min] = value.split(':').map(Number);
+        let endHour = (hour + 12) % 24;
+        const endTime = `${endHour.toString().padStart(2, '0')}:${min.toString().padStart(2, '0')}`;
+        setFormData(prev => ({ ...prev, start: value, end: endTime, duration: 12 }));
+      } else if (field === 'end') {
+        // Prevent changing end time for night shifts
+        return;
+      }
+    } else {
+      const newFormData = { ...formData, [field]: value };
+      setFormData(newFormData);
+      
+      // Auto-calculate duration when times change
+      if (field === 'start' || field === 'end') {
+        const duration = calculateDuration(
+          field === 'start' ? value : formData.start,
+          field === 'end' ? value : formData.end
+        );
+        setFormData(prev => ({ ...prev, duration }));
+      }
     }
   };
 
@@ -171,9 +191,11 @@ export const ShiftTypeEditModal = ({ editingShiftType, setEditingShiftType }) =>
                   type="time"
                   value={formData.end}
                   onChange={(e) => handleTimeChange('end', e.target.value)}
+                  disabled={editingShiftType?.id === 'noapte' || editingShiftType?.id === 'NOAPTE'}
                   className={`w-full pl-9 pr-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 ${
                     errors.end ? 'border-red-300' : 'border-gray-300'
-                  }`}
+                  } ${(editingShiftType?.id === 'noapte' || editingShiftType?.id === 'NOAPTE') ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+                  title={(editingShiftType?.id === 'noapte' || editingShiftType?.id === 'NOAPTE') ? 'Ora de sfârșit pentru tura de noapte este fixă (12 ore după start)' : ''}
                 />
               </div>
               {errors.end && <p className="text-red-500 text-xs mt-1">{errors.end}</p>}
