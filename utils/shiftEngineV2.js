@@ -24,7 +24,9 @@ export function generateSchedule(staff, days, hospitalConfig, existingShifts = {
     lastNight: false,
     consecutiveNights: 0,
     lastShiftDate: null,
-    totalAssigned: 0
+    lastShiftType: null,
+    totalAssigned: 0,
+    last24Hour: false
   }));
   
   const result = [];
@@ -39,10 +41,15 @@ export function generateSchedule(staff, days, hospitalConfig, existingShifts = {
 
     // Process each required shift for this day
     for (const shiftType of day.requiredShifts) {
-      const shiftId = `${day.date}-${shiftType.id}-${Math.random().toString(36).substr(2, 9)}`;
+      // Use deterministic ID for lookup, but will generate unique ID if creating new
+      const lookupId = `${day.date}-${shiftType.id}`;
       
       // Check if this shift is already reserved or confirmed
-      const existingShift = existingShifts[shiftId];
+      // Need to search through all shifts for this date and type
+      const existingShift = existingShifts[day.date]?.find(shift => 
+        shift.type?.id === shiftType.id && 
+        (shift.status === 'reserved' || shift.status === 'confirmed')
+      );
       if (existingShift && (existingShift.status === 'reserved' || existingShift.status === 'confirmed')) {
         dayResult.shifts.push({
           ...existingShift,
@@ -77,8 +84,8 @@ export function generateSchedule(staff, days, hospitalConfig, existingShifts = {
         }
         
         // Rest period check
-        if (p.lastShiftDate) {
-          const hoursSinceLastShift = calculateHoursBetween(p.lastShiftDate, day.date, shiftType);
+        if (p.lastShiftDate && p.lastShiftType) {
+          const hoursSinceLastShift = calculateHoursBetween(p.lastShiftDate, day.date, p.lastShiftType, shiftType);
           if (hoursSinceLastShift < minRestHours) return false;
         }
         
@@ -110,7 +117,7 @@ export function generateSchedule(staff, days, hospitalConfig, existingShifts = {
 
       if (candidates.length === 0) {
         dayResult.shifts.push({ 
-          shiftId,
+          shiftId: `${day.date}-${shiftType.id}-${Date.now()}-unfilled`,
           type: shiftType,
           assignee: null, 
           assigneeId: null,
@@ -144,19 +151,23 @@ export function generateSchedule(staff, days, hospitalConfig, existingShifts = {
       const chosen = candidates[0];
       chosen.totalAssigned++;
       chosen.lastShiftDate = day.date;
+      chosen.lastShiftType = shiftType;
       
       if (shiftType.id.includes('NOAPTE') || shiftType.id.includes('night')) {
         chosen.consecutiveNights++;
         chosen.lastNight = true;
       } else {
-        chosen.consecutiveNights = 0;
+        // Only reset consecutive nights if there's been a full day of rest
+        if (p.lastShiftDate && calculateHoursBetween(p.lastShiftDate, day.date, p.lastShiftType, shiftType) >= 24) {
+          chosen.consecutiveNights = 0;
+        }
         chosen.lastNight = false;
       }
       
       chosen.last24Hour = shiftType.duration === 24;
 
       dayResult.shifts.push({ 
-        shiftId,
+        shiftId: `${day.date}-${shiftType.id}-${chosen.id}-${Date.now()}`,
         type: shiftType,
         assignee: chosen.name,
         assigneeId: chosen.id,
@@ -201,10 +212,13 @@ export function generateDaysForMonth(date, hospitalConfig) {
         requiredShifts = [hospitalConfig.shiftTypes['NOAPTE']].filter(Boolean);
       } else if (dayOfWeek === 6) {
         // Saturday logic
-        const weekOfMonth = Math.ceil(day / 7);
+        // Calculate which Saturday of the month this is
+        const firstDayOfMonth = new Date(year, month, 1);
+        const firstSaturday = new Date(year, month, 1 + (6 - firstDayOfMonth.getDay() + 7) % 7);
+        const saturdayNumber = Math.floor((day - firstSaturday.getDate()) / 7) + 1;
         
         // 2nd and 3rd Saturdays: 24-hour shifts
-        if (weekOfMonth === 2 || weekOfMonth === 3) {
+        if (saturdayNumber === 2 || saturdayNumber === 3) {
           requiredShifts = [hospitalConfig.shiftTypes['GARDA_24']].filter(Boolean);
         } else {
           // Other Saturdays: Day + Night shifts
@@ -298,10 +312,11 @@ export function calculateFairQuotas(staff, days, hospitalConfig) {
 /**
  * Validate schedule against hospital constraints
  * @param {Array} schedule - Generated schedule
+ * @param {Array} staff - Staff members array
  * @param {Object} hospitalConfig - Hospital configuration
  * @returns {Object} Validation result with warnings and errors
  */
-export function validateSchedule(schedule, hospitalConfig) {
+export function validateSchedule(schedule, staff, hospitalConfig) {
   const errors = [];
   const warnings = [];
   const staffSchedule = {};
@@ -332,7 +347,7 @@ export function validateSchedule(schedule, hospitalConfig) {
     let totalShifts = assignments.length;
     
     // Find staff member to get their individual limit
-    const staffMember = staffSchedule.staff?.find(s => s.id === parseInt(staffId)) || {};
+    const staffMember = staff.find(s => s.id === parseInt(staffId)) || {};
     const maxShifts = staffMember.maxGuardsPerMonth || staffMember.max_guards_per_month || hospitalConfig.maxShiftsPerMonth || 10;
 
     if (totalShifts > maxShifts) {
@@ -377,27 +392,41 @@ export function validateSchedule(schedule, hospitalConfig) {
 }
 
 // Helper functions
-function calculateHoursBetween(date1, date2, shiftType1, shiftType2) {
-  const d1 = new Date(date1);
-  const d2 = new Date(date2);
+function calculateHoursBetween(lastShiftDate, newShiftDate, lastShiftType, newShiftType) {
+  // This function should calculate actual hours between end of last shift and start of new shift
+  const lastDate = new Date(lastShiftDate);
+  const newDate = new Date(newShiftDate);
   
-  // If same day, check shift times
-  if (d1.toDateString() === d2.toDateString()) {
-    return 0; // Can't work two shifts on same day
+  // If same day, definitely no rest period
+  if (lastDate.toDateString() === newDate.toDateString()) {
+    return 0;
   }
   
-  // Calculate hours between end of first shift and start of second
-  const daysDiff = Math.floor((d2 - d1) / (1000 * 60 * 60 * 24));
+  // Get last shift end time
+  const lastEndTime = lastShiftType?.end || '20:00';
+  const [lastEndHour, lastEndMin] = lastEndTime.split(':').map(Number);
   
-  if (daysDiff === 1) {
-    // Consecutive days - need to check shift times
-    if (shiftType2 && shiftType1) {
-      // Rough calculation - should be refined based on actual shift times
-      return 12; // Minimum gap between shifts
-    }
+  // Get new shift start time
+  const newStartTime = newShiftType?.start || '08:00';
+  const [newStartHour, newStartMin] = newStartTime.split(':').map(Number);
+  
+  // Calculate actual end datetime of last shift
+  const lastShiftEnd = new Date(lastDate);
+  lastShiftEnd.setHours(lastEndHour, lastEndMin, 0, 0);
+  
+  // Handle overnight shifts (if end time is less than start time, it ends next day)
+  if (lastEndHour < (lastShiftType?.start?.split(':')[0] || 8)) {
+    lastShiftEnd.setDate(lastShiftEnd.getDate() + 1);
   }
   
-  return daysDiff * 24;
+  // Calculate actual start datetime of new shift
+  const newShiftStart = new Date(newDate);
+  newShiftStart.setHours(newStartHour, newStartMin, 0, 0);
+  
+  // Calculate hours between
+  const hoursBetween = (newShiftStart - lastShiftEnd) / (1000 * 60 * 60);
+  
+  return Math.max(0, hoursBetween); // Never return negative hours
 }
 
 function getPreviousDay(dateString) {

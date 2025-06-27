@@ -351,21 +351,41 @@ function isNightShift(shift) {
 }
 
 function checkTimeOverlap(shift1, shift2) {
-  // For simplicity, assume shifts on the same day overlap
-  // In a more sophisticated implementation, you'd parse actual times
-  const duration1 = shift1.type.duration || 12;
-  const duration2 = shift2.type.duration || 12;
+  // Properly check if two shifts overlap in time
+  const start1 = shift1.type.start || '08:00';
+  const end1 = shift1.type.end || '20:00';
+  const start2 = shift2.type.start || '08:00';
+  const end2 = shift2.type.end || '20:00';
   
-  // If either shift is 24h, there's definitely overlap
-  if (duration1 >= 24 || duration2 >= 24) {
-    return true;
+  // Convert times to minutes since midnight for easier comparison
+  const toMinutes = (timeStr) => {
+    const [hours, mins] = timeStr.split(':').map(Number);
+    return hours * 60 + mins;
+  };
+  
+  const start1Min = toMinutes(start1);
+  let end1Min = toMinutes(end1);
+  const start2Min = toMinutes(start2);
+  let end2Min = toMinutes(end2);
+  
+  // Handle overnight shifts (end time < start time means it ends next day)
+  if (end1Min <= start1Min) {
+    end1Min += 24 * 60; // Add 24 hours
+  }
+  if (end2Min <= start2Min) {
+    end2Min += 24 * 60; // Add 24 hours
   }
   
-  // If both are 12h shifts, check start times
-  const start1 = shift1.type.startTime || shift1.type.start || '08:00';
-  const start2 = shift2.type.startTime || shift2.type.start || '08:00';
+  // Check for overlap: shifts overlap if one starts before the other ends
+  // Also need to check the wrap-around case for overnight shifts
+  const overlap1 = (start1Min < end2Min && end1Min > start2Min);
+  const overlap2 = (start2Min < end1Min && end2Min > start1Min);
   
-  return start1 === start2; // Same start time = overlap
+  // For overnight shifts, also check if they overlap across midnight
+  const overlap3 = (end1Min > 24 * 60 && start2Min < (end1Min - 24 * 60));
+  const overlap4 = (end2Min > 24 * 60 && start1Min < (end2Min - 24 * 60));
+  
+  return overlap1 || overlap2 || overlap3 || overlap4;
 }
 
 function hasWeekendWork(staffId, existingShifts, weekDate) {
