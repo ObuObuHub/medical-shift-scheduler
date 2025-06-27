@@ -109,7 +109,8 @@ export function generateDaysForMonth(date) {
   const days = [];
 
   for (let day = 1; day <= daysInMonth; day++) {
-    const currentDate = new Date(year, month, day);
+    // Create date at noon to avoid timezone issues
+    const currentDate = new Date(year, month, day, 12, 0, 0);
     const dateString = currentDate.toISOString().split('T')[0];
     const dayOfWeek = currentDate.getDay(); // 0 = Sunday, 6 = Saturday
     
@@ -121,7 +122,7 @@ export function generateDaysForMonth(date) {
       coverageType = "WEEKDAY_NIGHT";
       
       // Special case: Last Friday of month can be 24h
-      const lastFriday = new Date(year, month + 1, 0);
+      const lastFriday = new Date(year, month + 1, 0, 12, 0, 0);
       while (lastFriday.getDay() !== 5) {
         lastFriday.setDate(lastFriday.getDate() - 1);
       }

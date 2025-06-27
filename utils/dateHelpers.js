@@ -26,20 +26,23 @@ export const getDaysInMonth = (date) => {
   
   // Add previous month's trailing days
   for (let i = startingDayOfWeek - 1; i >= 0; i--) {
-    const prevDate = new Date(year, month, -i);
+    // Create date at noon to avoid timezone issues
+    const prevDate = new Date(year, month, -i, 12, 0, 0);
     days.push(prevDate);
   }
   
   // Add current month's days
   for (let day = 1; day <= daysInMonth; day++) {
-    days.push(new Date(year, month, day));
+    // Create date at noon to avoid timezone issues
+    days.push(new Date(year, month, day, 12, 0, 0));
   }
   
   // Add next month's leading days to complete the grid
   const totalCells = Math.ceil(days.length / 7) * 7;
   let nextMonthDay = 1;
   while (days.length < totalCells) {
-    days.push(new Date(year, month + 1, nextMonthDay));
+    // Create date at noon to avoid timezone issues
+    days.push(new Date(year, month + 1, nextMonthDay, 12, 0, 0));
     nextMonthDay++;
   }
   

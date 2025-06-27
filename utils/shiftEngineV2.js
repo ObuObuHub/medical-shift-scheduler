@@ -194,7 +194,8 @@ export function generateDaysForMonth(date, hospitalConfig) {
   const days = [];
 
   for (let day = 1; day <= daysInMonth; day++) {
-    const currentDate = new Date(year, month, day);
+    // Create date at noon to avoid timezone issues
+    const currentDate = new Date(year, month, day, 12, 0, 0);
     const dateString = currentDate.toISOString().split('T')[0];
     const dayOfWeek = currentDate.getDay(); // 0 = Sunday, 6 = Saturday
     
@@ -213,8 +214,8 @@ export function generateDaysForMonth(date, hospitalConfig) {
       } else if (dayOfWeek === 6) {
         // Saturday logic
         // Calculate which Saturday of the month this is
-        const firstDayOfMonth = new Date(year, month, 1);
-        const firstSaturday = new Date(year, month, 1 + (6 - firstDayOfMonth.getDay() + 7) % 7);
+        const firstDayOfMonth = new Date(year, month, 1, 12, 0, 0);
+        const firstSaturday = new Date(year, month, 1 + (6 - firstDayOfMonth.getDay() + 7) % 7, 12, 0, 0);
         const saturdayNumber = Math.floor((day - firstSaturday.getDate()) / 7) + 1;
         
         // 2nd and 3rd Saturdays: 24-hour shifts
@@ -235,7 +236,7 @@ export function generateDaysForMonth(date, hospitalConfig) {
         ].filter(Boolean);
       } else if (dayOfWeek === 5) {
         // Friday: Occasionally 24h shift (last Friday of month)
-        const lastFriday = new Date(year, month + 1, 0);
+        const lastFriday = new Date(year, month + 1, 0, 12, 0, 0);
         while (lastFriday.getDay() !== 5) {
           lastFriday.setDate(lastFriday.getDate() - 1);
         }

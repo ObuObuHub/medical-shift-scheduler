@@ -24,7 +24,8 @@ export const MatrixView = ({
       
       const dates = [];
       for (let day = 1; day <= lastDay; day++) {
-        dates.push(new Date(year, month, day));
+        // Create date at noon to avoid timezone issues
+        dates.push(new Date(year, month, day, 12, 0, 0));
       }
       return dates;
     } catch (error) {
