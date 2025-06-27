@@ -79,7 +79,8 @@ async function getShifts(req, res) {
         staffIds: shift.staff_ids,
         department: shift.department,
         requirements: shift.requirements,
-        coverage: shift.coverage
+        coverage: shift.coverage,
+        hospital: shift.hospital
       });
     });
 
@@ -132,7 +133,8 @@ async function createShift(req, res) {
       staffIds: shift.staff_ids,
       department: shift.department,
       requirements: shift.requirements,
-      coverage: shift.coverage
+      coverage: shift.coverage,
+      hospital: shift.hospital
     };
 
     res.status(201).json(newShift);

@@ -10,7 +10,17 @@ export const exportShiftsToText = (shifts, staff, currentDate, selectedHospital,
   for (let day = 1; day <= daysInMonth; day++) {
     const date = new Date(currentDate.getFullYear(), currentDate.getMonth(), day);
     const dateKey = date.toISOString().split('T')[0];
-    const dayShifts = shifts[dateKey] || [];
+    let dayShifts = shifts[dateKey] || [];
+    
+    // Filter by hospital
+    if (selectedHospital) {
+      dayShifts = dayShifts.filter(shift => shift.hospital === selectedHospital);
+    }
+    
+    // Filter by department if specified
+    if (selectedDepartment) {
+      dayShifts = dayShifts.filter(shift => shift.department === selectedDepartment);
+    }
     
     const dateStr = date.toLocaleDateString('ro-RO', { day: '2-digit', month: '2-digit', year: 'numeric' });
     const dayName = dayNames[date.getDay()];

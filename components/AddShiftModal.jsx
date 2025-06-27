@@ -8,6 +8,7 @@ import { ConflictWarning } from './ConflictWarning';
 export const AddShiftModal = ({ 
   selectedDate, 
   editingShift = null, 
+  selectedHospital,
   onClose, 
   onSave 
 }) => {
@@ -191,7 +192,7 @@ export const AddShiftModal = ({
       staffIds: formData.staffIds,
       requirements: formData.requirements,
       coverage: coverageAnalysis,
-      hospital: currentUser?.hospital || 'spital1'
+      hospital: selectedHospital || currentUser?.hospital || 'spital1'
     };
 
     try {

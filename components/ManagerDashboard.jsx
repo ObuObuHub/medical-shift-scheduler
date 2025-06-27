@@ -351,6 +351,7 @@ export const ManagerDashboard = () => {
         <AddShiftModal
           selectedDate={addShiftModalData.date}
           editingShift={addShiftModalData.editingShift}
+          selectedHospital={selectedHospital}
           onClose={() => setAddShiftModalData(null)}
           onSave={() => setAddShiftModalData(null)}
         />

@@ -73,7 +73,9 @@ export const MatrixView = ({
       if (!date || !staffId) return null;
       const dateKey = date.toISOString().split('T')[0];
       const dayShifts = shifts[dateKey] || [];
-      return dayShifts.find(shift => shift && shift.staffIds && shift.staffIds.includes(staffId));
+      // Filter by hospital first
+      const hospitalShifts = dayShifts.filter(shift => shift && shift.hospital === selectedHospital);
+      return hospitalShifts.find(shift => shift && shift.staffIds && shift.staffIds.includes(staffId));
     } catch (error) {
             return null;
     }
@@ -85,7 +87,9 @@ export const MatrixView = ({
       if (!date || !staffId) return [];
       const dateKey = date.toISOString().split('T')[0];
       const dayShifts = shifts[dateKey] || [];
-      return dayShifts.filter(shift => shift && shift.staffIds && shift.staffIds.includes(staffId));
+      // Filter by hospital first
+      const hospitalShifts = dayShifts.filter(shift => shift && shift.hospital === selectedHospital);
+      return hospitalShifts.filter(shift => shift && shift.staffIds && shift.staffIds.includes(staffId));
     } catch (error) {
             return [];
     }

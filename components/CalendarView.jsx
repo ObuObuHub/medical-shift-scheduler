@@ -50,7 +50,8 @@ export const CalendarView = ({
       const shiftDate = new Date(date);
       if (shiftDate.getFullYear() === year && shiftDate.getMonth() === month) {
         dayShifts.forEach(shift => {
-          if (shift.department) {
+          // Only count shifts from the selected hospital
+          if (shift.hospital === selectedHospital && shift.department) {
             deptSet.add(shift.department);
           }
         });
@@ -58,7 +59,7 @@ export const CalendarView = ({
     });
     
     return deptSet;
-  }, [shifts, currentDate]);
+  }, [shifts, currentDate, selectedHospital]);
   
   
   // Swap modal state - use props if provided, otherwise local state
@@ -86,7 +87,7 @@ export const CalendarView = ({
           {/* Export button - available to all users */}
           <button 
             onClick={() => {
-              const exportContent = exportShiftsToText(shifts, staff, currentDate);
+              const exportContent = exportShiftsToText(shifts, staff, currentDate, selectedHospital, viewDepartmentFilter);
               const filename = generateExportFilename(currentDate);
               downloadTextFile(exportContent, filename);
             }} 
@@ -213,6 +214,9 @@ export const CalendarView = ({
           const isCurrentMonth = date.getMonth() === currentDate.getMonth();
           const isToday = date.toDateString() === new Date().toDateString();
           let dayShifts = isCurrentMonth ? (shifts[date.toISOString().split('T')[0]] || []) : [];
+          
+          // Filter by hospital first
+          dayShifts = dayShifts.filter(shift => shift.hospital === selectedHospital);
           
           // Apply view filter
           if (viewDepartmentFilter) {
