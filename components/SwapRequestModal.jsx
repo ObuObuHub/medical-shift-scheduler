@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useData } from './DataContext';
+import MobileModal from './MobileModal';
 
 const SwapRequestModal = ({ isOpen, onClose, myShift, onSuccess }) => {
   const { staff, shifts, createSwapRequest } = useData();
@@ -8,6 +9,17 @@ const SwapRequestModal = ({ isOpen, onClose, myShift, onSuccess }) => {
   const [reason, setReason] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   if (!isOpen) return null;
 
@@ -75,6 +87,128 @@ const SwapRequestModal = ({ isOpen, onClose, myShift, onSuccess }) => {
     }
   };
 
+  const modalContent = (
+    <form onSubmit={handleSubmit} className="p-4">
+      {/* Current shift info */}
+      <div className="mb-4 p-4 bg-blue-50 rounded-lg">
+        <p className="text-sm font-medium text-gray-700 mb-1">Tura ta actuală:</p>
+        <p className="font-semibold">{myShift.date}</p>
+        <p className="text-sm text-gray-600">{myShift.type.name}</p>
+        <p className="text-sm text-gray-600">Spital: {myShift.hospital}</p>
+      </div>
+
+      {/* Target staff selection (optional) */}
+      <div className="mb-4">
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          Dorești să faci schimb cu cineva anume? (opțional)
+        </label>
+        <select
+          value={selectedTargetStaff}
+          onChange={(e) => {
+            setSelectedTargetStaff(e.target.value);
+            setSelectedTargetShift(''); // Reset shift selection
+          }}
+          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+        >
+          <option value="">-- Orice coleg disponibil --</option>
+          {eligibleStaff.map(s => (
+            <option key={s.id} value={s.id}>
+              {s.name} - {s.specialization}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      {/* Target shift selection (optional) */}
+      <div className="mb-4">
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          Tura dorită (opțional)
+        </label>
+        <select
+          value={selectedTargetShift}
+          onChange={(e) => setSelectedTargetShift(e.target.value)}
+          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          disabled={!availableShifts.length}
+        >
+          <option value="">-- Orice tură disponibilă --</option>
+          {availableShifts.map(shift => {
+            const assignedStaff = staff.find(s => 
+              shift.staffIds?.includes(s.id)
+            );
+            return (
+              <option 
+                key={`${shift.date}-${shift.id}`} 
+                value={`${shift.date}-${shift.id}`}
+              >
+                {shift.date} - {shift.type.name}
+                {assignedStaff && ` (${assignedStaff.name})`}
+              </option>
+            );
+          })}
+        </select>
+        {selectedTargetStaff && !availableShifts.length && (
+          <p className="text-sm text-red-600 mt-1">
+            Colegul selectat nu are ture disponibile pentru schimb
+          </p>
+        )}
+      </div>
+
+      {/* Reason */}
+      <div className="mb-6">
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          Motiv (opțional)
+        </label>
+        <textarea
+          value={reason}
+          onChange={(e) => setReason(e.target.value)}
+          rows={3}
+          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          placeholder="Ex: Urgență familială, Programare medicală, etc."
+        />
+      </div>
+
+      {/* Error message */}
+      {error && (
+        <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg">
+          {error}
+        </div>
+      )}
+
+      {/* Actions */}
+      <div className={`flex ${isMobile ? 'flex-col gap-2' : 'justify-end space-x-3'}`}>
+        <button
+          type="button"
+          onClick={onClose}
+          className={`px-4 py-3 bg-gray-100 text-gray-700 rounded-lg font-medium touch-manipulation hover:bg-gray-200 ${isMobile ? 'w-full' : ''}`}
+          disabled={isSubmitting}
+        >
+          Anulează
+        </button>
+        <button
+          type="submit"
+          className={`px-4 py-3 bg-blue-600 text-white rounded-lg font-medium touch-manipulation hover:bg-blue-700 ${isMobile ? 'w-full' : ''}`}
+          disabled={isSubmitting}
+        >
+          {isSubmitting ? 'Se trimite...' : 'Trimite Cererea'}
+        </button>
+      </div>
+    </form>
+  );
+
+  // Use mobile modal on small screens
+  if (isMobile) {
+    return (
+      <MobileModal
+        isOpen={isOpen}
+        onClose={onClose}
+        title="Cerere Schimb Tură"
+      >
+        {modalContent}
+      </MobileModal>
+    );
+  }
+
+  // Desktop modal
   return (
     <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
       <div className="relative top-20 mx-auto p-5 border w-full max-w-md shadow-lg rounded-md bg-white">
@@ -83,110 +217,7 @@ const SwapRequestModal = ({ isOpen, onClose, myShift, onSuccess }) => {
             Cerere Schimb Tură
           </h3>
           
-          <form onSubmit={handleSubmit}>
-            {/* Current shift info */}
-            <div className="mb-4 p-3 bg-gray-100 rounded">
-              <p className="text-sm font-medium">Tura ta actuală:</p>
-              <p className="text-sm">{myShift.date} - {myShift.type.name}</p>
-              <p className="text-sm">Spital: {myShift.hospital}</p>
-            </div>
-
-            {/* Target staff selection (optional) */}
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700">
-                Dorești să faci schimb cu cineva anume? (opțional)
-              </label>
-              <select
-                value={selectedTargetStaff}
-                onChange={(e) => {
-                  setSelectedTargetStaff(e.target.value);
-                  setSelectedTargetShift(''); // Reset shift selection
-                }}
-                className="mt-1 block w-full border-gray-300 rounded-md shadow-sm"
-              >
-                <option value="">-- Orice coleg disponibil --</option>
-                {eligibleStaff.map(s => (
-                  <option key={s.id} value={s.id}>
-                    {s.name} - {s.specialization}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Target shift selection (optional) */}
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700">
-                Tura dorită (opțional)
-              </label>
-              <select
-                value={selectedTargetShift}
-                onChange={(e) => setSelectedTargetShift(e.target.value)}
-                className="mt-1 block w-full border-gray-300 rounded-md shadow-sm"
-                disabled={!availableShifts.length}
-              >
-                <option value="">-- Orice tură disponibilă --</option>
-                {availableShifts.map(shift => {
-                  const assignedStaff = staff.find(s => 
-                    shift.staffIds?.includes(s.id)
-                  );
-                  return (
-                    <option 
-                      key={`${shift.date}-${shift.id}`} 
-                      value={`${shift.date}-${shift.id}`}
-                    >
-                      {shift.date} - {shift.type.name}
-                      {assignedStaff && ` (${assignedStaff.name})`}
-                    </option>
-                  );
-                })}
-              </select>
-              {selectedTargetStaff && !availableShifts.length && (
-                <p className="text-sm text-red-600 mt-1">
-                  Colegul selectat nu are ture disponibile pentru schimb
-                </p>
-              )}
-            </div>
-
-            {/* Reason */}
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700">
-                Motiv (opțional)
-              </label>
-              <textarea
-                value={reason}
-                onChange={(e) => setReason(e.target.value)}
-                rows={3}
-                className="mt-1 block w-full border-gray-300 rounded-md shadow-sm"
-                placeholder="Ex: Urgență familială, Programare medicală, etc."
-              />
-            </div>
-
-            {/* Error message */}
-            {error && (
-              <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
-                {error}
-              </div>
-            )}
-
-            {/* Actions */}
-            <div className="flex justify-end space-x-3">
-              <button
-                type="button"
-                onClick={onClose}
-                className="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400"
-                disabled={isSubmitting}
-              >
-                Anulează
-              </button>
-              <button
-                type="submit"
-                className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
-                disabled={isSubmitting}
-              >
-                {isSubmitting ? 'Se trimite...' : 'Trimite Cererea'}
-              </button>
-            </div>
-          </form>
+          {modalContent}
         </div>
       </div>
     </div>

@@ -1,8 +1,9 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { ChevronLeft, ChevronRight, Plus, Wand2, Save, Download, Trash2, RefreshCw, UserCheck, X } from './Icons';
 import SwapRequestModal from './SwapRequestModal';
 import { useData } from './DataContext';
 import { exportShiftsToText, downloadTextFile, generateExportFilename } from '../utils/exportUtils';
+import { MobileCalendarView } from './MobileCalendarView';
 
 export const CalendarView = ({ 
   currentDate,
@@ -66,6 +67,43 @@ export const CalendarView = ({
   const [localSwapModal, setLocalSwapModal] = useState({ isOpen: false, shift: null });
   const swapModal = propsSwapModal || localSwapModal;
   const setSwapModal = propsSetSwapModal || setLocalSwapModal;
+
+  // Check if mobile
+  const [isMobile, setIsMobile] = useState(false);
+  
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
+  // Use mobile view on small screens
+  if (isMobile) {
+    return (
+      <MobileCalendarView
+        currentDate={currentDate}
+        navigateMonth={navigateMonth}
+        generateFairSchedule={generateFairSchedule}
+        getDaysInMonth={getDaysInMonth}
+        handleCellClick={handleCellClick}
+        getStaffName={getStaffName}
+        hasPermission={hasPermission}
+        staff={staff}
+        shifts={shifts}
+        setAddShiftModalData={setAddShiftModalData}
+        selectedHospital={selectedHospital}
+        currentUser={currentUser}
+        selectedStaff={selectedStaff}
+        isGuest={isGuest}
+        swapModal={swapModal}
+        setSwapModal={setSwapModal}
+      />
+    );
+  }
 
   return (
     <div className="bg-white rounded-xl shadow-lg p-2 sm:p-6">
