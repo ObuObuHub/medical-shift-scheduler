@@ -555,7 +555,7 @@ export const DataProvider = ({ children }) => {
     }
   };
 
-  const clearDepartmentSchedule = async (hospitalId, date, department) => {
+  const clearDepartmentSchedule = async (hospitalId, date, department, permanent = true) => {
     try {
       if (!hospitalId || !date || !department) {
         throw new Error('Hospital ID, date, and department are required');
@@ -563,16 +563,35 @@ export const DataProvider = ({ children }) => {
 
       const year = date.getFullYear();
       const month = date.getMonth();
-      const startDate = new Date(year, month, 1);
-      const endDate = new Date(year, month + 1, 0);
+      const startDate = new Date(year, month, 1).toISOString().split('T')[0];
+      const endDate = new Date(year, month + 1, 0).toISOString().split('T')[0];
 
-      // Remove shifts for the specified department only
+      if (!isOffline && permanent) {
+        // Use permanent delete for department shifts
+        const response = await fetch(`/api/shifts/permanent-delete?hospital=${hospitalId}&month=${month + 1}&year=${year}&force=true`, {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.error || 'Failed to delete department shifts');
+        }
+        
+        const result = await response.json();
+        console.log(`Permanently deleted ${result.deletedCount} shifts for ${department}`);
+      }
+
+      // Remove shifts for the specified department only from local state
       setShifts(prevShifts => {
         const updatedShifts = { ...prevShifts };
         
         Object.keys(updatedShifts).forEach(dateKey => {
           const shiftDate = new Date(dateKey);
-          if (shiftDate >= startDate && shiftDate <= endDate) {
+          if (shiftDate >= new Date(startDate) && shiftDate <= new Date(endDate)) {
             // Keep only shifts from other departments
             updatedShifts[dateKey] = updatedShifts[dateKey].filter(shift => 
               shift.department !== department
@@ -588,35 +607,58 @@ export const DataProvider = ({ children }) => {
         return updatedShifts;
       });
 
-      addNotification(`Program șters pentru departamentul ${department}`, 'success');
+      addNotification(`Program șters PERMANENT pentru departamentul ${department}`, 'success');
     } catch (error) {
-      addNotification('Eroare la ștergerea programului departamentului', 'error');
+      addNotification(`Eroare la ștergerea programului: ${error.message}`, 'error');
       throw error;
     }
   };
 
-  const clearAllShifts = async (hospitalId, startDate = null, endDate = null) => {
+  const clearAllShifts = async (hospitalId, startDate = null, endDate = null, permanent = false) => {
     try {
       if (!isOffline) {
-        const params = new URLSearchParams({
-          action: 'clear-all',
-          hospital: hospitalId
-        });
-        
-        if (startDate) params.append('startDate', startDate);
-        if (endDate) params.append('endDate', endDate);
-        
-        // Use direct fetch for DELETE with query params
-        const response = await fetch(`/api/shifts?${params}`, {
-          method: 'DELETE',
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
-            'Content-Type': 'application/json'
-          }
-        });
+        if (permanent && startDate && endDate) {
+          // Use permanent delete endpoint for complete removal
+          const date = new Date(startDate);
+          const month = date.getMonth() + 1;
+          const year = date.getFullYear();
+          
+          const response = await fetch(`/api/shifts/permanent-delete?hospital=${hospitalId}&month=${month}&year=${year}&force=true`, {
+            method: 'DELETE',
+            headers: {
+              'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+              'Content-Type': 'application/json'
+            }
+          });
 
-        if (!response.ok) {
-          throw new Error('Failed to clear shifts');
+          if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.error || 'Failed to permanently delete shifts');
+          }
+          
+          const result = await response.json();
+          addNotification(`${result.deletedCount} ture șterse permanent`, 'success');
+        } else {
+          // Regular soft delete
+          const params = new URLSearchParams({
+            action: 'clear-all',
+            hospital: hospitalId
+          });
+          
+          if (startDate) params.append('startDate', startDate);
+          if (endDate) params.append('endDate', endDate);
+          
+          const response = await fetch(`/api/shifts?${params}`, {
+            method: 'DELETE',
+            headers: {
+              'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+              'Content-Type': 'application/json'
+            }
+          });
+
+          if (!response.ok) {
+            throw new Error('Failed to clear shifts');
+          }
         }
       }
 
@@ -639,7 +681,7 @@ export const DataProvider = ({ children }) => {
       });
 
     } catch (error) {
-      addNotification('Eroare la ștergerea turelor', 'error');
+      addNotification(`Eroare la ștergerea turelor: ${error.message}`, 'error');
       throw error;
     }
   };
@@ -664,13 +706,14 @@ export const DataProvider = ({ children }) => {
         throw new Error(errorMsg);
       }
 
-      // Clear existing shifts for this month first
+      // Clear existing shifts for this month first - PERMANENTLY
       const year = date.getFullYear();
       const month = date.getMonth();
       const startDate = new Date(year, month, 1).toISOString().split('T')[0];
       const endDate = new Date(year, month + 1, 0).toISOString().split('T')[0];
       
-      await clearAllShifts(hospitalId, startDate, endDate);
+      // Use permanent delete when regenerating from scratch
+      await clearAllShifts(hospitalId, startDate, endDate, true);
       
       // Generate fresh schedule using V2 engine with department if specified
       await generateFairSchedule(hospitalId, date, department);

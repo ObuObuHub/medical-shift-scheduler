@@ -141,39 +141,48 @@ async function createShift(req, res) {
   } catch (error) {
     console.error('Create shift error:', error);
     if (error.message && error.message.includes('duplicate key')) {
-      // Try to update existing shift instead
+      // Check if this shift was previously deleted
       try {
-        const updateResult = await sql`
-          UPDATE shifts 
-          SET 
-            date = ${date},
-            shift_type = ${JSON.stringify(type)},
-            staff_ids = ${JSON.stringify(staffIds)},
-            department = ${department || null},
-            requirements = ${JSON.stringify(requirements || { minDoctors: 1, specializations: [] })},
-            coverage = ${JSON.stringify(coverage || { adequate: false, warnings: [], recommendations: [], staffBreakdown: { doctors: 0, total: 0 } })},
-            hospital = ${hospital},
-            updated_at = CURRENT_TIMESTAMP,
-            is_active = true
-          WHERE shift_id = ${id}
-          RETURNING *;
+        const existingShift = await sql`
+          SELECT is_active FROM shifts WHERE shift_id = ${id}
         `;
         
-        if (updateResult.length > 0) {
-          const shift = updateResult[0];
-          const updatedShift = {
-            id: shift.shift_id,
-            type: shift.shift_type,
-            staffIds: shift.staff_ids,
-            department: shift.department,
-            requirements: shift.requirements,
-            coverage: shift.coverage,
-            hospital: shift.hospital
-          };
-          return res.status(200).json(updatedShift);
+        if (existingShift.length > 0 && existingShift[0].is_active === false) {
+          // This shift was deleted - don't reactivate it!
+          // Generate a new unique ID instead
+          const newId = `${date}-${type.id}-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
+          const retryResult = await sql`
+            INSERT INTO shifts (shift_id, date, shift_type, staff_ids, department, requirements, coverage, hospital, created_by)
+            VALUES (
+              ${newId},
+              ${date},
+              ${JSON.stringify(type)},
+              ${JSON.stringify(staffIds)},
+              ${department || null},
+              ${JSON.stringify(requirements || { minDoctors: 1, specializations: [] })},
+              ${JSON.stringify(coverage || { adequate: false, warnings: [], recommendations: [], staffBreakdown: { doctors: 0, total: 0 } })},
+              ${hospital},
+              ${req.user.id}
+            )
+            RETURNING *;
+          `;
+          
+          if (retryResult.length > 0) {
+            const shift = retryResult[0];
+            const newShift = {
+              id: shift.shift_id,
+              type: shift.shift_type,
+              staffIds: shift.staff_ids,
+              department: shift.department,
+              requirements: shift.requirements,
+              coverage: shift.coverage,
+              hospital: shift.hospital
+            };
+            return res.status(201).json(newShift);
+          }
         }
       } catch (updateError) {
-        console.error('Update shift error:', updateError);
+        console.error('Retry shift creation error:', updateError);
       }
     }
     res.status(500).json({ 
@@ -191,20 +200,54 @@ async function deleteShift(req, res) {
       return res.status(400).json({ error: 'Shift ID is required' });
     }
 
+    // First try to soft delete
     const result = await sql`
       UPDATE shifts 
-      SET is_active = false 
+      SET is_active = false,
+          updated_at = CURRENT_TIMESTAMP
       WHERE shift_id = ${shiftId}
       RETURNING *;
     `;
 
     if (result.length === 0) {
+      // Maybe the shift doesn't exist or has a different ID format
+      // Try to find and delete by matching date and type pattern
+      const parts = shiftId.split('-');
+      if (parts.length >= 2) {
+        const [date, ...rest] = parts;
+        const typePattern = rest[0]; // Should be shift type like NOAPTE, GARDA_ZI, etc
+        
+        const alternativeResult = await sql`
+          UPDATE shifts 
+          SET is_active = false,
+              updated_at = CURRENT_TIMESTAMP  
+          WHERE date = ${date}
+            AND shift_type->>'id' = ${typePattern}
+            AND is_active = true
+          RETURNING *;
+        `;
+        
+        if (alternativeResult.length > 0) {
+          return res.status(200).json({ 
+            message: 'Shift deleted successfully (alternative match)',
+            deletedCount: alternativeResult.length 
+          });
+        }
+      }
+      
       return res.status(404).json({ error: 'Shift not found' });
     }
 
-    res.status(200).json({ message: 'Shift deleted successfully' });
+    res.status(200).json({ 
+      message: 'Shift deleted successfully',
+      shift: result[0] 
+    });
   } catch (error) {
-        res.status(500).json({ error: 'Failed to delete shift' });
+    console.error('Delete shift error:', error);
+    res.status(500).json({ 
+      error: 'Failed to delete shift',
+      details: error.message 
+    });
   }
 }
 
