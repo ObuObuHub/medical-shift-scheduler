@@ -139,7 +139,47 @@ async function createShift(req, res) {
 
     res.status(201).json(newShift);
   } catch (error) {
-        res.status(500).json({ error: 'Failed to create shift' });
+    console.error('Create shift error:', error);
+    if (error.message && error.message.includes('duplicate key')) {
+      // Try to update existing shift instead
+      try {
+        const updateResult = await sql`
+          UPDATE shifts 
+          SET 
+            date = ${date},
+            shift_type = ${JSON.stringify(type)},
+            staff_ids = ${JSON.stringify(staffIds)},
+            department = ${department || null},
+            requirements = ${JSON.stringify(requirements || { minDoctors: 1, specializations: [] })},
+            coverage = ${JSON.stringify(coverage || { adequate: false, warnings: [], recommendations: [], staffBreakdown: { doctors: 0, total: 0 } })},
+            hospital = ${hospital},
+            updated_at = CURRENT_TIMESTAMP,
+            is_active = true
+          WHERE shift_id = ${id}
+          RETURNING *;
+        `;
+        
+        if (updateResult.length > 0) {
+          const shift = updateResult[0];
+          const updatedShift = {
+            id: shift.shift_id,
+            type: shift.shift_type,
+            staffIds: shift.staff_ids,
+            department: shift.department,
+            requirements: shift.requirements,
+            coverage: shift.coverage,
+            hospital: shift.hospital
+          };
+          return res.status(200).json(updatedShift);
+        }
+      } catch (updateError) {
+        console.error('Update shift error:', updateError);
+      }
+    }
+    res.status(500).json({ 
+      error: 'Failed to create shift',
+      details: error.message || 'Database error'
+    });
   }
 }
 

@@ -348,13 +348,13 @@ export const DataProvider = ({ children }) => {
           newShifts[daySchedule.date] = [];
         }
         
-        daySchedule.shifts.forEach(shift => {
+        daySchedule.shifts.forEach((shift, shiftIndex) => {
           // Get the department from the assigned staff member
           const assignedStaff = shift.assigneeId ? hospitalStaff.find(s => s.id === shift.assigneeId) : null;
           const shiftDepartment = department || (assignedStaff ? assignedStaff.specialization : null);
           
           newShifts[daySchedule.date].push({
-            id: shift.shiftId || `${daySchedule.date}-${shift.type.id}-${Date.now()}`,
+            id: shift.shiftId || `${daySchedule.date}-${shift.type.id}-${shift.assigneeId || 'unassigned'}-${Date.now()}-${shiftIndex}`,
             date: daySchedule.date,
             type: shift.type,
             staffIds: shift.assigneeId ? [shift.assigneeId] : [],
