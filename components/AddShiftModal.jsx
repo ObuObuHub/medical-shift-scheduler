@@ -4,7 +4,6 @@ import { useAuth } from './AuthContext';
 import { X, Plus, Clock, Users, AlertCircle, CheckCircle, Calendar, Save } from './Icons';
 import { detectConflicts } from '../utils/conflictDetection';
 import { ConflictWarning } from './ConflictWarning';
-import MobileModal from './MobileModal';
 
 export const AddShiftModal = ({ 
   selectedDate, 
@@ -31,18 +30,6 @@ export const AddShiftModal = ({
   const [conflicts, setConflicts] = useState([]);
   const [showConflictWarning, setShowConflictWarning] = useState(false);
   const [pendingShift, setPendingShift] = useState(null);
-  const [isMobile, setIsMobile] = useState(false);
-
-  // Check if mobile
-  useEffect(() => {
-    const checkMobile = () => {
-      setIsMobile(window.innerWidth < 768);
-    };
-    
-    checkMobile();
-    window.addEventListener('resize', checkMobile);
-    return () => window.removeEventListener('resize', checkMobile);
-  }, []);
 
   // Get available departments
   const departments = [...new Set(staff.map(s => s.specialization))].sort();
@@ -245,13 +232,41 @@ export const AddShiftModal = ({
 
   if (!selectedDate) return null;
 
-  const modalContent = (
-    <>
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-        {/* Left Column: Shift Configuration */}
-        <div className="space-y-4 sm:space-y-6">
-          {/* Shift Type Selection */}
-          <div>
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-2 sm:p-4 z-50">
+      <div className="bg-white rounded-xl max-w-4xl w-full max-h-[95vh] sm:max-h-[90vh] overflow-y-auto">
+        <div className="p-4 sm:p-6">
+          {/* Header - Mobile Responsive */}
+          <div className="flex items-start justify-between mb-4 sm:mb-6">
+            <div className="flex items-center flex-1 min-w-0">
+              <Calendar className="w-5 h-5 sm:w-6 sm:h-6 mr-2 sm:mr-3 text-blue-600 flex-shrink-0" />
+              <div className="min-w-0 flex-1">
+                <h3 className="text-lg sm:text-xl font-bold text-gray-800 truncate">
+                  {editingShift ? 'Editare Tură' : 'Adăugare Tură'}
+                </h3>
+                <p className="text-xs sm:text-sm text-gray-600 truncate">
+                  {selectedDate.toLocaleDateString('ro-RO', { 
+                    weekday: window.innerWidth < 640 ? 'short' : 'long', 
+                    day: 'numeric', 
+                    month: window.innerWidth < 640 ? 'short' : 'long', 
+                    year: 'numeric' 
+                  })}
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={onClose}
+              className="p-2 hover:bg-gray-100 rounded-lg transition-colors ml-2 flex-shrink-0 touch-manipulation"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+            {/* Left Column: Shift Configuration */}
+            <div className="space-y-4 sm:space-y-6">
+              {/* Shift Type Selection */}
+              <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2 sm:mb-3">
                   Tip Tură *
                 </label>
@@ -404,7 +419,7 @@ export const AddShiftModal = ({
             </div>
           </div>
 
-              {/* Action Buttons - Mobile Responsive */}
+          {/* Action Buttons - Mobile Responsive */}
           <div className="mt-6 sm:mt-8 flex flex-col sm:flex-row justify-end space-y-3 sm:space-y-0 sm:space-x-3">
             <button
               onClick={onClose}
@@ -422,87 +437,6 @@ export const AddShiftModal = ({
               <span className="hidden sm:inline">{editingShift ? 'Actualizează Tura' : 'Adaugă Tura'}</span>
             </button>
           </div>
-        </div>
-      </div>
-    </>
-  );
-
-  // Use mobile modal on small screens
-  if (isMobile) {
-    return (
-      <>
-        <MobileModal
-          isOpen={true}
-          onClose={onClose}
-          title={editingShift ? 'Editare Tură' : 'Adăugare Tură'}
-          fullHeight={true}
-        >
-          <div className="p-4">
-            <p className="text-sm text-gray-600 mb-4">
-              {selectedDate.toLocaleDateString('ro-RO', { 
-                weekday: 'long', 
-                day: 'numeric', 
-                month: 'long', 
-                year: 'numeric' 
-              })}
-            </p>
-            {modalContent}
-          </div>
-        </MobileModal>
-
-        {/* Conflict Warning Modal */}
-        {showConflictWarning && pendingShift && (
-          <ConflictWarning
-            conflicts={conflicts}
-            onProceed={() => {
-              setShowConflictWarning(false);
-              proceedWithSave();
-            }}
-            onCancel={() => {
-              setShowConflictWarning(false);
-              setPendingShift(null);
-            }}
-            staffName={formData.staffIds.map(id => staff.find(s => s.id === id)?.name).join(', ')}
-            shiftName={pendingShift.type?.name || 'Tură'}
-            date={selectedDate}
-          />
-        )}
-      </>
-    );
-  }
-
-  // Desktop modal
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-2 sm:p-4 z-50">
-      <div className="bg-white rounded-xl max-w-4xl w-full max-h-[95vh] sm:max-h-[90vh] overflow-y-auto">
-        <div className="p-4 sm:p-6">
-          {/* Header */}
-          <div className="flex items-start justify-between mb-4 sm:mb-6">
-            <div className="flex items-center flex-1 min-w-0">
-              <Calendar className="w-5 h-5 sm:w-6 sm:h-6 mr-2 sm:mr-3 text-blue-600 flex-shrink-0" />
-              <div className="min-w-0 flex-1">
-                <h3 className="text-lg sm:text-xl font-bold text-gray-800 truncate">
-                  {editingShift ? 'Editare Tură' : 'Adăugare Tură'}
-                </h3>
-                <p className="text-xs sm:text-sm text-gray-600 truncate">
-                  {selectedDate.toLocaleDateString('ro-RO', { 
-                    weekday: 'long', 
-                    day: 'numeric', 
-                    month: 'long', 
-                    year: 'numeric' 
-                  })}
-                </p>
-              </div>
-            </div>
-            <button
-              onClick={onClose}
-              className="p-2 hover:bg-gray-100 rounded-lg transition-colors ml-2 flex-shrink-0 touch-manipulation"
-            >
-              <X className="w-5 h-5" />
-            </button>
-          </div>
-
-          {modalContent}
         </div>
       </div>
 
