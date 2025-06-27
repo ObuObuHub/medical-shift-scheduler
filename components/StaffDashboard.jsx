@@ -216,19 +216,22 @@ export const StaffDashboard = ({
     // Add padding days from previous month
     const startPadding = firstDay.getDay();
     for (let i = startPadding - 1; i >= 0; i--) {
-      const date = new Date(year, month, -i);
+      // Create date at noon to avoid timezone issues
+      const date = new Date(year, month, -i, 12, 0, 0);
       days.push(date);
     }
     
     // Add all days of current month
     for (let i = 1; i <= lastDay.getDate(); i++) {
-      days.push(new Date(year, month, i));
+      // Create date at noon to avoid timezone issues
+      days.push(new Date(year, month, i, 12, 0, 0));
     }
     
     // Add padding days from next month
     const endPadding = 6 - lastDay.getDay();
     for (let i = 1; i <= endPadding; i++) {
-      days.push(new Date(year, month + 1, i));
+      // Create date at noon to avoid timezone issues
+      days.push(new Date(year, month + 1, i, 12, 0, 0));
     }
     
     return days;

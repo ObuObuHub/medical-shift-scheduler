@@ -277,7 +277,7 @@ export const CalendarView = ({
                         data-shift-id={fullDayShift.id}
                       >
                         <div className="font-semibold text-xs mb-1" style={{ color: fullDayShift.type.color }}>
-                          Gardă 24h (8-8)
+                          {fullDayShift.type.name}
                         </div>
                         <div className="flex-1 space-y-0.5 mb-1">
                           {fullDayShift.staffIds.map(staffId => {
@@ -371,7 +371,7 @@ export const CalendarView = ({
                             }}
                           >
                             <div className="font-medium text-xs mb-0.5" style={{ color: dayShift.type.color }}>
-                              Zi (8-20)
+                              {dayShift.type.name}
                             </div>
                             {dayShift.staffIds.map(staffId => {
                               const staffMember = staff.find(s => s.id === staffId);
@@ -393,7 +393,7 @@ export const CalendarView = ({
                             }}
                           >
                             <div className="font-medium text-xs mb-0.5" style={{ color: nightShift.type.color }}>
-                              Noapte (20-8)
+                              {nightShift.type.name}
                             </div>
                             {nightShift.staffIds.map(staffId => {
                               const staffMember = staff.find(s => s.id === staffId);
