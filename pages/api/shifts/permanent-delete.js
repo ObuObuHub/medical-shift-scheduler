@@ -18,10 +18,10 @@ export default async function handler(req, res) {
       });
     }
 
-    // Only admins can force permanent delete
-    if (force === 'true' && req.user.role !== 'admin') {
+    // Allow both admins and managers to permanently delete shifts
+    if (force === 'true' && !['admin', 'manager'].includes(req.user.role)) {
       return res.status(403).json({ 
-        error: 'Only administrators can permanently delete shifts' 
+        error: 'Only administrators and managers can permanently delete shifts' 
       });
     }
 
