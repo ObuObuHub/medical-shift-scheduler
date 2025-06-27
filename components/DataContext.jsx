@@ -377,7 +377,11 @@ export const DataProvider = ({ children }) => {
       if (!isOffline) {
         try {
           // Get all existing shifts for the month
-          const existingShifts = await apiClient.getShifts();
+          const existingShifts = await apiClient.getShifts({
+            hospital: hospitalId,
+            startDate: startDate,
+            endDate: endDate
+          });
           
           // Filter shifts that need to be deleted (same department, same month)
           const shiftsToDelete = [];
@@ -392,18 +396,25 @@ export const DataProvider = ({ children }) => {
           });
           
           // Delete them
-          await Promise.all(shiftsToDelete.map(shiftId => 
-            apiClient.deleteShift(shiftId).catch(err => {
-              console.error('Failed to delete old shift:', err);
-            })
-          ));
+          if (shiftsToDelete.length > 0) {
+            await Promise.all(shiftsToDelete.map(shiftId => 
+              apiClient.deleteShift(shiftId).catch(err => {
+                console.error('Failed to delete old shift:', err);
+                return null;
+              })
+            ));
+          }
         } catch (err) {
           console.error('Failed to clear old shifts:', err);
+          addNotification('Avertisment: Nu s-au putut șterge turele existente', 'warning');
         }
       }
 
       // Save new shifts to database
       const savePromises = [];
+      let savedCount = 0;
+      let failedCount = 0;
+      
       Object.keys(newShifts).forEach(date => {
         newShifts[date].forEach(shift => {
           const shiftData = {
@@ -416,15 +427,25 @@ export const DataProvider = ({ children }) => {
             coverage: shift.coverage || { adequate: true, warnings: [], recommendations: [], staffBreakdown: { doctors: 1, total: 1 } },
             hospital: hospitalId
           };
-          savePromises.push(apiClient.createShift(shiftData).catch(err => {
-            console.error('Failed to save shift:', err);
-            return null; // Continue with other saves even if one fails
-          }));
+          savePromises.push(
+            apiClient.createShift(shiftData)
+              .then(() => { savedCount++; })
+              .catch(err => {
+                console.error('Failed to save shift:', err);
+                failedCount++;
+                return null; // Continue with other saves even if one fails
+              })
+          );
         });
       });
 
       // Wait for all saves to complete
-      await Promise.all(savePromises);
+      if (!isOffline && savePromises.length > 0) {
+        await Promise.all(savePromises);
+        if (failedCount > 0) {
+          addNotification(`${savedCount} ture salvate, ${failedCount} erori`, 'warning');
+        }
+      }
       
       // Merge with existing shifts, preserving other departments
       setShifts(prevShifts => {

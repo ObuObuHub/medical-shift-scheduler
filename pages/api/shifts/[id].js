@@ -1,5 +1,5 @@
 import jwt from 'jsonwebtoken';
-import { sql } from '@vercel/postgres';
+import { sql } from '../../../lib/vercel-db';
 
 export default async function handler(req, res) {
   // Enable CORS
@@ -35,7 +35,7 @@ export default async function handler(req, res) {
   if (req.method === 'GET') {
     // Get single shift details
     try {
-      const { rows } = await sql`
+      const rows = await sql`
         SELECT 
           shift_id,
           date,
@@ -124,7 +124,8 @@ export default async function handler(req, res) {
         RETURNING *
       `;
 
-      const { rows } = await sql.query(updateQuery, values);
+      // Execute raw query with Neon
+      const rows = await sql(updateQuery, values);
 
       if (rows.length === 0) {
         return res.status(404).json({ error: 'Shift not found' });
