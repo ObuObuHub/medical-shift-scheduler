@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useData } from './DataContext';
 import { useAuth } from './AuthContext';
 import { Users, Plus, Trash2, ChevronLeft, ChevronRight, X, Wand2 } from './Icons';
@@ -13,13 +13,6 @@ export const MatrixView = ({
   const { hasPermission } = useAuth();
   
   const [selectedDepartment, setSelectedDepartment] = useState('');
-  
-  // Load shifts when month changes
-  useEffect(() => {
-    if (selectedHospital) {
-      loadInitialData(false, selectedHospital);
-    }
-  }, [currentDate.getMonth(), currentDate.getFullYear()]); // Reload when month or year changes
   const [showShiftTypeModal, setShowShiftTypeModal] = useState(false);
   const [selectedCell, setSelectedCell] = useState(null);
   
@@ -202,6 +195,10 @@ export const MatrixView = ({
     const newDate = new Date(currentDate);
     newDate.setMonth(newDate.getMonth() + direction);
     onDateChange(newDate);
+    // Load shifts for the new month
+    if (selectedHospital) {
+      loadInitialData(false, selectedHospital);
+    }
   };
   
   // Get cell styling based on shift type

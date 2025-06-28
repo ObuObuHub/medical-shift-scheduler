@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import Head from 'next/head';
 import { useAuth } from './AuthContext';
 import { useData } from './DataContext';
@@ -36,13 +36,6 @@ export const ManagerDashboard = () => {
   // Hospital switch authentication state
   const [showHospitalSwitchModal, setShowHospitalSwitchModal] = useState(false);
   const [pendingHospital, setPendingHospital] = useState(null);
-  
-  // Load data when hospital changes
-  useEffect(() => {
-    if (selectedHospital) {
-      loadInitialData(false, selectedHospital);
-    }
-  }, [selectedHospital]); // Reload when hospital changes
 
   const navigateMonth = (direction) => {
     setCurrentDate(prev => addMonths(prev, direction));
@@ -108,6 +101,8 @@ export const ManagerDashboard = () => {
     setSelectedHospital(targetHospital);
     setShowHospitalSwitchModal(false);
     setPendingHospital(null);
+    // Load data for the new hospital
+    loadInitialData(false, targetHospital);
   };
 
   const handleHospitalSwitchCancel = () => {

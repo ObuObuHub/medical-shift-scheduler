@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import Head from 'next/head';
 import { useAuth } from './AuthContext';
 import { useData } from './DataContext';
@@ -26,13 +26,6 @@ export const StaffDashboard = ({
   const [addShiftModalData, setAddShiftModalData] = useState(null);
   const [selectedHospital, setSelectedHospital] = useState(propSelectedHospital || currentUser?.hospital || 'spital1');
   const [swapModal, setSwapModal] = useState({ isOpen: false, shift: null });
-  
-  // Load shifts when month changes
-  useEffect(() => {
-    if (selectedHospital) {
-      loadInitialData(false, selectedHospital);
-    }
-  }, [currentDate.getMonth(), currentDate.getFullYear()]); // Reload when month or year changes
 
   // If authenticated as admin or manager, show their dashboard
   if (isAuthenticated && currentUser) {
@@ -46,6 +39,10 @@ export const StaffDashboard = ({
 
   const navigateMonth = (direction) => {
     setCurrentDate(prev => addMonths(prev, direction));
+    // Load shifts for the new month
+    if (selectedHospital) {
+      loadInitialData(false, selectedHospital);
+    }
   };
 
   // Get shifts based on view mode
