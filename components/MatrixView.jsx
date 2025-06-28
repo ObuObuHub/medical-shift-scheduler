@@ -354,22 +354,6 @@ export const MatrixView = ({
                 <option key={dept} value={dept}>{dept}</option>
               ))}
             </select>
-            
-            {!readOnly && hasPermission('generate_shifts') && (
-              <button 
-                onClick={() => selectedDepartment && generateFairSchedule(selectedHospital, currentDate, selectedDepartment)} 
-                className={`px-3 py-2 rounded-lg flex items-center text-sm touch-manipulation ${
-                  selectedDepartment 
-                    ? 'bg-green-600 text-white hover:bg-green-700' 
-                    : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                }`}
-                disabled={!selectedDepartment}
-                title={selectedDepartment ? `Generează program pentru ${selectedDepartment}` : "Selectează un departament"}
-              >
-                <Wand2 className="w-4 h-4 mr-1" />
-                <span>Generează</span>
-              </button>
-            )}
           </div>
           
           {!readOnly && hasPermission('assign_staff') && (
