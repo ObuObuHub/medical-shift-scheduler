@@ -31,7 +31,6 @@ export const MobileCalendarView = ({
   const { reserveShift, cancelReservation, createSwapRequest, clearDepartmentSchedule } = useData();
   
   const [selectedDepartment, setSelectedDepartment] = useState('');
-  const [viewDepartmentFilter, setViewDepartmentFilter] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   const [selectedDay, setSelectedDay] = useState(null);
   const [showDayDetails, setShowDayDetails] = useState(false);
@@ -99,8 +98,13 @@ export const MobileCalendarView = ({
           <button onClick={() => navigateMonth(-1)} className="p-2 -m-2 touch-manipulation">
             <ChevronLeft className="w-6 h-6" />
           </button>
-          <h2 className="text-xl font-bold text-gray-800">
+          <h2 className="text-xl font-bold text-gray-800 text-center">
             {months[currentDate.getMonth()]} {currentDate.getFullYear()}
+            {selectedDepartment && (
+              <span className="block text-sm font-normal text-blue-600">
+                {selectedDepartment}
+              </span>
+            )}
           </h2>
           <button onClick={() => navigateMonth(1)} className="p-2 -m-2 touch-manipulation">
             <ChevronRight className="w-6 h-6" />
@@ -115,13 +119,13 @@ export const MobileCalendarView = ({
           >
             <Filter className="w-4 h-4 mr-2" />
             Filtre
-            {viewDepartmentFilter && <span className="ml-2 bg-blue-600 text-white text-xs px-2 py-0.5 rounded-full">1</span>}
+            {selectedDepartment && <span className="ml-2 bg-blue-600 text-white text-xs px-2 py-0.5 rounded-full">1</span>}
           </button>
           
           <div className="flex gap-2">
             <button 
               onClick={() => {
-                const exportContent = exportShiftsToText(shifts, staff, currentDate, selectedHospital, viewDepartmentFilter);
+                const exportContent = exportShiftsToText(shifts, staff, currentDate, selectedHospital, selectedDepartment);
                 const filename = generateExportFilename(currentDate);
                 downloadTextFile(exportContent, filename);
               }} 
@@ -153,45 +157,34 @@ export const MobileCalendarView = ({
                   Departament
                 </label>
                 <select
-                  value={viewDepartmentFilter}
-                  onChange={(e) => setViewDepartmentFilter(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                  value={selectedDepartment}
+                  onChange={(e) => setSelectedDepartment(e.target.value)}
+                  className={`w-full px-3 py-2 border rounded-lg ${
+                    selectedDepartment 
+                      ? 'border-blue-500 bg-blue-50' 
+                      : 'border-gray-300 bg-white'
+                  }`}
                 >
                   <option value="">Toate departamentele</option>
                   {departments.map(dept => (
                     <option key={dept} value={dept}>{dept}</option>
                   ))}
                 </select>
+                {selectedDepartment && (
+                  <p className="text-xs text-blue-600 mt-1">
+                    Afișare și generare: {selectedDepartment}
+                  </p>
+                )}
               </div>
               
-              {hasPermission('generate_shifts') && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Generare pentru:
-                  </label>
-                  <div className="flex gap-2">
-                    <select
-                      value={selectedDepartment}
-                      onChange={(e) => setSelectedDepartment(e.target.value)}
-                      className="flex-1 px-3 py-2 border border-gray-300 rounded-lg"
-                    >
-                      <option value="">Selectează...</option>
-                      {departments.map(dept => (
-                        <option key={dept} value={dept}>{dept}</option>
-                      ))}
-                    </select>
-                    <button 
-                      onClick={() => selectedDepartment && generateFairSchedule(selectedHospital, currentDate, selectedDepartment)}
-                      disabled={!selectedDepartment}
-                      className={`px-4 py-2 rounded-lg font-medium touch-manipulation ${
-                        selectedDepartment 
-                          ? 'bg-green-600 text-white' 
-                          : 'bg-gray-300 text-gray-500'
-                      }`}
-                    >
-                      Generează
-                    </button>
-                  </div>
+              {hasPermission('generate_shifts') && selectedDepartment && (
+                <div className="flex gap-2">
+                  <button 
+                    onClick={() => generateFairSchedule(selectedHospital, currentDate, selectedDepartment)}
+                    className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg font-medium touch-manipulation"
+                  >
+                    Generează pentru {selectedDepartment}
+                  </button>
                 </div>
               )}
             </div>
@@ -218,8 +211,8 @@ export const MobileCalendarView = ({
               
               dayShifts = dayShifts.filter(shift => shift.hospital === selectedHospital);
               
-              if (viewDepartmentFilter) {
-                dayShifts = dayShifts.filter(shift => shift.department === viewDepartmentFilter);
+              if (selectedDepartment) {
+                dayShifts = dayShifts.filter(shift => shift.department === selectedDepartment);
               }
               
               const shiftSummary = getShiftSummary(dayShifts);
