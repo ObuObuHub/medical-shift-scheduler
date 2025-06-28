@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Head from 'next/head';
 import { useAuth } from './AuthContext';
 import { useData } from './DataContext';
@@ -23,11 +23,19 @@ export const AdminDashboard = () => {
     shiftTypes, hospitals, staff, shifts, 
     addStaff, updateStaff, deleteStaff,
     addHospital, updateHospital, deleteHospital,
-    generateFairSchedule, deleteShift, regenerateFromScratch
+    generateFairSchedule, deleteShift, regenerateFromScratch,
+    loadInitialData
   } = useData();
 
   // State
   const [selectedHospital, setSelectedHospital] = useState(currentUser?.hospital || 'spital1');
+  
+  // Load data when hospital changes
+  useEffect(() => {
+    if (selectedHospital) {
+      loadInitialData(false, selectedHospital);
+    }
+  }, [selectedHospital]); // Reload when hospital changes
   const [currentView, setCurrentView] = useState('matrix');
   const [planningView, setPlanningView] = useState('calendar'); // Calendar or Matrix for planning
   const [currentDate, setCurrentDate] = useState(new Date());

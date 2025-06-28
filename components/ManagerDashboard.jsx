@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Head from 'next/head';
 import { useAuth } from './AuthContext';
 import { useData } from './DataContext';
@@ -20,7 +20,8 @@ export const ManagerDashboard = () => {
   const { 
     shiftTypes, hospitals, staff, shifts, 
     addStaff, updateStaff, deleteStaff,
-    generateFairSchedule, deleteShift, regenerateFromScratch
+    generateFairSchedule, deleteShift, regenerateFromScratch,
+    loadInitialData
   } = useData();
 
   // State
@@ -35,6 +36,13 @@ export const ManagerDashboard = () => {
   // Hospital switch authentication state
   const [showHospitalSwitchModal, setShowHospitalSwitchModal] = useState(false);
   const [pendingHospital, setPendingHospital] = useState(null);
+  
+  // Load data when hospital changes
+  useEffect(() => {
+    if (selectedHospital) {
+      loadInitialData(false, selectedHospital);
+    }
+  }, [selectedHospital]); // Reload when hospital changes
 
   const navigateMonth = (direction) => {
     setCurrentDate(prev => addMonths(prev, direction));
