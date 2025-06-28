@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Head from 'next/head';
 import { useAuth } from './AuthContext';
 import { useData } from './DataContext';
@@ -19,13 +19,21 @@ export const StaffDashboard = ({
 }) => {
   const { currentUser, logout, isAuthenticated, hasPermission } = useAuth();
   const { shifts, staff, shiftTypes, hospitals, generateFairSchedule, deleteShift, reserveShift, lastRefresh, autoRefresh, setAutoRefresh, loadInitialData, isOffline, isLoading } = useData();
-  const [currentDate, setCurrentDate] = useState(new Date());
+  const [currentDate, setCurrentDate] = useState(() => new Date());
   const [currentView, setCurrentView] = useState('calendar'); // Default to Calendar view
   const [planningView, setPlanningView] = useState('calendar'); // Calendar or Matrix for planning
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [addShiftModalData, setAddShiftModalData] = useState(null);
   const [selectedHospital, setSelectedHospital] = useState(propSelectedHospital || currentUser?.hospital || 'spital1');
   const [swapModal, setSwapModal] = useState({ isOpen: false, shift: null });
+
+  // Load initial shifts for the current month when component mounts
+  useEffect(() => {
+    if (selectedHospital && !isAuthenticated) {
+      loadInitialData(false, selectedHospital, currentDate);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedHospital]); // Only reload when hospital changes
 
   // If authenticated as admin or manager, show their dashboard
   if (isAuthenticated && currentUser) {
@@ -40,9 +48,9 @@ export const StaffDashboard = ({
   const navigateMonth = (direction) => {
     const newDate = addMonths(currentDate, direction);
     setCurrentDate(newDate);
-    // Load shifts for the new month
+    // Load shifts for the new month with silent refresh to avoid full reload
     if (selectedHospital) {
-      loadInitialData(false, selectedHospital, newDate);
+      loadInitialData(true, selectedHospital, newDate);
     }
   };
 
@@ -289,6 +297,7 @@ export const StaffDashboard = ({
     // Calendar view for everyone
     return (
       <CalendarView
+        key={`calendar-${selectedHospital}`}
         currentDate={currentDate}
         navigateMonth={navigateMonth}
         generateFairSchedule={generateFairSchedule}

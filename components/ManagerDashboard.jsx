@@ -40,9 +40,9 @@ export const ManagerDashboard = () => {
   const navigateMonth = (direction) => {
     const newDate = addMonths(currentDate, direction);
     setCurrentDate(newDate);
-    // Load shifts for the new month
+    // Load shifts for the new month with silent refresh to avoid full reload
     if (selectedHospital) {
-      loadInitialData(false, selectedHospital, newDate);
+      loadInitialData(true, selectedHospital, newDate);
     }
   };
 

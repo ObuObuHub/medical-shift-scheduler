@@ -66,7 +66,34 @@ export const isWeekend = (date) => {
 
 export const addMonths = (date, months) => {
   const newDate = new Date(date);
-  newDate.setMonth(newDate.getMonth() + months);
+  const currentDay = newDate.getDate();
+  const currentMonth = newDate.getMonth();
+  const currentYear = newDate.getFullYear();
+  
+  // Calculate new month and year
+  let newMonth = currentMonth + months;
+  let newYear = currentYear;
+  
+  // Handle year overflow/underflow
+  while (newMonth > 11) {
+    newMonth -= 12;
+    newYear += 1;
+  }
+  while (newMonth < 0) {
+    newMonth += 12;
+    newYear -= 1;
+  }
+  
+  // Create new date with the calculated month and year
+  newDate.setFullYear(newYear);
+  newDate.setMonth(newMonth);
+  
+  // Handle day overflow (e.g., Jan 31 + 1 month = Feb 31 -> Feb 28/29)
+  if (newDate.getDate() !== currentDay) {
+    // Go to last day of previous month
+    newDate.setDate(0);
+  }
+  
   return newDate;
 };
 

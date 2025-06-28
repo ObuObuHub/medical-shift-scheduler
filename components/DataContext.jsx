@@ -77,7 +77,8 @@ export const DataProvider = ({ children }) => {
 
   const loadInitialData = async (silentRefresh = false, selectedHospital = null, currentMonth = null) => {
     try {
-      if (!silentRefresh) {
+      // Use silentRefresh for month navigation to avoid full page reload
+      if (!silentRefresh && !currentMonth) {
         setIsLoading(true);
       }
       

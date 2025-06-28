@@ -195,9 +195,9 @@ export const MatrixView = ({
     const newDate = new Date(currentDate);
     newDate.setMonth(newDate.getMonth() + direction);
     onDateChange(newDate);
-    // Load shifts for the new month
+    // Load shifts for the new month with silent refresh to avoid full reload
     if (selectedHospital) {
-      loadInitialData(false, selectedHospital, newDate);
+      loadInitialData(true, selectedHospital, newDate);
     }
   };
   
