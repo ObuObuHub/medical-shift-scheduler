@@ -51,7 +51,6 @@ export const DataProvider = ({ children }) => {
   const [isOffline, setIsOffline] = useState(false);
   const [swapRequests, setSwapRequests] = useState([]);
   const [hospitalConfigs, setHospitalConfigs] = useState({});
-  const [lastRefresh, setLastRefresh] = useState(new Date());
   const [autoRefresh, setAutoRefresh] = useState(true);
 
   // Load initial data from API
@@ -163,10 +162,9 @@ export const DataProvider = ({ children }) => {
         setShifts({});
       }
     } finally {
-      if (!silentRefresh) {
+      if (!silentRefresh && !currentMonth) {
         setIsLoading(false);
       }
-      setLastRefresh(new Date());
     }
   };
 
@@ -1100,7 +1098,6 @@ export const DataProvider = ({ children }) => {
     isOffline,
     swapRequests,
     hospitalConfigs,
-    lastRefresh,
     autoRefresh,
     // Setters
     setShifts,

@@ -4,7 +4,7 @@ import { useAuth } from './AuthContext';
 import { useData } from './DataContext';
 import { 
   Calendar, Users, BarChart3, Settings, LogOut, 
-  Menu, X, Shield, Plus, Edit2, Trash2, RefreshCw
+  Menu, X, Shield, Plus, Edit2, Trash2
 } from './Icons';
 import { MatrixView } from './MatrixView';
 import { CalendarView } from './CalendarView';
