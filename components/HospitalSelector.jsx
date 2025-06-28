@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Building2, Users, ChevronRight, UserCheck } from './Icons';
+import { Building2, Users, ChevronRight, Shield } from './Icons';
 
 export const HospitalSelector = ({ hospitals, staff, onSelectHospital, onLoginClick }) => {
   // Count staff per hospital
@@ -71,19 +71,14 @@ export const HospitalSelector = ({ hospitals, staff, onSelectHospital, onLoginCl
           })}
         </div>
 
-        {/* Admin/Manager Login Button */}
-        <div className="text-center mt-8">
-          <button
-            onClick={onLoginClick}
-            className="inline-flex items-center px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
-          >
-            <UserCheck className="w-5 h-5 mr-2" />
-            Autentificare Admin/Manager
-          </button>
-          <p className="text-sm text-gray-500 mt-2">
-            Pentru administratori și manageri de spital
-          </p>
-        </div>
+        {/* Discrete Admin/Manager Login Icon */}
+        <button
+          onClick={onLoginClick}
+          className="fixed bottom-4 right-4 p-3 bg-gray-100 hover:bg-gray-200 rounded-full shadow-lg transition-all hover:shadow-xl group"
+          title="Autentificare Admin/Manager"
+        >
+          <Shield className="w-5 h-5 text-gray-600 group-hover:text-gray-800" />
+        </button>
 
         {/* Footer */}
         <div className="text-center mt-8 text-sm text-gray-500">
