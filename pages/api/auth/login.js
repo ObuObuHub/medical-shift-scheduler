@@ -1,6 +1,8 @@
 import { sql } from '../../../lib/vercel-db';
 import bcrypt from 'bcryptjs';
 import { generateToken } from '../../../lib/auth';
+import { checkRateLimit, resetRateLimit } from '../../../lib/rateLimiter';
+import { createSession } from '../../../lib/sessionManager';
 
 // Legacy SHA-256 password verification for existing users
 import crypto from 'crypto';
@@ -16,10 +18,22 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { username, password } = req.body;
+    const { username, password, rememberMe } = req.body;
 
     if (!username || !password) {
       return res.status(400).json({ error: 'Username and password required' });
+    }
+
+    // Check rate limit based on IP and username
+    const clientIp = req.headers['x-forwarded-for'] || req.connection.remoteAddress || 'unknown';
+    const rateLimitKey = `${clientIp}:${username.toLowerCase()}`;
+    const rateLimit = checkRateLimit(rateLimitKey);
+
+    if (!rateLimit.allowed) {
+      return res.status(429).json({ 
+        error: 'Too many login attempts. Please try again later.',
+        retryAfter: rateLimit.retryAfter
+      });
     }
 
     // First try to find user in database
@@ -79,8 +93,25 @@ export default async function handler(req, res) {
 
     const token = generateToken(user);
 
+    // Create session
+    const session = createSession(user.id, {
+      id: user.id,
+      name: user.name,
+      username: user.username,
+      role: user.role,
+      hospital: user.hospital,
+      type: user.type,
+      specialization: user.specialization
+    }, rememberMe);
+
+    // Reset rate limit on successful login
+    resetRateLimit(rateLimitKey);
+
     res.status(200).json({
       token,
+      sessionId: session.sessionId,
+      refreshToken: session.refreshToken,
+      expiresIn: session.expiresIn,
       user: {
         id: user.id,
         name: user.name,
