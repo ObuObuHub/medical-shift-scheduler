@@ -66,6 +66,8 @@ export const DataProvider = ({ children }) => {
     const refreshInterval = setInterval(() => {
       // Only refresh if document is visible (user is on the tab)
       if (document.visibilityState === 'visible') {
+        // For auto-refresh, we don't pass hospital to avoid clearing shifts
+        // Shifts will be refreshed when user manually refreshes with hospital context
         loadInitialData(true); // true for silent refresh
       }
     }, 30000); // 30 seconds
@@ -73,18 +75,26 @@ export const DataProvider = ({ children }) => {
     return () => clearInterval(refreshInterval);
   }, [autoRefresh]);
 
-  const loadInitialData = async (silentRefresh = false) => {
+  const loadInitialData = async (silentRefresh = false, selectedHospital = null) => {
     try {
       if (!silentRefresh) {
         setIsLoading(true);
       }
       
-      // Try to load data from public endpoints first (no auth required)
-      const [hospitalsData, staffData, shiftsData] = await Promise.allSettled([
+      // Prepare API calls - only load shifts if hospital is specified
+      const apiCalls = [
         apiClient.getPublicHospitals(),
-        apiClient.getPublicStaff(),
-        apiClient.getPublicShifts()
-      ]);
+        apiClient.getPublicStaff()
+      ];
+      
+      // Only load shifts if a hospital is specified
+      if (selectedHospital) {
+        apiCalls.push(apiClient.getPublicShifts({ hospital: selectedHospital }));
+      }
+      
+      // Try to load data from public endpoints first (no auth required)
+      const results = await Promise.allSettled(apiCalls);
+      const [hospitalsData, staffData, shiftsData] = results;
 
       let dataLoaded = false;
 
@@ -106,13 +116,18 @@ export const DataProvider = ({ children }) => {
         setStaff(DEFAULT_STAFF);
       }
 
-      if (shiftsData.status === 'fulfilled') {
-        setShifts(shiftsData.value);
-        dataLoaded = true;
-      } else {
-        console.warn('Failed to load shifts:', shiftsData.reason);
-        // Initialize with empty shifts
-        setShifts({});
+      // Only update shifts if we actually fetched them (i.e., hospital was specified)
+      if (shiftsData) {
+        if (shiftsData.status === 'fulfilled') {
+          setShifts(shiftsData.value);
+          dataLoaded = true;
+        } else {
+          console.warn('Failed to load shifts:', shiftsData.reason);
+          // Only clear shifts if we tried to load them but failed
+          if (selectedHospital) {
+            setShifts({});
+          }
+        }
       }
 
       // Set offline status based on whether any data loaded successfully
@@ -124,7 +139,10 @@ export const DataProvider = ({ children }) => {
       // Use default data as fallback
       setHospitals(DEFAULT_HOSPITALS);
       setStaff(DEFAULT_STAFF);
-      setShifts({});
+      // Only clear shifts if we were trying to load them for a specific hospital
+      if (selectedHospital) {
+        setShifts({});
+      }
     } finally {
       if (!silentRefresh) {
         setIsLoading(false);

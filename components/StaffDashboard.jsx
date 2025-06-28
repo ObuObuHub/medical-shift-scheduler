@@ -349,7 +349,7 @@ export const StaffDashboard = ({
                   </span>
                 )}
                 <button
-                  onClick={() => loadInitialData()}
+                  onClick={() => loadInitialData(false, selectedHospital)}
                   className={`p-1.5 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors ${isLoading ? 'animate-spin' : ''}`}
                   title="Reîmprospătare date"
                   disabled={isLoading}
