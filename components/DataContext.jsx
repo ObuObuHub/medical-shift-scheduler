@@ -1,6 +1,5 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import apiClient from '../lib/apiClient';
-import { generateSchedule, generateDaysForMonth, calculateFairQuotas, convertScheduleToShifts } from '../utils/shiftEngine';
 import { generateSchedule as generateScheduleV2, generateDaysForMonth as generateDaysForMonthV2, calculateFairQuotas as calculateFairQuotasV2, validateSchedule } from '../utils/shiftEngineV2';
 import { generateCompleteSchedule, regenerateCompleteSchedule } from '../utils/fairScheduling';
 
