@@ -282,39 +282,47 @@ export const StaffDashboard = ({
   };
 
   const renderPlanningView = () => {
-    if (planningView === 'matrix') {
-      // Matrix view now available for all users (read-only for non-privileged users)
-      return (
-        <MatrixView
-          selectedHospital={selectedHospital}
-          currentDate={currentDate}
-          onDateChange={setCurrentDate}
-          readOnly={!hasPermission('assign_staff')}
-        />
-      );
-    }
-    
-    // Calendar view for everyone
     return (
-      <CalendarView
-        key={`calendar-${selectedHospital}`}
-        currentDate={currentDate}
-        navigateMonth={navigateMonth}
-        generateFairSchedule={generateFairSchedule}
-        getDaysInMonth={getDaysInMonth}
-        handleCellClick={handleCellClick}
-        getStaffName={getStaffName}
-        hasPermission={hasPermission}
-        staff={staff}
-        shifts={shifts}
-        setAddShiftModalData={setAddShiftModalData}
-        selectedHospital={selectedHospital}
-        currentUser={currentUser}
-        selectedStaff={selectedStaff}
-        isGuest={isGuest}
-        swapModal={swapModal}
-        setSwapModal={setSwapModal}
-      />
+      <div className="space-y-4">
+        {/* View switcher moved here from header */}
+        <div className="flex justify-center">
+          <ViewSwitcher 
+            currentView={planningView} 
+            onViewChange={setPlanningView}
+          />
+        </div>
+        
+        {planningView === 'matrix' ? (
+          // Matrix view now available for all users (read-only for non-privileged users)
+          <MatrixView
+            selectedHospital={selectedHospital}
+            currentDate={currentDate}
+            onDateChange={setCurrentDate}
+            readOnly={!hasPermission('assign_staff')}
+          />
+        ) : (
+          // Calendar view for everyone
+          <CalendarView
+            key={`calendar-${selectedHospital}`}
+            currentDate={currentDate}
+            navigateMonth={navigateMonth}
+            generateFairSchedule={generateFairSchedule}
+            getDaysInMonth={getDaysInMonth}
+            handleCellClick={handleCellClick}
+            getStaffName={getStaffName}
+            hasPermission={hasPermission}
+            staff={staff}
+            shifts={shifts}
+            setAddShiftModalData={setAddShiftModalData}
+            selectedHospital={selectedHospital}
+            currentUser={currentUser}
+            selectedStaff={selectedStaff}
+            isGuest={isGuest}
+            swapModal={swapModal}
+            setSwapModal={setSwapModal}
+          />
+        )}
+      </div>
     );
   };
 
@@ -327,106 +335,75 @@ export const StaffDashboard = ({
 
       {/* Header - Mobile Responsive */}
       <header className="bg-white shadow-sm border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-3 sm:px-4 sm:px-6 lg:px-8">
+        <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6">
           <div className="flex items-center justify-between h-14 sm:h-16">
-            <div className="flex items-center min-w-0 flex-1">
-              <h1 className="text-lg sm:text-xl font-bold text-gray-900 truncate">Program Medical</h1>
-              {/* Show selected hospital and staff */}
+            {/* Left side - Title */}
+            <div className="flex items-center min-w-0">
+              <h1 className="text-base sm:text-xl font-bold text-gray-900">
+                <span className="hidden sm:inline">Program Medical</span>
+                <span className="sm:hidden">Program</span>
+              </h1>
+              {/* Hospital name - only on larger screens */}
               {!isAuthenticated && (
-                <div className="ml-4 flex items-center space-x-4 text-sm text-gray-600">
-                  <span className="hidden sm:inline">
-                    {hospitals.find(h => h.id === selectedHospital)?.name}
-                  </span>
-                  {selectedStaff && !isGuest && (
-                    <>
-                      <span className="text-gray-400">|</span>
-                      <span className="font-medium text-gray-700">
-                        {selectedStaff.name}
-                      </span>
-                    </>
-                  )}
-                  {isGuest && (
-                    <>
-                      <span className="text-gray-400">|</span>
-                      <span className="text-gray-500">Vizitator</span>
-                    </>
-                  )}
-                </div>
+                <span className="hidden md:inline ml-3 text-sm text-gray-500">
+                  {hospitals.find(h => h.id === selectedHospital)?.name}
+                </span>
               )}
-              
             </div>
 
-            <div className="flex items-center space-x-2">
-              <div className="flex space-x-1">
-                <button
-                  onClick={() => setCurrentView('calendar')}
-                  className={`px-2 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors touch-manipulation ${
-                    currentView === 'calendar'
-                      ? 'bg-blue-100 text-blue-700'
-                      : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
-                  }`}
-                >
-                  <CalendarDays className="w-4 h-4 sm:w-5 sm:h-5 inline mr-1" />
-                  <span>Planificare</span>
-                </button>
-                
-                {/* View switcher for planning - visible for all users */}
-                {currentView === 'calendar' && (
-                  <ViewSwitcher 
-                    currentView={planningView} 
-                    onViewChange={setPlanningView}
-                    className="ml-2"
-                  />
-                )}
-                <button
-                  onClick={() => setCurrentView('schedule')}
-                  className={`px-2 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors touch-manipulation ${
-                    currentView === 'schedule'
-                      ? 'bg-blue-100 text-blue-700'
-                      : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
-                  }`}
-                >
-                  <Calendar className="w-4 h-4 sm:w-5 sm:h-5 inline mr-1" />
-                  <span className="sm:hidden">Ture</span>
-                  <span className="hidden sm:inline">Turele Mele</span>
-                </button>
-              </div>
+            {/* Center - Navigation buttons */}
+            <div className="flex items-center space-x-1 sm:space-x-2">
+              <button
+                onClick={() => setCurrentView('calendar')}
+                className={`px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors touch-manipulation min-h-[40px] ${
+                  currentView === 'calendar'
+                    ? 'bg-blue-600 text-white'
+                    : 'text-gray-600 hover:bg-gray-100'
+                }`}
+              >
+                <CalendarDays className="w-4 h-4 sm:mr-1 inline" />
+                <span className="hidden sm:inline">Planificare</span>
+              </button>
+              
+              <button
+                onClick={() => setCurrentView('schedule')}
+                className={`px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors touch-manipulation min-h-[40px] ${
+                  currentView === 'schedule'
+                    ? 'bg-blue-600 text-white'
+                    : 'text-gray-600 hover:bg-gray-100'
+                }`}
+              >
+                <Calendar className="w-4 h-4 sm:mr-1 inline" />
+                <span className="hidden sm:inline">Turele Mele</span>
+                <span className="sm:hidden">Ture</span>
+              </button>
+            </div>
 
-              <div className="flex items-center space-x-1 sm:space-x-2">
-                {isAuthenticated && currentUser ? (
-                  <>
-                    <User className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400 hidden sm:block" />
-                    <span className="text-xs sm:text-sm text-gray-700 truncate max-w-[80px] sm:max-w-none hidden sm:block">{currentUser.name}</span>
-                    <button
-                      onClick={logout}
-                      className="px-2 sm:px-3 py-2 text-xs sm:text-sm bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors touch-manipulation flex items-center space-x-1 min-w-fit"
-                      title="Logout"
-                    >
-                      <LogOut className="w-4 h-4" />
-                      <span>Logout</span>
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <button
-                      onClick={() => setShowLoginModal(true)}
-                      className="px-2 sm:px-4 py-2 text-xs sm:text-sm bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors touch-manipulation flex items-center space-x-1 min-w-fit"
-                      title="Login Admin"
-                    >
-                      <Shield className="w-4 h-4" />
-                      <span>Admin</span>
-                    </button>
-                    <button
-                      onClick={() => setShowLoginModal(true)}
-                      className="px-2 sm:px-4 py-2 text-xs sm:text-sm bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors touch-manipulation flex items-center space-x-1 min-w-fit"
-                      title="Login Manager"
-                    >
-                      <Settings className="w-4 h-4" />
-                      <span>Manager</span>
-                    </button>
-                  </>
-                )}
-              </div>
+            {/* Right side - Auth section */}
+            <div className="flex items-center">
+              {isAuthenticated && currentUser ? (
+                <div className="flex items-center space-x-2">
+                  <span className="hidden sm:inline text-sm text-gray-600 max-w-[150px] truncate">
+                    {currentUser.name}
+                  </span>
+                  <button
+                    onClick={logout}
+                    className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                    title="Logout"
+                  >
+                    <LogOut className="w-4 h-4 sm:w-5 sm:h-5" />
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => setShowLoginModal(true)}
+                  className="px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-medium"
+                >
+                  <Shield className="w-4 h-4 sm:mr-1 inline" />
+                  <span className="hidden sm:inline">Admin/Manager</span>
+                  <span className="sm:hidden">Login</span>
+                </button>
+              )}
             </div>
           </div>
         </div>

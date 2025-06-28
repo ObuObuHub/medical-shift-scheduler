@@ -129,16 +129,19 @@ export const AdminDashboard = () => {
       case 'matrix':
         return (
           <div className="space-y-6">
-            <div className="flex items-center justify-between">
-              <h2 className="text-xl font-semibold text-gray-800 flex items-center">
-                <BarChart3 className="w-5 h-5 mr-2" />
-                Planificare Personal
-              </h2>
+            <h2 className="text-xl font-semibold text-gray-800 flex items-center">
+              <BarChart3 className="w-5 h-5 mr-2" />
+              Planificare Personal
+            </h2>
+            
+            {/* View switcher moved here from header */}
+            <div className="flex justify-center">
               <ViewSwitcher 
                 currentView={planningView} 
                 onViewChange={setPlanningView}
               />
             </div>
+            
             {planningView === 'matrix' ? (
               <MatrixView 
                 selectedHospital={selectedHospital}
@@ -202,97 +205,106 @@ export const AdminDashboard = () => {
 
       {/* Header */}
       <header className="bg-white shadow-sm border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
+        <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6">
+          <div className="flex items-center justify-between h-14 sm:h-16">
+            {/* Left side - Logo and Title */}
             <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <h1 className="text-xl font-bold text-gray-900 flex items-center">
-                  <Shield className="w-5 h-5 mr-2 text-red-600" />
-                  Administrare
-                </h1>
-              </div>
+              <h1 className="text-base sm:text-xl font-bold text-gray-900 flex items-center">
+                <Shield className="w-4 h-4 sm:w-5 sm:h-5 mr-1.5 sm:mr-2 text-red-600" />
+                <span className="hidden sm:inline">Administrare</span>
+                <span className="sm:hidden">Admin</span>
+              </h1>
             </div>
 
-            <div className="hidden md:block">
-              <div className="ml-10 flex items-baseline space-x-4">
-                {menuItems.map(item => (
-                  <button
-                    key={item.id}
-                    onClick={() => setCurrentView(item.id)}
-                    className={`px-3 py-2 rounded-md text-sm font-medium flex items-center ${
-                      currentView === item.id
-                        ? 'bg-red-100 text-red-700'
-                        : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
-                    }`}
-                  >
-                    <item.icon className="w-4 h-4 mr-2" />
-                    {item.label}
-                  </button>
-                ))}
-              </div>
+            {/* Center - Navigation (Desktop only) */}
+            <div className="hidden md:flex items-center space-x-1">
+              {menuItems.map(item => (
+                <button
+                  key={item.id}
+                  onClick={() => setCurrentView(item.id)}
+                  className={`px-3 py-2 rounded-lg text-sm font-medium flex items-center transition-colors ${
+                    currentView === item.id
+                      ? 'bg-red-600 text-white'
+                      : 'text-gray-600 hover:bg-gray-100'
+                  }`}
+                >
+                  <item.icon className="w-4 h-4 mr-1.5" />
+                  {item.label}
+                </button>
+              ))}
             </div>
 
-            <div className="flex items-center space-x-4">
-              <select
-                value={selectedHospital}
-                onChange={(e) => {
-                  const newHospital = e.target.value;
-                  setSelectedHospital(newHospital);
-                  loadInitialData(false, newHospital, currentDate);
-                }}
-                className="px-3 py-1 border border-gray-300 rounded-md text-sm"
-              >
-                {hospitals.map(hospital => (
-                  <option key={hospital.id} value={hospital.id}>
-                    {hospital.name}
-                  </option>
-                ))}
-              </select>
-
-              <div className="flex items-center space-x-2">
-                <div className="px-2 py-1 bg-red-100 text-red-700 rounded text-xs font-semibold">
-                  ADMIN
-                </div>
-                <div className="relative" ref={userMenuRef}>
-                  <button
-                    onClick={() => setShowUserMenu(!showUserMenu)}
-                    className="flex items-center space-x-2 text-sm text-gray-700 hover:text-gray-900"
-                  >
-                    <span>{currentUser?.name}</span>
-                    <ChevronDown className="w-4 h-4" />
-                  </button>
-                  
-                  {showUserMenu && (
-                    <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-50">
-                      <button
-                        onClick={() => {
-                          setShowChangePassword(true);
+            {/* Right side - User menu and mobile toggle */}
+            <div className="flex items-center space-x-2">
+              {/* User menu dropdown */}
+              <div className="relative" ref={userMenuRef}>
+                <button
+                  onClick={() => setShowUserMenu(!showUserMenu)}
+                  className="flex items-center space-x-1.5 px-2 sm:px-3 py-1.5 sm:py-2 text-sm rounded-lg hover:bg-gray-100 transition-colors"
+                >
+                  <div className="px-1.5 py-0.5 bg-red-100 text-red-700 rounded text-xs font-semibold">
+                    ADMIN
+                  </div>
+                  <span className="hidden sm:inline text-gray-700 max-w-[150px] truncate">
+                    {currentUser?.name}
+                  </span>
+                  <ChevronDown className="w-4 h-4 text-gray-500" />
+                </button>
+                
+                {showUserMenu && (
+                  <div className="absolute right-0 mt-1 w-56 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
+                    {/* Hospital selector moved to dropdown */}
+                    <div className="px-4 py-3 border-b border-gray-100">
+                      <label className="block text-xs font-medium text-gray-500 mb-1">Spital</label>
+                      <select
+                        value={selectedHospital}
+                        onChange={(e) => {
+                          const newHospital = e.target.value;
+                          setSelectedHospital(newHospital);
+                          loadInitialData(false, newHospital, currentDate);
                           setShowUserMenu(false);
                         }}
-                        className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center space-x-2"
+                        className="w-full px-2 py-1.5 border border-gray-300 rounded-md text-sm"
                       >
-                        <Lock className="w-4 h-4" />
-                        <span>Schimbă parola</span>
-                      </button>
-                      <hr className="my-1" />
-                      <button
-                        onClick={() => {
-                          logout();
-                          setShowUserMenu(false);
-                        }}
-                        className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex items-center space-x-2"
-                      >
-                        <LogOut className="w-4 h-4" />
-                        <span>Logout</span>
-                      </button>
+                        {hospitals.map(hospital => (
+                          <option key={hospital.id} value={hospital.id}>
+                            {hospital.name}
+                          </option>
+                        ))}
+                      </select>
                     </div>
-                  )}
-                </div>
+                    
+                    <button
+                      onClick={() => {
+                        setShowChangePassword(true);
+                        setShowUserMenu(false);
+                      }}
+                      className="w-full px-4 py-2.5 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center space-x-2"
+                    >
+                      <Lock className="w-4 h-4" />
+                      <span>Schimbă parola</span>
+                    </button>
+                    
+                    <hr className="border-gray-100" />
+                    
+                    <button
+                      onClick={() => {
+                        logout();
+                        setShowUserMenu(false);
+                      }}
+                      className="w-full px-4 py-2.5 text-left text-sm text-red-600 hover:bg-red-50 flex items-center space-x-2"
+                    >
+                      <LogOut className="w-4 h-4" />
+                      <span>Logout</span>
+                    </button>
+                  </div>
+                )}
               </div>
 
+              {/* Mobile menu toggle */}
               <button
                 onClick={() => setShowMobileMenu(!showMobileMenu)}
-                className="md:hidden p-2 text-gray-600 hover:text-gray-900"
+                className="md:hidden p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
               >
                 {showMobileMenu ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
               </button>
@@ -300,10 +312,31 @@ export const AdminDashboard = () => {
           </div>
         </div>
 
-        {/* Mobile menu */}
-        {showMobileMenu && (
-          <div className="md:hidden">
-            <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3 bg-white border-t border-gray-200">
+      </header>
+
+      {/* Mobile menu - Full screen overlay */}
+      {showMobileMenu && (
+        <div className="fixed inset-0 z-50 md:hidden">
+          {/* Backdrop */}
+          <div 
+            className="fixed inset-0 bg-black bg-opacity-50"
+            onClick={() => setShowMobileMenu(false)}
+          />
+          
+          {/* Menu panel */}
+          <div className="fixed inset-y-0 right-0 max-w-xs w-full bg-white shadow-xl">
+            <div className="flex items-center justify-between p-4 border-b border-gray-200">
+              <h2 className="text-lg font-semibold text-gray-900">Meniu</h2>
+              <button
+                onClick={() => setShowMobileMenu(false)}
+                className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <div className="p-4 space-y-2">
+              {/* Navigation items */}
               {menuItems.map(item => (
                 <button
                   key={item.id}
@@ -311,20 +344,68 @@ export const AdminDashboard = () => {
                     setCurrentView(item.id);
                     setShowMobileMenu(false);
                   }}
-                  className={`block px-3 py-2 rounded-md text-base font-medium w-full text-left flex items-center ${
+                  className={`w-full px-4 py-3 rounded-lg text-left font-medium flex items-center transition-colors ${
                     currentView === item.id
-                      ? 'bg-red-100 text-red-700'
-                      : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                      ? 'bg-red-600 text-white'
+                      : 'text-gray-700 hover:bg-gray-100'
                   }`}
                 >
-                  <item.icon className="w-4 h-4 mr-2" />
+                  <item.icon className="w-5 h-5 mr-3" />
                   {item.label}
                 </button>
               ))}
+              
+              <hr className="my-4 border-gray-200" />
+              
+              {/* Hospital selector */}
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-gray-700">Spital selectat</label>
+                <select
+                  value={selectedHospital}
+                  onChange={(e) => {
+                    const newHospital = e.target.value;
+                    setSelectedHospital(newHospital);
+                    loadInitialData(false, newHospital, currentDate);
+                    setShowMobileMenu(false);
+                  }}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                >
+                  {hospitals.map(hospital => (
+                    <option key={hospital.id} value={hospital.id}>
+                      {hospital.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              
+              <hr className="my-4 border-gray-200" />
+              
+              {/* Account actions */}
+              <button
+                onClick={() => {
+                  setShowChangePassword(true);
+                  setShowMobileMenu(false);
+                }}
+                className="w-full px-4 py-3 text-left text-gray-700 hover:bg-gray-100 rounded-lg flex items-center"
+              >
+                <Lock className="w-5 h-5 mr-3" />
+                Schimbă parola
+              </button>
+              
+              <button
+                onClick={() => {
+                  logout();
+                  setShowMobileMenu(false);
+                }}
+                className="w-full px-4 py-3 text-left text-red-600 hover:bg-red-50 rounded-lg flex items-center"
+              >
+                <LogOut className="w-5 h-5 mr-3" />
+                Logout
+              </button>
             </div>
           </div>
-        )}
-      </header>
+        </div>
+      )}
 
       {/* Main content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">

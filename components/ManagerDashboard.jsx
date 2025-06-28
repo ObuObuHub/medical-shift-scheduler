@@ -200,16 +200,19 @@ export const ManagerDashboard = () => {
       case 'matrix':
         return (
           <div className="space-y-6">
-            <div className="flex items-center justify-between">
-              <h2 className="text-xl font-semibold text-gray-800 flex items-center">
-                <BarChart3 className="w-5 h-5 mr-2" />
-                Planificare Personal
-              </h2>
+            <h2 className="text-xl font-semibold text-gray-800 flex items-center">
+              <BarChart3 className="w-5 h-5 mr-2" />
+              Planificare Personal
+            </h2>
+            
+            {/* View switcher moved here from header */}
+            <div className="flex justify-center">
               <ViewSwitcher 
                 currentView={planningView} 
                 onViewChange={setPlanningView}
               />
             </div>
+            
             {planningView === 'matrix' ? (
               <MatrixView 
                 selectedHospital={selectedHospital}
@@ -262,41 +265,42 @@ export const ManagerDashboard = () => {
 
       {/* Header */}
       <header className="bg-white shadow-sm border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
+        <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6">
+          <div className="flex items-center justify-between h-14 sm:h-16">
+            {/* Left side - Logo and Title */}
             <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <h1 className="text-xl font-bold text-gray-900 flex items-center">
-                  <Shield className="w-5 h-5 mr-2" />
-                  Management
-                </h1>
-              </div>
+              <h1 className="text-base sm:text-xl font-bold text-gray-900 flex items-center">
+                <Shield className="w-4 h-4 sm:w-5 sm:h-5 mr-1.5 sm:mr-2 text-blue-600" />
+                <span className="hidden sm:inline">Management</span>
+                <span className="sm:hidden">Manager</span>
+              </h1>
             </div>
 
-            <div className="hidden md:block">
-              <div className="ml-10 flex items-baseline space-x-4">
-                {menuItems.map(item => (
-                  <button
-                    key={item.id}
-                    onClick={() => setCurrentView(item.id)}
-                    className={`px-3 py-2 rounded-md text-sm font-medium flex items-center ${
-                      currentView === item.id
-                        ? 'bg-blue-100 text-blue-700'
-                        : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
-                    }`}
-                  >
-                    <item.icon className="w-4 h-4 mr-2" />
-                    {item.label}
-                  </button>
-                ))}
-              </div>
+            {/* Center - Navigation (Desktop only) */}
+            <div className="hidden md:flex items-center space-x-1">
+              {menuItems.map(item => (
+                <button
+                  key={item.id}
+                  onClick={() => setCurrentView(item.id)}
+                  className={`px-3 py-2 rounded-lg text-sm font-medium flex items-center transition-colors ${
+                    currentView === item.id
+                      ? 'bg-blue-600 text-white'
+                      : 'text-gray-600 hover:bg-gray-100'
+                  }`}
+                >
+                  <item.icon className="w-4 h-4 mr-1.5" />
+                  {item.label}
+                </button>
+              ))}
             </div>
 
-            <div className="flex items-center space-x-4">
+            {/* Right side - Hospital selector and user menu */}
+            <div className="flex items-center space-x-2">
+              {/* Hospital selector - hidden on mobile */}
               <select
                 value={selectedHospital}
                 onChange={handleHospitalDropdownChange}
-                className="px-3 py-1 border border-gray-300 rounded-md text-sm"
+                className="hidden sm:block px-2 py-1.5 border border-gray-300 rounded-lg text-sm"
               >
                 {hospitals.map(hospital => (
                   <option key={hospital.id} value={hospital.id}>
@@ -305,21 +309,27 @@ export const ManagerDashboard = () => {
                 ))}
               </select>
 
+              {/* User info and logout */}
               <div className="flex items-center space-x-2">
-                <span className="text-sm text-gray-700">{currentUser?.name}</span>
+                <div className="px-1.5 py-0.5 bg-blue-100 text-blue-700 rounded text-xs font-semibold">
+                  MANAGER
+                </div>
+                <span className="hidden sm:inline text-sm text-gray-700 max-w-[150px] truncate">
+                  {currentUser?.name}
+                </span>
                 <button
                   onClick={logout}
-                  className="px-2 sm:px-3 py-2 text-xs sm:text-sm bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors flex items-center space-x-1"
+                  className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
                   title="Logout"
                 >
-                  <LogOut className="w-4 h-4" />
-                  <span>Logout</span>
+                  <LogOut className="w-4 h-4 sm:w-5 sm:h-5" />
                 </button>
               </div>
 
+              {/* Mobile menu toggle */}
               <button
                 onClick={() => setShowMobileMenu(!showMobileMenu)}
-                className="md:hidden p-2 text-gray-600 hover:text-gray-900"
+                className="md:hidden p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
               >
                 {showMobileMenu ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
               </button>
@@ -327,10 +337,31 @@ export const ManagerDashboard = () => {
           </div>
         </div>
 
-        {/* Mobile menu */}
-        {showMobileMenu && (
-          <div className="md:hidden">
-            <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3 bg-white border-t border-gray-200">
+      </header>
+
+      {/* Mobile menu - Full screen overlay */}
+      {showMobileMenu && (
+        <div className="fixed inset-0 z-50 md:hidden">
+          {/* Backdrop */}
+          <div 
+            className="fixed inset-0 bg-black bg-opacity-50"
+            onClick={() => setShowMobileMenu(false)}
+          />
+          
+          {/* Menu panel */}
+          <div className="fixed inset-y-0 right-0 max-w-xs w-full bg-white shadow-xl">
+            <div className="flex items-center justify-between p-4 border-b border-gray-200">
+              <h2 className="text-lg font-semibold text-gray-900">Meniu</h2>
+              <button
+                onClick={() => setShowMobileMenu(false)}
+                className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <div className="p-4 space-y-2">
+              {/* Navigation items */}
               {menuItems.map(item => (
                 <button
                   key={item.id}
@@ -338,20 +369,55 @@ export const ManagerDashboard = () => {
                     setCurrentView(item.id);
                     setShowMobileMenu(false);
                   }}
-                  className={`block px-3 py-2 rounded-md text-base font-medium w-full text-left flex items-center ${
+                  className={`w-full px-4 py-3 rounded-lg text-left font-medium flex items-center transition-colors ${
                     currentView === item.id
-                      ? 'bg-blue-100 text-blue-700'
-                      : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                      ? 'bg-blue-600 text-white'
+                      : 'text-gray-700 hover:bg-gray-100'
                   }`}
                 >
-                  <item.icon className="w-4 h-4 mr-2" />
+                  <item.icon className="w-5 h-5 mr-3" />
                   {item.label}
                 </button>
               ))}
+              
+              <hr className="my-4 border-gray-200" />
+              
+              {/* Hospital selector */}
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-gray-700">Spital selectat</label>
+                <select
+                  value={selectedHospital}
+                  onChange={(e) => {
+                    handleHospitalDropdownChange(e);
+                    setShowMobileMenu(false);
+                  }}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                >
+                  {hospitals.map(hospital => (
+                    <option key={hospital.id} value={hospital.id}>
+                      {hospital.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              
+              <hr className="my-4 border-gray-200" />
+              
+              {/* Account actions */}
+              <button
+                onClick={() => {
+                  logout();
+                  setShowMobileMenu(false);
+                }}
+                className="w-full px-4 py-3 text-left text-red-600 hover:bg-red-50 rounded-lg flex items-center"
+              >
+                <LogOut className="w-5 h-5 mr-3" />
+                Logout
+              </button>
             </div>
           </div>
-        )}
-      </header>
+        </div>
+      )}
 
       {/* Main content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
