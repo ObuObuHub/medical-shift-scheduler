@@ -1,10 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Head from 'next/head';
 import { useAuth } from './AuthContext';
 import { useData } from './DataContext';
 import { 
   Calendar, Users, Building2, Settings, LogOut, 
-  Menu, X, Shield, BarChart3
+  Menu, X, Shield, BarChart3, Lock, ChevronDown
 } from './Icons';
 import { MatrixView } from './MatrixView';
 import { CalendarView } from './CalendarView';
@@ -15,6 +15,7 @@ import { StaffEditModal } from './StaffEditModal';
 import { HospitalEditModal } from './HospitalEditModal';
 import { ShiftTypeEditModal } from './ShiftTypeEditModal';
 import { AddShiftModal } from './AddShiftModal';
+import { ChangePasswordModal } from './ChangePasswordModal';
 import { formatMonthYear, addMonths } from '../utils/dateHelpers';
 
 export const AdminDashboard = () => {
@@ -39,6 +40,21 @@ export const AdminDashboard = () => {
   const [editingHospital, setEditingHospital] = useState(null);
   const [editingShiftType, setEditingShiftType] = useState(null);
   const [addShiftModalData, setAddShiftModalData] = useState(null);
+  const [showChangePassword, setShowChangePassword] = useState(false);
+  const [showUserMenu, setShowUserMenu] = useState(false);
+  const userMenuRef = useRef(null);
+
+  // Close user menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (userMenuRef.current && !userMenuRef.current.contains(event.target)) {
+        setShowUserMenu(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const navigateMonth = (direction) => {
     const newDate = addMonths(currentDate, direction);
@@ -237,15 +253,41 @@ export const AdminDashboard = () => {
                 <div className="px-2 py-1 bg-red-100 text-red-700 rounded text-xs font-semibold">
                   ADMIN
                 </div>
-                <span className="text-sm text-gray-700">{currentUser?.name}</span>
-                <button
-                  onClick={logout}
-                  className="px-2 sm:px-3 py-2 text-xs sm:text-sm bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors flex items-center space-x-1"
-                  title="Logout"
-                >
-                  <LogOut className="w-4 h-4" />
-                  <span>Logout</span>
-                </button>
+                <div className="relative" ref={userMenuRef}>
+                  <button
+                    onClick={() => setShowUserMenu(!showUserMenu)}
+                    className="flex items-center space-x-2 text-sm text-gray-700 hover:text-gray-900"
+                  >
+                    <span>{currentUser?.name}</span>
+                    <ChevronDown className="w-4 h-4" />
+                  </button>
+                  
+                  {showUserMenu && (
+                    <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-50">
+                      <button
+                        onClick={() => {
+                          setShowChangePassword(true);
+                          setShowUserMenu(false);
+                        }}
+                        className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center space-x-2"
+                      >
+                        <Lock className="w-4 h-4" />
+                        <span>Schimbă parola</span>
+                      </button>
+                      <hr className="my-1" />
+                      <button
+                        onClick={() => {
+                          logout();
+                          setShowUserMenu(false);
+                        }}
+                        className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex items-center space-x-2"
+                      >
+                        <LogOut className="w-4 h-4" />
+                        <span>Logout</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
 
               <button
@@ -320,6 +362,14 @@ export const AdminDashboard = () => {
         <HospitalEditModal
           hospital={editingHospital}
           onClose={() => setEditingHospital(null)}
+        />
+      )}
+
+      {showChangePassword && (
+        <ChangePasswordModal
+          isOpen={showChangePassword}
+          onClose={() => setShowChangePassword(false)}
+          onSuccess={() => setShowChangePassword(false)}
         />
       )}
     </div>

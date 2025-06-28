@@ -3,6 +3,7 @@ import { HospitalSelector } from './HospitalSelector';
 import { StaffSelector } from './StaffSelector';
 import { StaffDashboard } from './StaffDashboard';
 import { NotificationContainer } from './NotificationContainer';
+import { LoginForm } from './LoginForm';
 import { useData } from './DataContext';
 import { useAuth } from './AuthContext';
 
@@ -12,6 +13,7 @@ export const AppRouter = () => {
   
   const [selectedHospital, setSelectedHospital] = useState(null);
   const [isGuest, setIsGuest] = useState(false);
+  const [showLogin, setShowLogin] = useState(false);
 
   // Clear saved selections on initial load to force hospital selection
   useEffect(() => {
@@ -47,6 +49,18 @@ export const AppRouter = () => {
     setSelectedHospital(null);
     clearStaffSelection();
     setIsGuest(false);
+    setShowLogin(false);
+  };
+
+  // Handle login success
+  const handleLoginSuccess = (user) => {
+    setShowLogin(false);
+    // Set the current user and let them go through normal flow
+    if (user) {
+      // Admin/Manager can now select hospital and view as themselves
+      clearStaffSelection();
+      setSelectedHospital(null);
+    }
   };
 
   // Loading state
@@ -65,6 +79,16 @@ export const AppRouter = () => {
 
   // Render the appropriate component with notifications
   const renderContent = () => {
+    // Show login form if requested
+    if (showLogin) {
+      return (
+        <LoginForm
+          onSuccess={handleLoginSuccess}
+          onBack={() => setShowLogin(false)}
+        />
+      );
+    }
+
     // Step 1: Hospital Selection
     if (!selectedHospital) {
       return (
@@ -72,6 +96,7 @@ export const AppRouter = () => {
           hospitals={hospitals}
           staff={staff}
           onSelectHospital={handleSelectHospital}
+          onLoginClick={() => setShowLogin(true)}
         />
       );
     }
