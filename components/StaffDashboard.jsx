@@ -38,10 +38,11 @@ export const StaffDashboard = ({
   }
 
   const navigateMonth = (direction) => {
-    setCurrentDate(prev => addMonths(prev, direction));
+    const newDate = addMonths(currentDate, direction);
+    setCurrentDate(newDate);
     // Load shifts for the new month
     if (selectedHospital) {
-      loadInitialData(false, selectedHospital);
+      loadInitialData(false, selectedHospital, newDate);
     }
   };
 
@@ -353,7 +354,7 @@ export const StaffDashboard = ({
                   </span>
                 )}
                 <button
-                  onClick={() => loadInitialData(false, selectedHospital)}
+                  onClick={() => loadInitialData(false, selectedHospital, currentDate)}
                   className={`p-1.5 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors ${isLoading ? 'animate-spin' : ''}`}
                   title="Reîmprospătare date"
                   disabled={isLoading}

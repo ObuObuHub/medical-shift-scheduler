@@ -75,7 +75,7 @@ export const DataProvider = ({ children }) => {
     return () => clearInterval(refreshInterval);
   }, [autoRefresh]);
 
-  const loadInitialData = async (silentRefresh = false, selectedHospital = null) => {
+  const loadInitialData = async (silentRefresh = false, selectedHospital = null, currentMonth = null) => {
     try {
       if (!silentRefresh) {
         setIsLoading(true);
@@ -89,7 +89,25 @@ export const DataProvider = ({ children }) => {
       
       // Only load shifts if a hospital is specified
       if (selectedHospital) {
-        apiCalls.push(apiClient.getPublicShifts({ hospital: selectedHospital }));
+        const params = { hospital: selectedHospital };
+        
+        // If currentMonth is provided, calculate date range for that month
+        if (currentMonth) {
+          const monthDate = new Date(currentMonth);
+          const year = monthDate.getFullYear();
+          const month = monthDate.getMonth();
+          
+          // First day of the month
+          const startDate = new Date(year, month, 1);
+          // Last day of the month
+          const endDate = new Date(year, month + 1, 0);
+          
+          // Format dates as YYYY-MM-DD for the API
+          params.startDate = startDate.toISOString().split('T')[0];
+          params.endDate = endDate.toISOString().split('T')[0];
+        }
+        
+        apiCalls.push(apiClient.getPublicShifts(params));
       }
       
       // Try to load data from public endpoints first (no auth required)

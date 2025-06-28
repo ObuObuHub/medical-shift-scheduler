@@ -41,7 +41,12 @@ export const AdminDashboard = () => {
   const [addShiftModalData, setAddShiftModalData] = useState(null);
 
   const navigateMonth = (direction) => {
-    setCurrentDate(prev => addMonths(prev, direction));
+    const newDate = addMonths(currentDate, direction);
+    setCurrentDate(newDate);
+    // Load shifts for the new month
+    if (selectedHospital) {
+      loadInitialData(false, selectedHospital, newDate);
+    }
   };
 
   const handleCellClick = (date, dayShifts, e) => {
@@ -217,7 +222,7 @@ export const AdminDashboard = () => {
                 onChange={(e) => {
                   const newHospital = e.target.value;
                   setSelectedHospital(newHospital);
-                  loadInitialData(false, newHospital);
+                  loadInitialData(false, newHospital, currentDate);
                 }}
                 className="px-3 py-1 border border-gray-300 rounded-md text-sm"
               >

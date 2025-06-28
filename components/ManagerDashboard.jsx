@@ -38,7 +38,12 @@ export const ManagerDashboard = () => {
   const [pendingHospital, setPendingHospital] = useState(null);
 
   const navigateMonth = (direction) => {
-    setCurrentDate(prev => addMonths(prev, direction));
+    const newDate = addMonths(currentDate, direction);
+    setCurrentDate(newDate);
+    // Load shifts for the new month
+    if (selectedHospital) {
+      loadInitialData(false, selectedHospital, newDate);
+    }
   };
 
   const handleCellClick = (date, dayShifts, e) => {
@@ -102,7 +107,7 @@ export const ManagerDashboard = () => {
     setShowHospitalSwitchModal(false);
     setPendingHospital(null);
     // Load data for the new hospital
-    loadInitialData(false, targetHospital);
+    loadInitialData(false, targetHospital, currentDate);
   };
 
   const handleHospitalSwitchCancel = () => {

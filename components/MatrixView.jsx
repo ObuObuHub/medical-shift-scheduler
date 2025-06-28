@@ -197,7 +197,7 @@ export const MatrixView = ({
     onDateChange(newDate);
     // Load shifts for the new month
     if (selectedHospital) {
-      loadInitialData(false, selectedHospital);
+      loadInitialData(false, selectedHospital, newDate);
     }
   };
   
