@@ -18,7 +18,7 @@ export const StaffDashboard = ({
   isGuest
 }) => {
   const { currentUser, logout, isAuthenticated, hasPermission } = useAuth();
-  const { shifts, staff, shiftTypes, hospitals, generateFairSchedule, deleteShift, reserveShift, lastRefresh, autoRefresh, setAutoRefresh, loadInitialData } = useData();
+  const { shifts, staff, shiftTypes, hospitals, generateFairSchedule, deleteShift, reserveShift, lastRefresh, autoRefresh, setAutoRefresh, loadInitialData, isOffline, isLoading } = useData();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [currentView, setCurrentView] = useState('calendar'); // Default to Calendar view
   const [planningView, setPlanningView] = useState('calendar'); // Calendar or Matrix for planning
@@ -342,10 +342,17 @@ export const StaffDashboard = ({
               
               {/* Refresh indicator */}
               <div className="ml-auto mr-2 flex items-center space-x-2">
+                {isOffline && (
+                  <span className="text-xs text-red-600 font-medium flex items-center">
+                    <span className="w-2 h-2 bg-red-600 rounded-full mr-1"></span>
+                    Offline
+                  </span>
+                )}
                 <button
                   onClick={() => loadInitialData()}
-                  className="p-1.5 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                  className={`p-1.5 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors ${isLoading ? 'animate-spin' : ''}`}
                   title="Reîmprospătare date"
+                  disabled={isLoading}
                 >
                   <RefreshCw className="w-4 h-4" />
                 </button>

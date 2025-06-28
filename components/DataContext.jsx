@@ -79,41 +79,77 @@ export const DataProvider = ({ children }) => {
         setIsLoading(true);
       }
       
-      // Try to load data from API
+      // Try to load data from public endpoints first (no auth required)
       const [hospitalsData, staffData, shiftsData] = await Promise.allSettled([
-        apiClient.getHospitals(),
-        apiClient.getStaff(),
-        apiClient.getShifts()
+        apiClient.getPublicHospitals(),
+        apiClient.getPublicStaff(),
+        apiClient.getPublicShifts()
       ]);
+
+      let dataLoaded = false;
 
       if (hospitalsData.status === 'fulfilled') {
         setHospitals(hospitalsData.value);
-        setIsOffline(false);
+        dataLoaded = true;
       } else {
-                setIsOffline(true);
+        console.warn('Failed to load hospitals:', hospitalsData.reason);
+        // Fall back to default hospitals
+        setHospitals(DEFAULT_HOSPITALS);
       }
 
       if (staffData.status === 'fulfilled') {
         setStaff(staffData.value);
-        setIsOffline(false);
+        dataLoaded = true;
       } else {
-                setIsOffline(true);
+        console.warn('Failed to load staff:', staffData.reason);
+        // Fall back to default staff
+        setStaff(DEFAULT_STAFF);
       }
 
       if (shiftsData.status === 'fulfilled') {
         setShifts(shiftsData.value);
-        setIsOffline(false);
+        dataLoaded = true;
       } else {
-                setIsOffline(true);
+        console.warn('Failed to load shifts:', shiftsData.reason);
+        // Initialize with empty shifts
+        setShifts({});
       }
 
+      // Set offline status based on whether any data loaded successfully
+      setIsOffline(!dataLoaded);
+
     } catch (error) {
-            setIsOffline(true);
+      console.error('Error loading initial data:', error);
+      setIsOffline(true);
+      // Use default data as fallback
+      setHospitals(DEFAULT_HOSPITALS);
+      setStaff(DEFAULT_STAFF);
+      setShifts({});
     } finally {
       if (!silentRefresh) {
         setIsLoading(false);
       }
       setLastRefresh(new Date());
+    }
+  };
+
+  // Helper function to handle API errors
+  const handleApiError = (error, operation) => {
+    console.error(`Error during ${operation}:`, error);
+    
+    if (error.message.includes('401') || error.message.includes('Unauthorized')) {
+      addNotification('Acțiunea necesită autentificare. Vă rugăm să vă autentificați.', 'warning');
+      return { requiresAuth: true };
+    } else if (error.message.includes('403') || error.message.includes('Forbidden')) {
+      addNotification('Nu aveți permisiunea necesară pentru această acțiune.', 'error');
+      return { forbidden: true };
+    } else if (error.message.includes('Network') || error.message.includes('fetch')) {
+      addNotification('Eroare de conexiune. Verificați conexiunea la internet.', 'error');
+      setIsOffline(true);
+      return { networkError: true };
+    } else {
+      addNotification(`Eroare: ${error.message}`, 'error');
+      return { generalError: true };
     }
   };
 
@@ -397,8 +433,8 @@ export const DataProvider = ({ children }) => {
       // Delete existing shifts for this department in the date range
       if (!isOffline) {
         try {
-          // Get all existing shifts for the month
-          const existingShifts = await apiClient.getShifts({
+          // Get all existing shifts for the month - use public endpoint for reading
+          const existingShifts = await apiClient.getPublicShifts({
             hospital: hospitalId,
             startDate: startDate,
             endDate: endDate
@@ -452,8 +488,10 @@ export const DataProvider = ({ children }) => {
             apiClient.createShift(shiftData)
               .then(() => { savedCount++; })
               .catch(err => {
-                console.error('Failed to save shift:', err);
-                failedCount++;
+                const errorInfo = handleApiError(err, 'save shift');
+                if (!errorInfo.requiresAuth) {
+                  failedCount++;
+                }
                 return null; // Continue with other saves even if one fails
               })
           );
