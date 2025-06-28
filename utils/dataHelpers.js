@@ -1,4 +1,6 @@
-// Shift utility functions for the medical shift scheduler
+// Consolidated data helper functions for shifts and staff
+
+// ========== SHIFT HELPERS ==========
 
 export const getShiftsForDate = (shifts, date) => {
   const dateKey = date.toISOString().split('T')[0];
@@ -50,28 +52,6 @@ export const getShiftDuration = (shiftType) => {
   return shiftType.duration || 8; // Default 8 hours if not specified
 };
 
-export const isNightShift = (shiftType) => {
-  const startHour = parseInt(shiftType.start.split(':')[0]);
-  return startHour >= 20 || startHour < 8;
-};
-
-export const isDayShift = (shiftType) => {
-  const startHour = parseInt(shiftType.start.split(':')[0]);
-  return startHour >= 8 && startHour < 20;
-};
-
-export const getShiftTimeSlot = (shiftType) => {
-  const startHour = parseInt(shiftType.start.split(':')[0]);
-  
-  if (startHour >= 6 && startHour < 14) return 'morning';
-  if (startHour >= 14 && startHour < 22) return 'afternoon';
-  return 'night';
-};
-
-export const formatShiftTime = (shiftType) => {
-  return `${shiftType.start} - ${shiftType.end}`;
-};
-
 export const getShiftColor = (shiftType, opacity = 1) => {
   const baseColor = shiftType.color || '#gray-500';
   if (opacity === 1) return baseColor;
@@ -118,4 +98,84 @@ export const validateShiftAssignment = (shift, staff) => {
   }
   
   return validation;
+};
+
+// ========== STAFF HELPERS ==========
+
+export const getStaffName = (staffId, staff) => {
+  const person = staff.find(s => s.id === staffId);
+  if (!person) return 'Unknown';
+  
+  // Return shortened name (first name + last name)
+  const nameParts = person.name.split(' ');
+  return nameParts.slice(0, 2).join(' ');
+};
+
+export const getStaffById = (staffId, staff) => {
+  return staff.find(s => s.id === staffId);
+};
+
+// Unified filter function
+export const filterStaff = (staff, criteria) => {
+  let filtered = [...staff];
+  
+  if (criteria.role) {
+    filtered = filtered.filter(s => s.role === criteria.role);
+  }
+  if (criteria.department) {
+    filtered = filtered.filter(s => s.specialization === criteria.department);
+  }
+  if (criteria.hospital) {
+    filtered = filtered.filter(s => s.hospital === criteria.hospital);
+  }
+  if (criteria.type) {
+    filtered = filtered.filter(s => s.type === criteria.type);
+  }
+  
+  return filtered;
+};
+
+// Legacy helper functions (kept for compatibility)
+export const getStaffByRole = (staff, role) => filterStaff(staff, { role });
+export const getStaffByDepartment = (staff, department) => filterStaff(staff, { department });
+export const getStaffByHospital = (staff, hospitalId) => filterStaff(staff, { hospital: hospitalId });
+export const getStaffByType = (staff, type) => filterStaff(staff, { type });
+
+export const getDoctors = (staff) => filterStaff(staff, { type: 'medic' });
+export const getNurses = (staff) => filterStaff(staff, { type: 'asistent' });
+
+export const getDepartments = (staff) => {
+  return [...new Set(staff.map(s => s.specialization))].sort();
+};
+
+export const getStaffTypes = (staff) => {
+  return [...new Set(staff.map(s => s.type))].sort();
+};
+
+// ========== DISPLAY HELPERS ==========
+
+export const getRoleDisplayName = (role) => {
+  const roleNames = {
+    'admin': 'Administrator',
+    'manager': 'Manager',
+    'staff': 'Personal'
+  };
+  return roleNames[role] || role;
+};
+
+export const getRoleColor = (role) => {
+  const colors = {
+    'admin': 'bg-purple-100 text-purple-800',
+    'manager': 'bg-blue-100 text-blue-800',
+    'staff': 'bg-gray-100 text-gray-800'
+  };
+  return colors[role] || colors.staff;
+};
+
+export const getTypeDisplayName = (type) => {
+  const typeNames = {
+    'medic': 'Medic',
+    'asistent': 'Asistent Medical'
+  };
+  return typeNames[type] || type;
 };

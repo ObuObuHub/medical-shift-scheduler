@@ -100,3 +100,26 @@ export const addMonths = (date, months) => {
 export const getDateKey = (date) => {
   return date.toISOString().split('T')[0];
 };
+
+// Shift time-related date functions (moved from shiftHelpers.js)
+export const isNightShift = (shiftType) => {
+  const startHour = parseInt(shiftType.start.split(':')[0]);
+  return startHour >= 20 || startHour < 8;
+};
+
+export const isDayShift = (shiftType) => {
+  const startHour = parseInt(shiftType.start.split(':')[0]);
+  return startHour >= 8 && startHour < 20;
+};
+
+export const getShiftTimeSlot = (shiftType) => {
+  const startHour = parseInt(shiftType.start.split(':')[0]);
+  
+  if (startHour >= 6 && startHour < 14) return 'morning';
+  if (startHour >= 14 && startHour < 22) return 'afternoon';
+  return 'night';
+};
+
+export const formatShiftTime = (shiftType) => {
+  return `${shiftType.start} - ${shiftType.end}`;
+};
