@@ -230,10 +230,11 @@ export const AdminDashboard = () => {
                 <span className="text-sm text-gray-700">{currentUser?.name}</span>
                 <button
                   onClick={logout}
-                  className="p-2 text-gray-600 hover:text-gray-900"
+                  className="px-2 sm:px-3 py-2 text-xs sm:text-sm bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors flex items-center space-x-1"
                   title="Logout"
                 >
-                  <LogOut className="w-5 h-5" />
+                  <LogOut className="w-4 h-4" />
+                  <span>Logout</span>
                 </button>
               </div>
 

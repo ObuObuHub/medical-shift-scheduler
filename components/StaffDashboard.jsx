@@ -15,12 +15,10 @@ import { AddShiftModal } from './AddShiftModal';
 export const StaffDashboard = ({ 
   selectedHospital: propSelectedHospital,
   selectedStaff,
-  isGuest,
-  onChangeHospital,
-  onChangeStaff 
+  isGuest
 }) => {
   const { currentUser, logout, isAuthenticated, hasPermission } = useAuth();
-  const { shifts, staff, shiftTypes, hospitals, generateFairSchedule, deleteShift, reserveShift } = useData();
+  const { shifts, staff, shiftTypes, hospitals, generateFairSchedule, deleteShift, reserveShift, lastRefresh, autoRefresh, setAutoRefresh, loadInitialData } = useData();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [currentView, setCurrentView] = useState('calendar'); // Default to Calendar view
   const [planningView, setPlanningView] = useState('calendar'); // Calendar or Matrix for planning
@@ -271,13 +269,14 @@ export const StaffDashboard = ({
   };
 
   const renderPlanningView = () => {
-    if (planningView === 'matrix' && (hasPermission('assign_staff') || hasPermission('generate_shifts'))) {
-      // Matrix view only for admins/managers
+    if (planningView === 'matrix') {
+      // Matrix view now available for all users (read-only for non-privileged users)
       return (
         <MatrixView
           selectedHospital={selectedHospital}
           currentDate={currentDate}
           onDateChange={setCurrentDate}
+          readOnly={!hasPermission('assign_staff')}
         />
       );
     }
@@ -340,6 +339,20 @@ export const StaffDashboard = ({
                   )}
                 </div>
               )}
+              
+              {/* Refresh indicator */}
+              <div className="ml-auto mr-2 flex items-center space-x-2">
+                <button
+                  onClick={() => loadInitialData()}
+                  className="p-1.5 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                  title="Reîmprospătare date"
+                >
+                  <RefreshCw className="w-4 h-4" />
+                </button>
+                <span className="text-xs text-gray-500 hidden sm:inline">
+                  {lastRefresh && `Actualizat: ${lastRefresh.toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit' })}`}
+                </span>
+              </div>
             </div>
 
             <div className="flex items-center space-x-2">
@@ -356,8 +369,8 @@ export const StaffDashboard = ({
                   <span>Planificare</span>
                 </button>
                 
-                {/* View switcher for planning - only visible when in planning view */}
-                {currentView === 'calendar' && (hasPermission('assign_staff') || hasPermission('generate_shifts')) && (
+                {/* View switcher for planning - visible for all users */}
+                {currentView === 'calendar' && (
                   <ViewSwitcher 
                     currentView={planningView} 
                     onViewChange={setPlanningView}
@@ -379,55 +392,36 @@ export const StaffDashboard = ({
               </div>
 
               <div className="flex items-center space-x-1 sm:space-x-2">
-                {/* Change Hospital/Staff buttons for non-authenticated users */}
-                {!isAuthenticated && (
-                  <>
-                    <button
-                      onClick={onChangeHospital}
-                      className="px-2 sm:px-3 py-1 text-xs sm:text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors"
-                    >
-                      Schimbă Spital
-                    </button>
-                    {!isGuest && (
-                      <button
-                        onClick={onChangeStaff}
-                        className="px-2 sm:px-3 py-1 text-xs sm:text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors"
-                      >
-                        Schimbă Personal
-                      </button>
-                    )}
-                  </>
-                )}
-                
                 {isAuthenticated && currentUser ? (
                   <>
-                    <User className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400" />
-                    <span className="text-xs sm:text-sm text-gray-700 truncate max-w-20 sm:max-w-none">{currentUser.name}</span>
+                    <User className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400 hidden sm:block" />
+                    <span className="text-xs sm:text-sm text-gray-700 truncate max-w-[80px] sm:max-w-none hidden sm:block">{currentUser.name}</span>
                     <button
                       onClick={logout}
-                      className="p-2 text-gray-600 hover:text-gray-900 transition-colors touch-manipulation"
+                      className="px-2 sm:px-3 py-2 text-xs sm:text-sm bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors touch-manipulation flex items-center space-x-1 min-w-fit"
                       title="Logout"
                     >
-                      <LogOut className="w-4 h-4 sm:w-5 sm:h-5" />
+                      <LogOut className="w-4 h-4" />
+                      <span>Logout</span>
                     </button>
                   </>
                 ) : (
                   <>
                     <button
                       onClick={() => setShowLoginModal(true)}
-                      className="px-3 sm:px-4 py-2 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors touch-manipulation flex items-center space-x-1"
+                      className="px-2 sm:px-4 py-2 text-xs sm:text-sm bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors touch-manipulation flex items-center space-x-1 min-w-fit"
                       title="Login Admin"
                     >
                       <Shield className="w-4 h-4" />
-                      <span className="hidden sm:inline">Admin</span>
+                      <span>Admin</span>
                     </button>
                     <button
                       onClick={() => setShowLoginModal(true)}
-                      className="px-3 sm:px-4 py-2 text-sm bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors touch-manipulation flex items-center space-x-1"
+                      className="px-2 sm:px-4 py-2 text-xs sm:text-sm bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors touch-manipulation flex items-center space-x-1 min-w-fit"
                       title="Login Manager"
                     >
                       <Settings className="w-4 h-4" />
-                      <span className="hidden sm:inline">Manager</span>
+                      <span>Manager</span>
                     </button>
                   </>
                 )}
@@ -438,7 +432,7 @@ export const StaffDashboard = ({
       </header>
 
       {/* Main content - Mobile Responsive */}
-      <main className="max-w-7xl mx-auto px-3 sm:px-4 sm:px-6 lg:px-8 py-4 sm:py-8">
+      <main className={`${currentView === 'calendar' && planningView === 'matrix' ? 'max-w-full' : 'max-w-7xl'} mx-auto px-2 sm:px-4 lg:px-6 py-2 sm:py-4`}>
         {currentView === 'schedule' && renderScheduleView()}
         {currentView === 'calendar' && renderPlanningView()}
       </main>

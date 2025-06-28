@@ -51,15 +51,33 @@ export const DataProvider = ({ children }) => {
   const [isOffline, setIsOffline] = useState(false);
   const [swapRequests, setSwapRequests] = useState([]);
   const [hospitalConfigs, setHospitalConfigs] = useState({});
+  const [lastRefresh, setLastRefresh] = useState(new Date());
+  const [autoRefresh, setAutoRefresh] = useState(true);
 
   // Load initial data from API
   useEffect(() => {
     loadInitialData();
   }, []);
 
-  const loadInitialData = async () => {
+  // Auto-refresh data every 30 seconds when enabled
+  useEffect(() => {
+    if (!autoRefresh) return;
+
+    const refreshInterval = setInterval(() => {
+      // Only refresh if document is visible (user is on the tab)
+      if (document.visibilityState === 'visible') {
+        loadInitialData(true); // true for silent refresh
+      }
+    }, 30000); // 30 seconds
+
+    return () => clearInterval(refreshInterval);
+  }, [autoRefresh]);
+
+  const loadInitialData = async (silentRefresh = false) => {
     try {
-      setIsLoading(true);
+      if (!silentRefresh) {
+        setIsLoading(true);
+      }
       
       // Try to load data from API
       const [hospitalsData, staffData, shiftsData] = await Promise.allSettled([
@@ -92,7 +110,10 @@ export const DataProvider = ({ children }) => {
     } catch (error) {
             setIsOffline(true);
     } finally {
-      setIsLoading(false);
+      if (!silentRefresh) {
+        setIsLoading(false);
+      }
+      setLastRefresh(new Date());
     }
   };
 
@@ -1004,9 +1025,12 @@ export const DataProvider = ({ children }) => {
     isOffline,
     swapRequests,
     hospitalConfigs,
+    lastRefresh,
+    autoRefresh,
     // Setters
     setShifts,
     setNotifications,
+    setAutoRefresh,
     // Methods
     addNotification,
     // Shift types

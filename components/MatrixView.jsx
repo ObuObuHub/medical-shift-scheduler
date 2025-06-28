@@ -6,7 +6,8 @@ import { Users, Plus, Trash2, ChevronLeft, ChevronRight, X, Wand2 } from './Icon
 export const MatrixView = ({ 
   selectedHospital, 
   currentDate, 
-  onDateChange
+  onDateChange,
+  readOnly = false
 }) => {
   const { staff, shifts, shiftTypes, setShifts, createShift, deleteShift, generateFairSchedule } = useData();
   const { hasPermission } = useAuth();
@@ -127,7 +128,7 @@ export const MatrixView = ({
 
   // Handle cell click for shift assignment/deletion
   const handleCellClick = (staffId, date) => {
-    if (!hasPermission('assign_staff')) return;
+    if (readOnly || !hasPermission('assign_staff')) return;
     
     const existingShift = getShiftForStaffAndDate(staffId, date);
     
@@ -306,7 +307,7 @@ export const MatrixView = ({
   }
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200 flex flex-col h-[calc(100vh-10rem)] landscape:h-[calc(100vh-8rem)] sm:h-auto sm:max-h-[calc(100vh-8rem)]">
+    <div className="bg-white rounded-lg shadow-sm border border-gray-200 flex flex-col h-[calc(100vh-7rem)] landscape:h-[calc(100vh-6rem)] sm:h-[calc(100vh-8rem)]">
       {/* Header with filters - Mobile Responsive */}
       <div className="p-2 sm:p-4 border-b border-gray-200 flex-shrink-0">
         {/* Title with Month Navigation */}
@@ -350,7 +351,7 @@ export const MatrixView = ({
               ))}
             </select>
             
-            {hasPermission('generate_shifts') && (
+            {!readOnly && hasPermission('generate_shifts') && (
               <button 
                 onClick={() => selectedDepartment && generateFairSchedule(selectedHospital, currentDate, selectedDepartment)} 
                 className={`px-3 py-2 rounded-lg flex items-center text-sm touch-manipulation ${
@@ -367,7 +368,7 @@ export const MatrixView = ({
             )}
           </div>
           
-          {hasPermission('assign_staff') && (
+          {!readOnly && hasPermission('assign_staff') && (
             <div className="ml-4 text-sm text-gray-600">
               <span className="hidden sm:inline">Faceți click pe celule pentru a adăuga/șterge ture manual</span>
               <span className="sm:hidden">Tap pentru editare</span>
@@ -430,13 +431,13 @@ export const MatrixView = ({
                   const staffShifts = getAllShiftsForStaffAndDate(person.id, date);
                   const coverageInfo = getShiftCoverageType(staffShifts);
                   const coverageStyle = getCellCoverageStyle(coverageInfo);
-                  const canClick = hasPermission('assign_staff');
+                  const canClick = !readOnly && hasPermission('assign_staff');
                   const primaryShift = staffShifts[0]; // For backward compatibility
                   
                   return (
                     <td
                       key={`${person.id}-${date.toISOString()}`}
-                      className={`${getCellStyle(primaryShift)} ${canClick ? 'cursor-pointer touch-manipulation' : ''} h-12 sm:h-12 w-14 sm:w-16 min-w-[3.5rem] sm:min-w-16 text-center border-b border-gray-200 relative ${coverageStyle.className}`}
+                      className={`${getCellStyle(primaryShift)} ${canClick ? 'cursor-pointer touch-manipulation' : ''} h-12 sm:h-14 w-16 sm:w-20 min-w-[4rem] sm:min-w-20 text-center border-b border-gray-200 relative ${coverageStyle.className}`}
                       style={{
                         ...coverageStyle.style,
                         borderLeftColor: coverageStyle.borderColor,

@@ -49,12 +49,6 @@ export const AppRouter = () => {
     setIsGuest(false);
   };
 
-  // Handle staff change
-  const handleChangeStaff = () => {
-    clearStaffSelection();
-    setIsGuest(false);
-  };
-
   // Loading state
   if (isLoading) {
     return (
@@ -102,8 +96,6 @@ export const AppRouter = () => {
         selectedHospital={selectedHospital}
         selectedStaff={selectedStaff}
         isGuest={isGuest}
-        onChangeHospital={handleBackToHospitalSelection}
-        onChangeStaff={handleChangeStaff}
       />
     );
   };
