@@ -296,5 +296,130 @@ function getPreviousDay(dateString) {
   return date.toISOString().split('T')[0];
 }
 
-// Export the generateDaysForMonth function from the original module
-export { generateDaysForMonth, validateSchedule } from './shiftEngineV2.js';
+/**
+ * Generate days array for a given month with hospital-specific shift patterns
+ * @param {Date} date - Month to generate schedule for
+ * @param {Object} hospitalConfig - Hospital configuration with shift patterns
+ * @returns {Array} Array of day objects with required shifts
+ */
+export function generateDaysForMonth(date, hospitalConfig) {
+  const year = date.getFullYear();
+  const month = date.getMonth();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const days = [];
+
+  for (let day = 1; day <= daysInMonth; day++) {
+    // Create date at noon to avoid timezone issues
+    const currentDate = new Date(year, month, day, 12, 0, 0);
+    const dateString = currentDate.toISOString().split('T')[0];
+    const dayOfWeek = currentDate.getDay(); // 0 = Sunday, 6 = Saturday
+    
+    let requiredShifts = [];
+    
+    // Determine shift pattern based on hospital configuration
+    if (hospitalConfig.shiftPattern === 'only_24') {
+      // Hospital with only 24-hour shifts
+      requiredShifts = hospitalConfig.shiftTypes['GARDA_24'] ? 
+        [hospitalConfig.shiftTypes['GARDA_24']] : [];
+    } else if (hospitalConfig.shiftPattern === 'standard_12_24') {
+      // Pattern based on real Spitalul Județean schedule
+      if (dayOfWeek >= 1 && dayOfWeek <= 5) {
+        // Monday-Friday: Only night shifts (20:00-08:00)
+        requiredShifts = [hospitalConfig.shiftTypes['NOAPTE']].filter(Boolean);
+      } else if (dayOfWeek === 6) {
+        // Saturday logic
+        // Calculate which Saturday of the month this is
+        const firstDayOfMonth = new Date(year, month, 1, 12, 0, 0);
+        const firstSaturday = new Date(year, month, 1 + (6 - firstDayOfMonth.getDay() + 7) % 7, 12, 0, 0);
+        const saturdayNumber = Math.floor((day - firstSaturday.getDate()) / 7) + 1;
+        
+        // 2nd and 3rd Saturdays: 24-hour shifts
+        if (saturdayNumber === 2 || saturdayNumber === 3) {
+          requiredShifts = [hospitalConfig.shiftTypes['GARDA_24']].filter(Boolean);
+        } else {
+          // Other Saturdays: Day + Night shifts
+          requiredShifts = [
+            hospitalConfig.shiftTypes['GARDA_ZI'],
+            hospitalConfig.shiftTypes['NOAPTE']
+          ].filter(Boolean);
+        }
+      } else if (dayOfWeek === 0) {
+        // Sunday: Always Day + Night shifts
+        requiredShifts = [
+          hospitalConfig.shiftTypes['GARDA_ZI'],
+          hospitalConfig.shiftTypes['NOAPTE']
+        ].filter(Boolean);
+      } else if (dayOfWeek === 5) {
+        // Friday: Occasionally 24h shift (last Friday of month)
+        const lastFriday = new Date(year, month + 1, 0, 12, 0, 0);
+        while (lastFriday.getDay() !== 5) {
+          lastFriday.setDate(lastFriday.getDate() - 1);
+        }
+        
+        if (day === lastFriday.getDate()) {
+          requiredShifts = [hospitalConfig.shiftTypes['GARDA_24']].filter(Boolean);
+        } else {
+          requiredShifts = [hospitalConfig.shiftTypes['NOAPTE']].filter(Boolean);
+        }
+      }
+    } else if (hospitalConfig.shiftPattern === 'custom') {
+      // Custom pattern - use configuration as-is
+      if (dayOfWeek >= 1 && dayOfWeek <= 5) {
+        requiredShifts = (hospitalConfig.weekdayShifts || [])
+          .map(id => hospitalConfig.shiftTypes[id])
+          .filter(Boolean);
+      } else {
+        requiredShifts = (hospitalConfig.weekendShifts || [])
+          .map(id => hospitalConfig.shiftTypes[id])
+          .filter(Boolean);
+      }
+    }
+
+    days.push({
+      date: dateString,
+      dayOfWeek: dayOfWeek,
+      dayName: ['Duminică', 'Luni', 'Marți', 'Miercuri', 'Joi', 'Vineri', 'Sâmbătă'][dayOfWeek],
+      requiredShifts: requiredShifts
+    });
+  }
+
+  return days;
+}
+
+/**
+ * Validate a generated schedule
+ */
+export function validateSchedule(schedule, staff, hospitalConfig) {
+  const errors = [];
+  const warnings = [];
+  
+  // Track staff assignments
+  const staffAssignments = {};
+  staff.forEach(s => {
+    staffAssignments[s.id] = {
+      total: 0,
+      nights: 0,
+      consecutiveNights: 0,
+      lastNightDate: null
+    };
+  });
+  
+  // Check each day
+  schedule.forEach(day => {
+    day.shifts.forEach(shift => {
+      if (!shift.assigneeId) {
+        errors.push({
+          date: day.date,
+          shift: shift.type.name,
+          error: 'Unfilled shift'
+        });
+      }
+    });
+  });
+  
+  return {
+    isValid: errors.length === 0,
+    errors,
+    warnings
+  };
+}

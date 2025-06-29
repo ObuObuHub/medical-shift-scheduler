@@ -35,6 +35,73 @@ export const StaffDashboard = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedHospital]); // Only reload when hospital changes
 
+  // Memoized functions - must be defined before any conditional returns
+  const getDaysInMonth = useMemo(() => {
+    return () => {
+      const year = currentDate.getFullYear();
+      const month = currentDate.getMonth();
+      const firstDay = new Date(year, month, 1);
+      const lastDay = new Date(year, month + 1, 0);
+      const days = [];
+      
+      // Add padding days from previous month
+      const startPadding = firstDay.getDay();
+      for (let i = startPadding - 1; i >= 0; i--) {
+        // Create date at noon to avoid timezone issues
+        const date = new Date(year, month, -i, 12, 0, 0);
+        days.push(date);
+      }
+      
+      // Add all days of current month
+      for (let i = 1; i <= lastDay.getDate(); i++) {
+        // Create date at noon to avoid timezone issues
+        days.push(new Date(year, month, i, 12, 0, 0));
+      }
+      
+      // Add padding days from next month
+      const endPadding = 6 - lastDay.getDay();
+      for (let i = 1; i <= endPadding; i++) {
+        // Create date at noon to avoid timezone issues
+        days.push(new Date(year, month + 1, i, 12, 0, 0));
+      }
+      
+      return days;
+    };
+  }, [currentDate]);
+
+  const handleCellClick = useCallback(async (date, dayShifts, e) => {
+    if (!currentUser && !selectedStaff) return;
+    
+    const staffId = selectedStaff?.id || currentUser?.id;
+    const dateStr = date.toISOString().split('T')[0];
+    const myShift = dayShifts.find(s => s.staffIds?.includes(staffId));
+    const openShift = dayShifts.find(s => s.status === 'open');
+    
+    if (myShift) {
+      // I have a shift - open swap modal
+      setSwapModal({ 
+        isOpen: true, 
+        shift: { 
+          ...myShift, 
+          date: dateStr,
+          assigneeId: staffId,
+          hospital: selectedHospital
+        } 
+      });
+    } else if (openShift) {
+      // Empty shift - reserve it
+      try {
+        await reserveShift(openShift.id);
+      } catch (error) {
+              }
+    }
+  }, [currentUser, selectedStaff, selectedHospital, setSwapModal, reserveShift]);
+
+  const getStaffName = useCallback((staffId) => {
+    const member = staff.find(s => s.id === staffId);
+    return member ? member.name : 'Unknown';
+  }, [staff]);
+
   // If authenticated as admin or manager, show their dashboard
   if (isAuthenticated && currentUser) {
     if (currentUser.role === 'admin') {
@@ -216,72 +283,6 @@ export const StaffDashboard = ({
       </div>
     </div>
   );
-
-  const getDaysInMonth = useMemo(() => {
-    return () => {
-      const year = currentDate.getFullYear();
-      const month = currentDate.getMonth();
-      const firstDay = new Date(year, month, 1);
-      const lastDay = new Date(year, month + 1, 0);
-      const days = [];
-      
-      // Add padding days from previous month
-      const startPadding = firstDay.getDay();
-      for (let i = startPadding - 1; i >= 0; i--) {
-        // Create date at noon to avoid timezone issues
-        const date = new Date(year, month, -i, 12, 0, 0);
-        days.push(date);
-      }
-      
-      // Add all days of current month
-      for (let i = 1; i <= lastDay.getDate(); i++) {
-        // Create date at noon to avoid timezone issues
-        days.push(new Date(year, month, i, 12, 0, 0));
-      }
-      
-      // Add padding days from next month
-      const endPadding = 6 - lastDay.getDay();
-      for (let i = 1; i <= endPadding; i++) {
-        // Create date at noon to avoid timezone issues
-        days.push(new Date(year, month + 1, i, 12, 0, 0));
-      }
-      
-      return days;
-    };
-  }, [currentDate]);
-
-  const handleCellClick = useCallback(async (date, dayShifts, e) => {
-    if (!currentUser && !selectedStaff) return;
-    
-    const staffId = selectedStaff?.id || currentUser?.id;
-    const dateStr = date.toISOString().split('T')[0];
-    const myShift = dayShifts.find(s => s.staffIds?.includes(staffId));
-    const openShift = dayShifts.find(s => s.status === 'open');
-    
-    if (myShift) {
-      // I have a shift - open swap modal
-      setSwapModal({ 
-        isOpen: true, 
-        shift: { 
-          ...myShift, 
-          date: dateStr,
-          assigneeId: staffId,
-          hospital: selectedHospital
-        } 
-      });
-    } else if (openShift) {
-      // Empty shift - reserve it
-      try {
-        await reserveShift(openShift.id);
-      } catch (error) {
-              }
-    }
-  }, [currentUser, selectedStaff, staff, selectedHospital, generateFairSchedule, currentDate, setAddShiftModalData]);
-
-  const getStaffName = useCallback((staffId) => {
-    const member = staff.find(s => s.id === staffId);
-    return member ? member.name : 'Unknown';
-  }, [staff]);
 
   const renderPlanningView = () => {
     return (
