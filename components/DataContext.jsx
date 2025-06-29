@@ -1,7 +1,9 @@
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import apiClient from '../lib/apiClient';
-import { generateSchedule as generateScheduleV2, generateDaysForMonth as generateDaysForMonthV2, calculateFairQuotas as calculateFairQuotasV2, validateSchedule } from '../utils/shiftEngineV2';
+import { generateSchedule as generateScheduleV2, generateDaysForMonth as generateDaysForMonthV2, validateSchedule } from '../utils/shiftEngineV2-optimized';
+import { calculateFairQuotas as calculateFairQuotasV2 } from '../utils/shiftEngineV2';
 import { generateCompleteSchedule, regenerateCompleteSchedule } from '../utils/fairScheduling';
+import { useSelectiveDataFetch } from '../hooks/useSelectiveDataFetch';
 
 // Default fallback data (used only when API is not available)
 const DEFAULT_SHIFT_TYPES = {
@@ -51,11 +53,21 @@ export const DataProvider = ({ children }) => {
   const [swapRequests, setSwapRequests] = useState([]);
   const [hospitalConfigs, setHospitalConfigs] = useState({});
   const [autoRefresh, setAutoRefresh] = useState(true);
+  
+  // Use selective data fetching hook
+  const { 
+    loadHospitals: selectiveLoadHospitals, 
+    loadStaff: selectiveLoadStaff, 
+    loadShifts: selectiveLoadShifts,
+    loadHospitalConfig: selectiveLoadHospitalConfig,
+    clearCache,
+    getCacheStatus 
+  } = useSelectiveDataFetch();
 
   // Load initial data from API
   useEffect(() => {
     loadInitialData();
-  }, []);
+  }, [loadInitialData]);
 
   // Auto-refresh data every 30 seconds when enabled
   useEffect(() => {
@@ -71,81 +83,80 @@ export const DataProvider = ({ children }) => {
     }, 30000); // 30 seconds
 
     return () => clearInterval(refreshInterval);
-  }, [autoRefresh]);
+  }, [autoRefresh, loadInitialData]);
 
-  const loadInitialData = async (silentRefresh = false, selectedHospital = null, currentMonth = null) => {
+  const loadInitialData = useCallback(async (silentRefresh = false, selectedHospital = null, currentMonth = null, forceRefresh = false) => {
     try {
       // Use silentRefresh for month navigation to avoid full page reload
       if (!silentRefresh && !currentMonth) {
         setIsLoading(true);
       }
       
-      // Prepare API calls - only load shifts if hospital is specified
-      const apiCalls = [
-        apiClient.getPublicHospitals(),
-        apiClient.getPublicStaff()
-      ];
-      
-      // Only load shifts if a hospital is specified
+      let dataLoaded = false;
+      const loadPromises = [];
+
+      // Load hospitals with caching
+      const hospitalsPromise = selectiveLoadHospitals(forceRefresh).then(result => {
+        if (!result.cached && result.data) {
+          setHospitals(result.data);
+          dataLoaded = true;
+        } else if (result.cached) {
+          dataLoaded = true; // Data already loaded
+        }
+      }).catch(error => {
+        console.warn('Failed to load hospitals:', error);
+        setHospitals(DEFAULT_HOSPITALS);
+      });
+      loadPromises.push(hospitalsPromise);
+
+      // Load staff only if we have a hospital selected
       if (selectedHospital) {
-        const params = { hospital: selectedHospital };
-        
-        // If currentMonth is provided, calculate date range for that month
+        const staffPromise = selectiveLoadStaff(selectedHospital, forceRefresh).then(result => {
+          if (!result.cached && result.data) {
+            setStaff(result.data);
+            dataLoaded = true;
+          } else if (result.cached) {
+            dataLoaded = true; // Data already loaded
+          }
+        }).catch(error => {
+          console.warn('Failed to load staff:', error);
+          setStaff(DEFAULT_STAFF);
+        });
+        loadPromises.push(staffPromise);
+
+        // Load shifts if hospital is specified
+        let startDate, endDate;
         if (currentMonth) {
           const monthDate = new Date(currentMonth);
           const year = monthDate.getFullYear();
           const month = monthDate.getMonth();
           
           // First day of the month
-          const startDate = new Date(year, month, 1);
+          const start = new Date(year, month, 1);
           // Last day of the month
-          const endDate = new Date(year, month + 1, 0);
+          const end = new Date(year, month + 1, 0);
           
           // Format dates as YYYY-MM-DD for the API
-          params.startDate = startDate.toISOString().split('T')[0];
-          params.endDate = endDate.toISOString().split('T')[0];
+          startDate = start.toISOString().split('T')[0];
+          endDate = end.toISOString().split('T')[0];
         }
         
-        apiCalls.push(apiClient.getPublicShifts(params));
-      }
-      
-      // Try to load data from public endpoints first (no auth required)
-      const results = await Promise.allSettled(apiCalls);
-      const [hospitalsData, staffData, shiftsData] = results;
-
-      let dataLoaded = false;
-
-      if (hospitalsData.status === 'fulfilled') {
-        setHospitals(hospitalsData.value);
-        dataLoaded = true;
-      } else {
-        console.warn('Failed to load hospitals:', hospitalsData.reason);
-        // Fall back to default hospitals
-        setHospitals(DEFAULT_HOSPITALS);
-      }
-
-      if (staffData.status === 'fulfilled') {
-        setStaff(staffData.value);
-        dataLoaded = true;
-      } else {
-        console.warn('Failed to load staff:', staffData.reason);
-        // Fall back to default staff
-        setStaff(DEFAULT_STAFF);
-      }
-
-      // Only update shifts if we actually fetched them (i.e., hospital was specified)
-      if (shiftsData) {
-        if (shiftsData.status === 'fulfilled') {
-          setShifts(shiftsData.value);
-          dataLoaded = true;
-        } else {
-          console.warn('Failed to load shifts:', shiftsData.reason);
-          // Only clear shifts if we tried to load them but failed
-          if (selectedHospital) {
-            setShifts({});
+        const shiftsPromise = selectiveLoadShifts(selectedHospital, startDate, endDate, forceRefresh).then(result => {
+          if (!result.cached && result.data) {
+            setShifts(result.data);
+            dataLoaded = true;
+          } else if (result.cached) {
+            dataLoaded = true; // Data already loaded
           }
-        }
+        }).catch(error => {
+          console.warn('Failed to load shifts:', error);
+          setShifts({});
+        });
+        loadPromises.push(shiftsPromise);
       }
+
+      // Wait for all promises
+      await Promise.allSettled(loadPromises);
 
       // Set offline status based on whether any data loaded successfully
       setIsOffline(!dataLoaded);
@@ -165,7 +176,7 @@ export const DataProvider = ({ children }) => {
         setIsLoading(false);
       }
     }
-  };
+  }, [selectiveLoadHospitals, selectiveLoadStaff, selectiveLoadShifts]);
 
   // Helper function to handle API errors
   const handleApiError = (error, operation) => {

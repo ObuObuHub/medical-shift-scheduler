@@ -1,5 +1,6 @@
 import { sql } from '../../../lib/vercel-db';
 import { authMiddleware, requireRole, runMiddleware } from '../../../lib/auth';
+import cache, { cacheKeys, cacheTTL, invalidateCache } from '../../../lib/cache';
 
 export default async function handler(req, res) {
   try {
@@ -29,6 +30,14 @@ export default async function handler(req, res) {
 async function getShifts(req, res) {
   try {
     const { hospital, startDate, endDate } = req.query;
+    
+    // Check cache first
+    const cacheKey = cacheKeys.shifts(hospital, startDate, endDate);
+    const cached = cache.get(cacheKey);
+    if (cached) {
+      res.setHeader('X-Cache', 'HIT');
+      return res.status(200).json(cached);
+    }
     
     let result;
     
@@ -84,6 +93,10 @@ async function getShifts(req, res) {
       });
     });
 
+    // Cache the result
+    cache.set(cacheKey, groupedShifts, cacheTTL.shifts);
+    res.setHeader('X-Cache', 'MISS');
+    
     res.status(200).json(groupedShifts);
   } catch (error) {
         res.status(500).json({ error: 'Failed to fetch shifts' });
@@ -137,6 +150,9 @@ async function createShift(req, res) {
       hospital: shift.hospital
     };
 
+    // Invalidate cache for this hospital
+    invalidateCache.shifts(hospital);
+    
     res.status(201).json(newShift);
   } catch (error) {
     console.error('Create shift error:', error);
@@ -178,6 +194,9 @@ async function createShift(req, res) {
               coverage: shift.coverage,
               hospital: shift.hospital
             };
+            // Invalidate cache for this hospital
+            invalidateCache.shifts(hospital);
+            
             return res.status(201).json(newShift);
           }
         }
@@ -238,6 +257,11 @@ async function deleteShift(req, res) {
       return res.status(404).json({ error: 'Shift not found' });
     }
 
+    // Invalidate cache for this hospital
+    if (result[0] && result[0].hospital) {
+      invalidateCache.shifts(result[0].hospital);
+    }
+    
     res.status(200).json({ 
       message: 'Shift deleted successfully',
       shift: result[0] 
@@ -279,6 +303,9 @@ async function clearAllShifts(req, res) {
       `;
     }
 
+    // Invalidate cache for this hospital
+    invalidateCache.shifts(hospital);
+    
     res.status(200).json({ 
       message: 'All shifts cleared successfully',
       clearedCount: result.length 

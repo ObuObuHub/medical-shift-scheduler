@@ -1,5 +1,6 @@
 import { sql } from '../../../lib/vercel-db';
 import { authMiddleware, requireRole, runMiddleware } from '../../../lib/auth';
+import cache, { cacheKeys, cacheTTL } from '../../../lib/cache';
 
 export default async function handler(req, res) {
   try {
@@ -21,6 +22,14 @@ export default async function handler(req, res) {
 
 async function getHospitals(req, res) {
   try {
+    // Check cache first
+    const cacheKey = cacheKeys.hospitals();
+    const cached = cache.get(cacheKey);
+    if (cached) {
+      res.setHeader('X-Cache', 'HIT');
+      return res.status(200).json(cached);
+    }
+    
     const result = await sql`
       SELECT * FROM hospitals WHERE is_active = true ORDER BY name;
     `;
@@ -31,6 +40,10 @@ async function getHospitals(req, res) {
       name: h.name
     }));
 
+    // Cache the result
+    cache.set(cacheKey, legacyHospitals, cacheTTL.hospitals);
+    res.setHeader('X-Cache', 'MISS');
+    
     res.status(200).json(legacyHospitals);
   } catch (error) {
         res.status(500).json({ error: 'Failed to fetch hospitals' });

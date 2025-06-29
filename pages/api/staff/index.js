@@ -1,5 +1,6 @@
 import { sql } from '../../../lib/vercel-db';
 import { authMiddleware, requireRole, runMiddleware } from '../../../lib/auth';
+import cache, { cacheKeys, cacheTTL, invalidateCache } from '../../../lib/cache';
 
 export default async function handler(req, res) {
   try {
@@ -23,6 +24,14 @@ async function getStaff(req, res) {
   try {
     const { hospital } = req.query;
     
+    // Check cache first
+    const cacheKey = cacheKeys.staff(hospital);
+    const cached = cache.get(cacheKey);
+    if (cached) {
+      res.setHeader('X-Cache', 'HIT');
+      return res.status(200).json(cached);
+    }
+    
     let result;
     if (hospital) {
       result = await sql`SELECT * FROM staff WHERE is_active = true AND hospital = ${hospital} ORDER BY name`;
@@ -42,6 +51,10 @@ async function getStaff(req, res) {
       maxGuardsPerMonth: s.max_guards_per_month || 10
     }));
 
+    // Cache the result
+    cache.set(cacheKey, legacyStaff, cacheTTL.staff);
+    res.setHeader('X-Cache', 'MISS');
+    
     res.status(200).json(legacyStaff);
   } catch (error) {
         res.status(500).json({ error: 'Failed to fetch staff' });
@@ -110,6 +123,9 @@ async function createStaff(req, res) {
       maxGuardsPerMonth: staff.max_guards_per_month || maxGuardsPerMonth || 10
     };
 
+    // Invalidate cache for this hospital
+    invalidateCache.staff(hospital);
+    
     res.status(201).json(newStaff);
   } catch (error) {
     console.error('Error creating staff:', error);

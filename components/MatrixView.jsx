@@ -3,7 +3,7 @@ import { useData } from './DataContext';
 import { useAuth } from './AuthContext';
 import { Users, Plus, Trash2, ChevronLeft, ChevronRight, X, Wand2 } from './Icons';
 
-export const MatrixView = ({ 
+const MatrixViewComponent = ({ 
   selectedHospital, 
   currentDate, 
   onDateChange,
@@ -600,3 +600,12 @@ export const MatrixView = ({
     </div>
   );
 };
+
+// Memoize the component to prevent unnecessary re-renders
+export const MatrixView = React.memo(MatrixViewComponent, (prevProps, nextProps) => {
+  return (
+    prevProps.selectedHospital === nextProps.selectedHospital &&
+    prevProps.currentDate === nextProps.currentDate &&
+    prevProps.readOnly === nextProps.readOnly
+  );
+});

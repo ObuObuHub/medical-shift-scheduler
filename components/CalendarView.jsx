@@ -5,7 +5,7 @@ import { useData } from './DataContext';
 import { exportShiftsToText, downloadTextFile, generateExportFilename } from '../utils/exportUtils';
 import { MobileCalendarView } from './MobileCalendarView';
 
-export const CalendarView = ({ 
+const CalendarViewComponent = ({ 
   currentDate,
   navigateMonth,
   generateFairSchedule,
@@ -542,3 +542,18 @@ export const CalendarView = ({
     </div>
   );
 };
+
+// Memoize the component to prevent unnecessary re-renders
+export const CalendarView = React.memo(CalendarViewComponent, (prevProps, nextProps) => {
+  // Custom comparison function - re-render only if these props change
+  return (
+    prevProps.currentDate === nextProps.currentDate &&
+    prevProps.selectedHospital === nextProps.selectedHospital &&
+    prevProps.currentUser?.id === nextProps.currentUser?.id &&
+    prevProps.selectedStaff?.id === nextProps.selectedStaff?.id &&
+    prevProps.isGuest === nextProps.isGuest &&
+    prevProps.swapModal?.isOpen === nextProps.swapModal?.isOpen &&
+    JSON.stringify(prevProps.shifts) === JSON.stringify(nextProps.shifts) &&
+    JSON.stringify(prevProps.staff) === JSON.stringify(nextProps.staff)
+  );
+});
