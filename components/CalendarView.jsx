@@ -31,8 +31,6 @@ const CalendarViewComponent = ({
   // Get context methods
   const { reserveShift, cancelReservation, createSwapRequest, clearDepartmentSchedule } = useData();
   
-  // State for department selection
-  const [selectedDepartment, setSelectedDepartment] = useState('');
   
   // Get unique departments from staff
   const departments = useMemo(() => {
@@ -140,103 +138,76 @@ const CalendarViewComponent = ({
             <span className="hidden sm:inline">Export</span>
           </button>
           
-          {hasPermission('generate_shifts') && (
-            <div className="flex items-center space-x-2 border-l pl-2">
-              <span className="text-xs text-gray-500 hidden sm:inline">Departament:</span>
-              <select
-                value={selectedDepartment}
-                onChange={(e) => setSelectedDepartment(e.target.value)}
-                className={`px-2 sm:px-3 py-2 border rounded-lg text-sm focus:ring-2 ${
-                  selectedDepartment 
-                    ? 'border-blue-500 bg-blue-50 focus:ring-blue-500' 
-                    : 'border-green-300 bg-green-50 focus:ring-green-500'
-                }`}
-                title={selectedDepartment ? `Vizualizare și generare: ${selectedDepartment}` : "Selectează departamentul"}
-              >
-                <option value="">Toate departamentele</option>
-                {departments.map(dept => (
-                  <option key={dept} value={dept}>{dept}</option>
-                ))}
-              </select>
-              
-              <button 
-                onClick={() => selectedDepartment && generateFairSchedule(selectedHospital, currentDate, selectedDepartment)} 
-                className={`px-3 sm:px-4 py-2 rounded-lg flex items-center text-sm sm:text-base touch-manipulation ${
-                  selectedDepartment 
-                    ? 'bg-green-600 text-white hover:bg-green-700' 
-                    : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                }`}
-                disabled={!selectedDepartment}
-                title={selectedDepartment ? `Generează program pentru ${selectedDepartment}` : "Selectează un departament"}
-              >
-                <Wand2 className="w-4 h-4 sm:mr-2" />
-                <span className="hidden sm:inline">Generează</span>
-              </button>
-              
-              {selectedDepartment && departmentsWithSchedules.has(selectedDepartment) && (
-                <button 
-                  onClick={() => {
-                    if (confirm(`Ești sigur că vrei să ștergi programul pentru departamentul ${selectedDepartment}?`)) {
-                      clearDepartmentSchedule(selectedHospital, currentDate, selectedDepartment);
-                    }
-                  }} 
-                  className="px-3 sm:px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 flex items-center text-sm sm:text-base touch-manipulation"
-                  title={`Șterge programul pentru ${selectedDepartment}`}
-                >
-                  <Trash2 className="w-4 h-4 sm:mr-2" />
-                  <span className="hidden sm:inline">Șterge</span>
-                </button>
-              )}
-            </div>
-          )}
         </div>
       </div>
 
-      {/* Department Schedule Status */}
-      {hasPermission('generate_shifts') && departments.length > 0 && (
-        <div className="mb-3 p-2 bg-gray-50 rounded-lg">
-          <div className="text-sm text-gray-600 mb-1">Status departamente:</div>
-          <div className="flex flex-wrap gap-2">
-            {departments.map(dept => {
-              const hasSchedule = departmentsWithSchedules.has(dept);
-              return (
-                <div 
-                  key={dept}
-                  className={`inline-flex items-center px-2 py-1 rounded-full text-xs ${
-                    hasSchedule 
+      {/* Render a calendar for each department */}
+      {departments.length > 0 ? (
+        departments.map((department, deptIndex) => (
+          <div key={department} className={deptIndex > 0 ? "mt-8" : ""}>
+            {/* Department Header */}
+            <div className="mb-4 p-3 bg-gray-50 rounded-lg border border-gray-200">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <h3 className="text-lg font-semibold text-gray-800">{department}</h3>
+                  <div className={`inline-flex items-center px-2 py-1 rounded-full text-xs ${
+                    departmentsWithSchedules.has(department) 
                       ? 'bg-green-100 text-green-800' 
                       : 'bg-gray-200 text-gray-600'
-                  }`}
-                >
-                  {hasSchedule ? '✓' : '○'} {dept}
+                  }`}>
+                    {departmentsWithSchedules.has(department) ? '✓ Program activ' : '○ Fără program'}
+                  </div>
                 </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
+                {hasPermission('generate_shifts') && (
+                  <div className="flex items-center gap-2">
+                    <button 
+                      onClick={() => generateFairSchedule(selectedHospital, currentDate, department)} 
+                      className="px-3 py-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center text-sm"
+                      title={`Generează program pentru ${department}`}
+                    >
+                      <Wand2 className="w-4 h-4 mr-1" />
+                      Generează
+                    </button>
+                    {departmentsWithSchedules.has(department) && (
+                      <button 
+                        onClick={() => {
+                          if (confirm(`Ești sigur că vrei să ștergi programul pentru departamentul ${department}?`)) {
+                            clearDepartmentSchedule(selectedHospital, currentDate, department);
+                          }
+                        }} 
+                        className="px-3 py-1.5 bg-red-600 text-white rounded-lg hover:bg-red-700 flex items-center text-sm"
+                        title={`Șterge programul pentru ${department}`}
+                      >
+                        <Trash2 className="w-4 h-4 mr-1" />
+                        Șterge
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
 
-      <div className="grid grid-cols-7 gap-2 mb-2 sm:mb-4">
-        {weekDays.map(day => (
-          <div key={day} className="text-center font-semibold text-gray-600 py-1 sm:py-2">
-            {day}
-          </div>
-        ))}
-      </div>
+            {/* Week days header */}
+            <div className="grid grid-cols-7 gap-2 mb-2 sm:mb-4">
+              {weekDays.map(day => (
+                <div key={day} className="text-center font-semibold text-gray-600 py-1 sm:py-2">
+                  {day}
+                </div>
+              ))}
+            </div>
 
-      <div className="grid grid-cols-7 gap-0.5 sm:gap-2">
+            {/* Calendar grid for this department */}
+            <div className="grid grid-cols-7 gap-0.5 sm:gap-2">
         {days.map((date, index) => {
           const isCurrentMonth = date.getMonth() === currentDate.getMonth();
           const isToday = date.toDateString() === new Date().toDateString();
           let dayShifts = isCurrentMonth ? (shifts[date.toISOString().split('T')[0]] || []) : [];
           
-          // Filter by hospital first
-          dayShifts = dayShifts.filter(shift => shift.hospital === selectedHospital);
-          
-          // Apply view filter
-          if (selectedDepartment) {
-            dayShifts = dayShifts.filter(shift => shift.department === selectedDepartment);
-          }
+          // Filter by hospital and department
+          dayShifts = dayShifts.filter(shift => 
+            shift.hospital === selectedHospital && 
+            shift.department === department
+          );
           
 
           return (
@@ -527,7 +498,15 @@ const CalendarViewComponent = ({
             </div>
           );
         })}
-      </div>
+            </div>
+          </div>
+        ))
+      ) : (
+        // Show message when no departments exist
+        <div className="mt-8 p-8 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300 text-center">
+          <p className="text-gray-600">Nu există departamente pentru acest spital.</p>
+        </div>
+      )}
 
       {/* Swap Request Modal */}
       <SwapRequestModal
