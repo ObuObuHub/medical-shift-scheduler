@@ -103,10 +103,8 @@ npm run build
 
 ### Login
 1. Open the application in your browser
-2. Use demo credentials:
-   - **Manager**: `manager` / `manager123`
-   - **Admin**: `admin` / `admin123`
-3. Click the demo login buttons or enter credentials manually
+2. Contact your system administrator for login credentials
+3. Enter your assigned username and password
 
 ### Generate Fair Schedules
 1. Navigate to **Calendar** view

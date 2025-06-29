@@ -7,13 +7,13 @@ This guide explains how to set up the two hospital manager accounts with the rul
 
 ### Manager 1 - Piatra-Neamț Hospital
 - **Username:** manager.spital1
-- **Password:** SP1a4
+- **Password:** [Contact system administrator]
 - **Hospital:** spital1 (Spitalul Județean de Urgență Piatra-Neamț)
 - **Access:** Can only see and manage staff/shifts for spital1
 
 ### Manager 2 - Buhuși Hospital
 - **Username:** manager.spital2
-- **Password:** BH2x9
+- **Password:** [Contact system administrator]
 - **Hospital:** spital2 (Spitalul "Prof. Dr. Eduard Apetrei" Buhuși)
 - **Access:** Can only see and manage staff/shifts for spital2
 
@@ -23,8 +23,7 @@ This guide explains how to set up the two hospital manager accounts with the rul
 
 1. **Log in as Administrator**
    - Go to your application login page
-   - Username: `admin`
-   - Password: `admin123`
+   - Use your administrator credentials
 
 2. **Navigate to User Management**
    - Look for "Users" or "User Management" in the admin menu
@@ -34,7 +33,7 @@ This guide explains how to set up the two hospital manager accounts with the rul
    - Fill in the form:
      - Name: `Manager Spitalul Județean de Urgență Piatra-Neamț`
      - Username: `manager.spital1`
-     - Password: `SP1a4`
+     - Password: `[Contact administrator]`
      - Role: `manager`
      - Hospital: `spital1`
      - Type: `medic`
@@ -44,7 +43,7 @@ This guide explains how to set up the two hospital manager accounts with the rul
    - Fill in the form:
      - Name: `Manager Spitalul Prof. Dr. Eduard Apetrei Buhuși`
      - Username: `manager.spital2`
-     - Password: `BH2x9`
+     - Password: `[Contact administrator]`
      - Role: `manager`
      - Hospital: `spital2`
      - Type: `medic`

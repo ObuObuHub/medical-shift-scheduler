@@ -16,12 +16,12 @@ I've added a manager login section below each hospital on the main page. Now eac
 
 **Manager 1 - Piatra-Neamț Hospital:**
 - Username: `manager.spital1`
-- Password: `SP1a4`
+- Password: `[Contact administrator]`
 - Can only manage Spitalul Județean de Urgență Piatra-Neamț
 
 **Manager 2 - Buhuși Hospital:**
 - Username: `manager.spital2`
-- Password: `BH2x9`
+- Password: `[Contact administrator]`
 - Can only manage Spitalul "Prof. Dr. Eduard Apetrei" Buhuși
 
 ## How to Use
