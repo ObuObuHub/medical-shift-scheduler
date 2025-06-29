@@ -400,11 +400,11 @@ export const StaffDashboard = ({
               ) : (
                 <button
                   onClick={() => setShowLoginModal(true)}
-                  className="px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-medium"
+                  className="p-3 text-gray-500 hover:text-gray-700 hover:bg-gray-50 active:bg-gray-100 rounded-lg transition-colors"
+                  title="Admin/Manager Login"
+                  aria-label="Admin/Manager Login"
                 >
-                  <Shield className="w-4 h-4 sm:mr-1 inline" />
-                  <span className="hidden sm:inline">Admin/Manager</span>
-                  <span className="sm:hidden">Login</span>
+                  <Shield className="w-4 h-4" />
                 </button>
               )}
             </div>
