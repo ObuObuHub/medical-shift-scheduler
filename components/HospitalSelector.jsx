@@ -125,68 +125,78 @@ export const HospitalSelector = ({ hospitals, staff, onSelectHospital, onLoginCl
                 <div className="border-t border-gray-100">
                   <button
                     onClick={(e) => toggleManagerLogin(hospital.id, e)}
-                    className="w-full px-6 py-3 text-sm text-gray-600 hover:text-blue-600 hover:bg-gray-50 transition-colors flex items-center justify-center gap-2"
+                    className="w-full px-6 py-3 text-sm font-medium bg-blue-50 text-blue-700 hover:bg-blue-100 hover:text-blue-800 transition-all duration-200 flex items-center justify-center gap-2 border-t-2 border-blue-200"
                   >
                     <Lock className="w-4 h-4" />
                     <span>Acces Manager</span>
                   </button>
                   
                   {showManagerLogin[hospital.id] && (
-                    <form onSubmit={(e) => handleManagerLogin(hospital.id, e)} className="px-6 pb-4">
+                    <form onSubmit={(e) => handleManagerLogin(hospital.id, e)} className="px-6 pb-4 bg-blue-50/50">
                       {loginError[hospital.id] && (
-                        <div className="mb-2 p-2 bg-red-50 border border-red-200 rounded text-red-600 text-xs">
+                        <div className="mb-3 p-3 bg-red-50 border border-red-200 rounded-md text-red-600 text-sm font-medium">
                           {loginError[hospital.id]}
                         </div>
                       )}
                       
-                      <div className="space-y-2">
-                        <input
-                          type="text"
-                          placeholder="Utilizator manager"
-                          value={loginData[hospital.id]?.username || ''}
-                          onChange={(e) => setLoginData({
-                            ...loginData,
-                            [hospital.id]: { ...loginData[hospital.id], username: e.target.value }
-                          })}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                          onClick={(e) => e.stopPropagation()}
-                        />
+                      <div className="space-y-3 pt-3">
+                        <div>
+                          <label className="block text-xs font-medium text-gray-700 mb-1">Nume utilizator</label>
+                          <input
+                            type="text"
+                            placeholder="Utilizator manager"
+                            value={loginData[hospital.id]?.username || ''}
+                            onChange={(e) => setLoginData({
+                              ...loginData,
+                              [hospital.id]: { ...loginData[hospital.id], username: e.target.value }
+                            })}
+                            className="w-full px-3 py-2 border border-blue-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+                            onClick={(e) => e.stopPropagation()}
+                          />
+                        </div>
                         
-                        <input
-                          type="password"
-                          placeholder="Parolă"
-                          value={loginData[hospital.id]?.password || ''}
-                          onChange={(e) => setLoginData({
-                            ...loginData,
-                            [hospital.id]: { ...loginData[hospital.id], password: e.target.value }
-                          })}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                          onClick={(e) => e.stopPropagation()}
-                        />
+                        <div>
+                          <label className="block text-xs font-medium text-gray-700 mb-1">Parolă</label>
+                          <input
+                            type="password"
+                            placeholder="Parolă"
+                            value={loginData[hospital.id]?.password || ''}
+                            onChange={(e) => setLoginData({
+                              ...loginData,
+                              [hospital.id]: { ...loginData[hospital.id], password: e.target.value }
+                            })}
+                            className="w-full px-3 py-2 border border-blue-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+                            onClick={(e) => e.stopPropagation()}
+                          />
+                        </div>
                         
                         <button
                           type="submit"
                           disabled={isLoading[hospital.id]}
-                          className="w-full bg-blue-600 text-white py-2 rounded-md text-sm font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                          className="w-full bg-blue-600 text-white py-2.5 rounded-md text-sm font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm"
                         >
                           {isLoading[hospital.id] ? 'Se autentifică...' : 'Intră ca Manager'}
                         </button>
                       </div>
                       
                       {/* Manager credentials info */}
-                      <div className="mt-2 p-2 bg-gray-50 rounded text-xs text-gray-600">
+                      <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-md text-xs">
                         {hospital.id === 'spital1' && (
-                          <div>
-                            <strong>Manager Spital 1:</strong><br />
-                            User: manager.spital1<br />
-                            Parolă: SP1a4
+                          <div className="text-amber-800">
+                            <strong className="block text-amber-900 mb-1">Date conectare Manager:</strong>
+                            <div className="font-mono">
+                              Utilizator: <span className="font-bold">manager.spital1</span><br />
+                              Parolă: <span className="font-bold">SP1a4</span>
+                            </div>
                           </div>
                         )}
                         {hospital.id === 'spital2' && (
-                          <div>
-                            <strong>Manager Spital 2:</strong><br />
-                            User: manager.spital2<br />
-                            Parolă: BH2x9
+                          <div className="text-amber-800">
+                            <strong className="block text-amber-900 mb-1">Date conectare Manager:</strong>
+                            <div className="font-mono">
+                              Utilizator: <span className="font-bold">manager.spital2</span><br />
+                              Parolă: <span className="font-bold">BH2x9</span>
+                            </div>
                           </div>
                         )}
                       </div>
