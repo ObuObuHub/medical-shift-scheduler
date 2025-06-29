@@ -22,6 +22,20 @@ export default async function handler(req, res) {
       });
     }
 
+    // Managers can only create users for their own hospital
+    if (req.user.role === 'manager' && hospital !== req.user.hospital) {
+      return res.status(403).json({ 
+        error: 'Managers can only create users for their own hospital' 
+      });
+    }
+
+    // Only admins can create other admins or managers
+    if ((role === 'admin' || role === 'manager') && req.user.role !== 'admin') {
+      return res.status(403).json({ 
+        error: 'Only administrators can create admin or manager accounts' 
+      });
+    }
+
     // Validate password strength
     const passwordValidation = validatePassword(password);
     if (!passwordValidation.isValid) {

@@ -101,8 +101,8 @@ export const AppRouter = () => {
       );
     }
 
-    // Step 2: Staff Selection
-    if (!selectedStaff && !isGuest) {
+    // Step 2: Staff Selection (skip for authenticated managers/admins)
+    if (!selectedStaff && !isGuest && !currentUser) {
       return (
         <StaffSelector
           hospital={selectedHospital}
@@ -116,11 +116,21 @@ export const AppRouter = () => {
     }
 
     // Step 3: Staff Dashboard
+    // For managers/admins, pass currentUser as selectedStaff
+    const effectiveSelectedStaff = selectedStaff || (currentUser && {
+      id: currentUser.id,
+      name: currentUser.name,
+      type: currentUser.type || 'medic',
+      specialization: currentUser.role === 'admin' ? 'Administrator' : 'Manager',
+      hospital: currentUser.hospital,
+      role: currentUser.role
+    });
+
     return (
       <StaffDashboard
         selectedHospital={selectedHospital}
-        selectedStaff={selectedStaff}
-        isGuest={isGuest}
+        selectedStaff={effectiveSelectedStaff}
+        isGuest={isGuest || (!selectedStaff && currentUser)}
       />
     );
   };
