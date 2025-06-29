@@ -12,7 +12,6 @@ import { ViewSwitcher } from './ViewSwitcher';
 import { StaffView } from './StaffView';
 import { StaffEditModal } from './StaffEditModal';
 import { AddShiftModal } from './AddShiftModal';
-import { HospitalSwitchModal } from './HospitalSwitchModal';
 import { formatMonthYear, addMonths } from '../utils/dateHelpers';
 
 export const ManagerDashboard = () => {
@@ -33,9 +32,7 @@ export const ManagerDashboard = () => {
   const [editingStaff, setEditingStaff] = useState(null);
   const [addShiftModalData, setAddShiftModalData] = useState(null);
   
-  // Hospital switch authentication state
-  const [showHospitalSwitchModal, setShowHospitalSwitchModal] = useState(false);
-  const [pendingHospital, setPendingHospital] = useState(null);
+  // Hospital switching is disabled for managers
 
   const navigateMonth = (direction) => {
     const newDate = addMonths(currentDate, direction);
@@ -89,32 +86,9 @@ export const ManagerDashboard = () => {
     return member ? member.name : 'Unknown';
   };
 
-  // Hospital switching handlers
-  const handleHospitalDropdownChange = (e) => {
-    const newHospital = e.target.value;
-    
-    if (newHospital === selectedHospital) {
-      return; // No change needed
-    }
-    
-    // Show authentication modal for hospital switch
-    setPendingHospital(newHospital);
-    setShowHospitalSwitchModal(true);
-  };
+  // Hospital switching is disabled for managers
+  // Managers are locked to their assigned hospital
 
-  const handleHospitalSwitchConfirm = (targetHospital) => {
-    setSelectedHospital(targetHospital);
-    setShowHospitalSwitchModal(false);
-    setPendingHospital(null);
-    // Load data for the new hospital
-    loadInitialData(false, targetHospital, currentDate);
-  };
-
-  const handleHospitalSwitchCancel = () => {
-    setShowHospitalSwitchModal(false);
-    setPendingHospital(null);
-    // Keep the dropdown at current hospital
-  };
 
   // Menu items for managers
   const menuItems = [
@@ -294,20 +268,12 @@ export const ManagerDashboard = () => {
               ))}
             </div>
 
-            {/* Right side - Hospital selector and user menu */}
+            {/* Right side - Hospital name and user menu */}
             <div className="flex items-center space-x-2">
-              {/* Hospital selector - hidden on mobile */}
-              <select
-                value={selectedHospital}
-                onChange={handleHospitalDropdownChange}
-                className="hidden sm:block px-2 py-1.5 border border-gray-300 rounded-lg text-sm"
-              >
-                {hospitals.map(hospital => (
-                  <option key={hospital.id} value={hospital.id}>
-                    {hospital.name}
-                  </option>
-                ))}
-              </select>
+              {/* Hospital name display - managers cannot switch */}
+              <div className="hidden sm:block px-2 py-1.5 text-sm text-gray-700 font-medium">
+                {hospitals.find(h => h.id === selectedHospital)?.name}
+              </div>
 
               {/* User info and logout */}
               <div className="flex items-center space-x-2">
@@ -382,23 +348,12 @@ export const ManagerDashboard = () => {
               
               <hr className="my-4 border-gray-200" />
               
-              {/* Hospital selector */}
+              {/* Current hospital display */}
               <div className="space-y-2">
-                <label className="block text-sm font-medium text-gray-700">Spital selectat</label>
-                <select
-                  value={selectedHospital}
-                  onChange={(e) => {
-                    handleHospitalDropdownChange(e);
-                    setShowMobileMenu(false);
-                  }}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                >
-                  {hospitals.map(hospital => (
-                    <option key={hospital.id} value={hospital.id}>
-                      {hospital.name}
-                    </option>
-                  ))}
-                </select>
+                <label className="block text-sm font-medium text-gray-700">Spital curent</label>
+                <div className="w-full px-3 py-2 bg-gray-100 rounded-lg text-sm text-gray-700">
+                  {hospitals.find(h => h.id === selectedHospital)?.name}
+                </div>
               </div>
               
               <hr className="my-4 border-gray-200" />
@@ -444,15 +399,6 @@ export const ManagerDashboard = () => {
         />
       )}
 
-      {/* Hospital Switch Authentication Modal */}
-      <HospitalSwitchModal
-        isOpen={showHospitalSwitchModal}
-        currentHospital={selectedHospital}
-        targetHospital={pendingHospital}
-        hospitals={hospitals}
-        onConfirm={handleHospitalSwitchConfirm}
-        onCancel={handleHospitalSwitchCancel}
-      />
     </div>
   );
 };
