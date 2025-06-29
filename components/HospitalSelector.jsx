@@ -179,27 +179,6 @@ export const HospitalSelector = ({ hospitals, staff, onSelectHospital, onLoginCl
                         </button>
                       </div>
                       
-                      {/* Manager credentials info */}
-                      <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-md text-xs">
-                        {hospital.id === 'spital1' && (
-                          <div className="text-amber-800">
-                            <strong className="block text-amber-900 mb-1">Date conectare Manager:</strong>
-                            <div className="font-mono">
-                              Utilizator: <span className="font-bold">manager.spital1</span><br />
-                              Parolă: <span className="font-bold">SP1a4</span>
-                            </div>
-                          </div>
-                        )}
-                        {hospital.id === 'spital2' && (
-                          <div className="text-amber-800">
-                            <strong className="block text-amber-900 mb-1">Date conectare Manager:</strong>
-                            <div className="font-mono">
-                              Utilizator: <span className="font-bold">manager.spital2</span><br />
-                              Parolă: <span className="font-bold">BH2x9</span>
-                            </div>
-                          </div>
-                        )}
-                      </div>
                     </form>
                   )}
                 </div>
