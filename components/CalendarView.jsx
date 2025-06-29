@@ -108,11 +108,6 @@ const CalendarViewComponent = ({
         <div className="flex items-center justify-between sm:justify-start sm:space-x-3">
           <h2 className="text-lg sm:text-2xl font-bold text-gray-800">
             {months[currentDate.getMonth()]} {currentDate.getFullYear()}
-            {selectedDepartment && (
-              <span className="ml-2 text-sm font-normal text-blue-600">
-                ({selectedDepartment})
-              </span>
-            )}
           </h2>
           <div className="flex items-center space-x-1">
             <button onClick={() => navigateMonth(-1)} className="p-2 hover:bg-gray-100 rounded-lg touch-manipulation">
@@ -127,7 +122,7 @@ const CalendarViewComponent = ({
           {/* Export button - available to all users */}
           <button 
             onClick={() => {
-              const exportContent = exportShiftsToText(shifts, staff, currentDate, selectedHospital, selectedDepartment);
+              const exportContent = exportShiftsToText(shifts, staff, currentDate, selectedHospital, '');
               const filename = generateExportFilename(currentDate);
               downloadTextFile(exportContent, filename);
             }} 
