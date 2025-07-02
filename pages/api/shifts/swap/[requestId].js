@@ -127,7 +127,7 @@ export default async function handler(req, res) {
 
           // Get both shifts
           const { rows: shifts } = await sql`
-            SELECT shift_id, staff_ids, reserved_by, status
+            SELECT shift_id, staff_ids, reserved_by, status, date, shift_type
             FROM shifts
             WHERE shift_id IN (${shift1Id}, ${shift2Id}) AND is_active = true
           `;
@@ -139,16 +139,59 @@ export default async function handler(req, res) {
           const shift1 = shifts.find(s => s.shift_id === shift1Id);
           const shift2 = shifts.find(s => s.shift_id === shift2Id);
 
+          // Check for conflicts - ensure staff won't have multiple shifts on the same day
+          if (staff2Id) {
+            // Check if staff2 already has a shift on shift1's date
+            const { rows: staff2ConflictRows } = await sql`
+              SELECT shift_id FROM shifts 
+              WHERE date = ${shift1.date} 
+              AND is_active = true
+              AND shift_id != ${shift1Id}
+              AND (staff_ids::jsonb @> ${JSON.stringify([staff2Id])} OR reserved_by = ${staff2Id})
+            `;
+            
+            if (staff2ConflictRows.length > 0) {
+              throw new Error('Target staff already has a shift on the requested date');
+            }
+          }
+          
+          // Check if staff1 already has a shift on shift2's date
+          const { rows: staff1ConflictRows } = await sql`
+            SELECT shift_id FROM shifts 
+            WHERE date = ${shift2.date} 
+            AND is_active = true
+            AND shift_id != ${shift2Id}
+            AND (staff_ids::jsonb @> ${JSON.stringify([staff1Id])} OR reserved_by = ${staff1Id})
+          `;
+          
+          if (staff1ConflictRows.length > 0) {
+            throw new Error('Requester already has a shift on the target date');
+          }
+
           // Update shift 1: Remove staff1, add staff2 (if provided)
-          let newStaff1Ids = shift1.staff_ids.filter(id => id !== staff1Id);
+          let newStaff1Ids = (shift1.staff_ids || []).filter(id => id !== staff1Id);
           if (staff2Id && !newStaff1Ids.includes(staff2Id)) {
             newStaff1Ids.push(staff2Id);
           }
 
-          // Update shift 2: Remove staff2, add staff1
-          let newStaff2Ids = shift2.staff_ids.filter(id => id !== staff2Id);
+          // Update shift 2: Remove staff2 (if exists), add staff1
+          let newStaff2Ids = (shift2.staff_ids || []).filter(id => id !== staff2Id);
           if (!newStaff2Ids.includes(staff1Id)) {
             newStaff2Ids.push(staff1Id);
+          }
+
+          // Handle reservation-based swaps
+          let newShift1ReservedBy = shift1.reserved_by;
+          let newShift2ReservedBy = shift2.reserved_by;
+          
+          // If shift1 was reserved by staff1, clear it and potentially set staff2
+          if (shift1.reserved_by === staff1Id) {
+            newShift1ReservedBy = staff2Id || null;
+          }
+          
+          // If shift2 was reserved by staff2, clear it and set staff1
+          if (shift2.reserved_by === staff2Id) {
+            newShift2ReservedBy = staff1Id;
           }
 
           // Execute the swap
@@ -156,9 +199,13 @@ export default async function handler(req, res) {
             UPDATE shifts
             SET 
               staff_ids = ${JSON.stringify(newStaff1Ids)},
-              status = CASE WHEN array_length(${JSON.stringify(newStaff1Ids)}::jsonb, 1) > 0 THEN 'confirmed' ELSE 'open' END,
-              reserved_by = NULL,
-              reserved_at = NULL,
+              status = CASE 
+                WHEN array_length(${JSON.stringify(newStaff1Ids)}::jsonb, 1) > 0 THEN 'confirmed'
+                WHEN ${newShift1ReservedBy} IS NOT NULL THEN 'reserved'
+                ELSE 'open' 
+              END,
+              reserved_by = ${newShift1ReservedBy},
+              reserved_at = CASE WHEN ${newShift1ReservedBy} IS NOT NULL THEN CURRENT_TIMESTAMP ELSE NULL END,
               swap_request_id = NULL,
               updated_at = CURRENT_TIMESTAMP,
               updated_by = ${req.user.username}
@@ -169,9 +216,13 @@ export default async function handler(req, res) {
             UPDATE shifts
             SET 
               staff_ids = ${JSON.stringify(newStaff2Ids)},
-              status = 'confirmed',
-              reserved_by = NULL,
-              reserved_at = NULL,
+              status = CASE 
+                WHEN array_length(${JSON.stringify(newStaff2Ids)}::jsonb, 1) > 0 THEN 'confirmed'
+                WHEN ${newShift2ReservedBy} IS NOT NULL THEN 'reserved'
+                ELSE 'open' 
+              END,
+              reserved_by = ${newShift2ReservedBy},
+              reserved_at = CASE WHEN ${newShift2ReservedBy} IS NOT NULL THEN CURRENT_TIMESTAMP ELSE NULL END,
               updated_at = CURRENT_TIMESTAMP,
               updated_by = ${req.user.username}
             WHERE shift_id = ${shift2Id}

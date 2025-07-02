@@ -353,6 +353,7 @@ const CalendarViewComponent = ({
                           >
                             <div className="font-medium text-xs mb-0.5" style={{ color: dayShift.type.color }}>
                               {dayShift.type.name}
+                              {dayShift.status === 'swap_requested' && <span className="ml-1 text-blue-600">🔄</span>}
                             </div>
                             {dayShift.staffIds.map(staffId => {
                               const staffMember = staff.find(s => s.id === staffId);
@@ -375,6 +376,7 @@ const CalendarViewComponent = ({
                           >
                             <div className="font-medium text-xs mb-0.5" style={{ color: nightShift.type.color }}>
                               {nightShift.type.name}
+                              {nightShift.status === 'swap_requested' && <span className="ml-1 text-blue-600">🔄</span>}
                             </div>
                             {nightShift.staffIds.map(staffId => {
                               const staffMember = staff.find(s => s.id === staffId);

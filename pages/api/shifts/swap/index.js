@@ -92,7 +92,7 @@ export default async function handler(req, res) {
     try {
       // Validate that the requester is assigned to the shift they want to swap
       const { rows: shiftRows } = await sql`
-        SELECT staff_ids, hospital, status
+        SELECT staff_ids, hospital, status, reserved_by
         FROM shifts
         WHERE shift_id = ${shiftId} AND is_active = true
       `;
@@ -110,6 +110,15 @@ export default async function handler(req, res) {
 
       if (!isAssigned && !hasReserved) {
         return res.status(403).json({ error: 'You are not assigned to this shift' });
+      }
+
+      // Check if shift is less than 24 hours away
+      const shiftDateTime = new Date(shiftDate);
+      const now = new Date();
+      const hoursUntilShift = (shiftDateTime - now) / (1000 * 60 * 60);
+      
+      if (hoursUntilShift < 24) {
+        return res.status(400).json({ error: 'Cannot request swap less than 24 hours before shift' });
       }
 
       // If requesting a specific shift swap, validate target shift
