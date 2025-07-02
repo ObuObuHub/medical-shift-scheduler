@@ -988,10 +988,30 @@ export const DataProvider = ({ children }) => {
 
   const createSwapRequest = async (swapData) => {
     try {
+      // If using public endpoint (no auth token), ensure requesterId is included
+      if (!apiClient.getToken() && swapData.requesterId) {
+        // requesterId is already in swapData, just pass it through
+      }
+      
       const result = await apiClient.createSwapRequest(swapData);
       
       // Update local swap requests
       await loadSwapRequests();
+      
+      // Update local shifts state to reflect swap_requested status
+      if (swapData.shiftId) {
+        setShifts(prevShifts => {
+          const newShifts = { ...prevShifts };
+          Object.keys(newShifts).forEach(date => {
+            newShifts[date] = newShifts[date].map(shift => 
+              shift.id === swapData.shiftId 
+                ? { ...shift, status: 'swap_requested', swap_request_id: result.swapRequest.id } 
+                : shift
+            );
+          });
+          return newShifts;
+        });
+      }
       
       addNotification('Cerere de schimb creată cu succes', 'success');
       return result.swapRequest;

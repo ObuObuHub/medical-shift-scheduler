@@ -57,7 +57,9 @@ const SwapRequestModal = ({ isOpen, onClose, myShift, onSuccess }) => {
         shiftId: myShift.id,
         shiftDate: myShift.date,
         shiftType: myShift.type,
-        reason: reason.trim()
+        reason: reason.trim(),
+        // Include requesterId for public API endpoint
+        requesterId: myShift.assigneeId
       };
 
       // Add target staff if selected
