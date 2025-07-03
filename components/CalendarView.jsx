@@ -229,8 +229,8 @@ const CalendarViewComponent = ({
                   // Priority: 24h shift > combined 12h shifts > individual shifts
                   if (fullDayShift) {
                     // Show single 24-hour shift
-                    const staffId = selectedStaff?.id || currentUser?.id;
-                    const isMyShift = staffId && (fullDayShift.staffIds?.includes(staffId) || fullDayShift.reservedBy === staffId);
+                    const currentStaffId = selectedStaff?.id || currentUser?.id;
+                    const isMyShift = currentStaffId && (fullDayShift.staffIds?.includes(currentStaffId) || fullDayShift.reservedBy === currentStaffId);
                     const isReserved = fullDayShift.status === 'reserved';
                     const isSwapRequested = fullDayShift.status === 'swap_requested';
                     
@@ -257,7 +257,7 @@ const CalendarViewComponent = ({
                           {fullDayShift.staffIds.map(staffId => {
                             const staffMember = staff.find(s => s.id === staffId);
                             return staffMember ? (
-                              <div key={staffId} className={`text-xs truncate ${staffId === staffId ? 'font-semibold' : ''}`}>
+                              <div key={staffId} className={`text-xs truncate ${staffId === currentStaffId ? 'font-semibold' : ''}`}>
                                 {staffMember.name}
                               </div>
                             ) : null;
@@ -285,7 +285,7 @@ const CalendarViewComponent = ({
                                     shift: { 
                                       ...fullDayShift, 
                                       date: date.toISOString().split('T')[0],
-                                      assigneeId: staffId,
+                                      assigneeId: currentStaffId,
                                       hospital: selectedHospital
                                     } 
                                   });
@@ -311,7 +311,7 @@ const CalendarViewComponent = ({
                                 <UserCheck className="w-3 h-3" />
                               </button>
                             )}
-                            {isReserved && fullDayShift.reservedBy === staffId && (
+                            {isReserved && fullDayShift.reservedBy === currentStaffId && (
                               <button
                                 onClick={async (e) => {
                                   e.stopPropagation();
@@ -332,9 +332,9 @@ const CalendarViewComponent = ({
                     );
                   } else if (dayShift && nightShift) {
                     // Show combined day + night shifts as one logical unit
-                    const staffId = selectedStaff?.id || currentUser?.id;
-                    const isDayShiftMine = staffId && (dayShift.staffIds?.includes(staffId) || dayShift.reservedBy === staffId);
-                    const isNightShiftMine = staffId && (nightShift.staffIds?.includes(staffId) || nightShift.reservedBy === staffId);
+                    const currentStaffId = selectedStaff?.id || currentUser?.id;
+                    const isDayShiftMine = currentStaffId && (dayShift.staffIds?.includes(currentStaffId) || dayShift.reservedBy === currentStaffId);
+                    const isNightShiftMine = currentStaffId && (nightShift.staffIds?.includes(currentStaffId) || nightShift.reservedBy === currentStaffId);
                     const totalStaff = new Set([...dayShift.staffIds, ...nightShift.staffIds]).size;
                     return (
                       <div className="space-y-0.5 h-full relative">
@@ -360,7 +360,7 @@ const CalendarViewComponent = ({
                             {dayShift.staffIds.map(staffId => {
                               const staffMember = staff.find(s => s.id === staffId);
                               return staffMember ? (
-                                <div key={staffId} className="text-xs truncate">
+                                <div key={staffId} className={`text-xs truncate ${staffId === currentStaffId ? 'font-semibold' : ''}`}>
                                   {staffMember.name}
                                 </div>
                               ) : null;
@@ -383,7 +383,7 @@ const CalendarViewComponent = ({
                             {nightShift.staffIds.map(staffId => {
                               const staffMember = staff.find(s => s.id === staffId);
                               return staffMember ? (
-                                <div key={staffId} className="text-xs truncate">
+                                <div key={staffId} className={`text-xs truncate ${staffId === currentStaffId ? 'font-semibold' : ''}`}>
                                   {staffMember.name}
                                 </div>
                               ) : null;
@@ -395,8 +395,8 @@ const CalendarViewComponent = ({
                   } else {
                     // Show individual shifts (partial coverage)
                     return dayShifts.slice(0, 2).map((shift) => {
-                      const staffId = selectedStaff?.id || currentUser?.id;
-                      const isMyShift = staffId && (shift.staffIds?.includes(staffId) || shift.reservedBy === staffId);
+                      const currentStaffId = selectedStaff?.id || currentUser?.id;
+                      const isMyShift = currentStaffId && (shift.staffIds?.includes(currentStaffId) || shift.reservedBy === currentStaffId);
                       const isReserved = shift.status === 'reserved';
                       const isSwapRequested = shift.status === 'swap_requested';
                       
@@ -423,7 +423,7 @@ const CalendarViewComponent = ({
                             {shift.staffIds.map(staffId => {
                               const staffMember = staff.find(s => s.id === staffId);
                               return staffMember ? (
-                                <div key={staffId} className={`text-xs truncate ${staffId === staffId ? 'font-semibold' : ''}`}>
+                                <div key={staffId} className={`text-xs truncate ${staffId === currentStaffId ? 'font-semibold' : ''}`}>
                                   {staffMember.name}
                                 </div>
                               ) : null;
@@ -451,7 +451,7 @@ const CalendarViewComponent = ({
                                       shift: { 
                                         ...shift, 
                                         date: date.toISOString().split('T')[0],
-                                        assigneeId: staffId,
+                                        assigneeId: currentStaffId,
                                         hospital: selectedHospital
                                       } 
                                     });
@@ -477,7 +477,7 @@ const CalendarViewComponent = ({
                                   <UserCheck className="w-3 h-3" />
                                 </button>
                               )}
-                              {isReserved && shift.reservedBy === staffId && (
+                              {isReserved && shift.reservedBy === currentStaffId && (
                                 <button
                                   onClick={async (e) => {
                                     e.stopPropagation();

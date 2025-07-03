@@ -302,8 +302,8 @@ export const MobileCalendarView = ({
               ) : (
                 <div className="space-y-3">
                   {selectedDay.shifts.map((shift) => {
-                    const staffId = selectedStaff?.id || currentUser?.id;
-                    const isMyShift = staffId && (shift.staffIds?.includes(staffId) || shift.reservedBy === staffId);
+                    const currentStaffId = selectedStaff?.id || currentUser?.id;
+                    const isMyShift = currentStaffId && (shift.staffIds?.includes(currentStaffId) || shift.reservedBy === currentStaffId);
                     const isReserved = shift.status === 'reserved';
                     const isSwapRequested = shift.status === 'swap_requested';
                     
@@ -341,7 +341,7 @@ export const MobileCalendarView = ({
                             return staffMember ? (
                               <div key={staffId} className="flex items-center text-sm">
                                 <Users className="w-4 h-4 mr-2 text-gray-400" />
-                                <span className={staffId === staffId ? 'font-semibold' : ''}>
+                                <span className={staffId === currentStaffId ? 'font-semibold' : ''}>
                                   {staffMember.name}
                                 </span>
                               </div>
@@ -383,7 +383,7 @@ export const MobileCalendarView = ({
                                     shift: { 
                                       ...shift, 
                                       date: selectedDay.date.toISOString().split('T')[0],
-                                      assigneeId: staffId,
+                                      assigneeId: currentStaffId,
                                       hospital: selectedHospital
                                     } 
                                   });
@@ -408,7 +408,7 @@ export const MobileCalendarView = ({
                                 Rezervă tură
                               </button>
                             )}
-                            {isReserved && shift.reservedBy === staffId && (
+                            {isReserved && shift.reservedBy === currentStaffId && (
                               <button
                                 onClick={async () => {
                                   try {
