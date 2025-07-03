@@ -1,0 +1,57 @@
+/* Consistent styling for user's own shifts across all views */
+
+/* Background and border colors */
+.my-shift-highlight {
+  background-color: #faf5ff !important; /* purple-50 */
+  border-color: #c084fc !important; /* purple-300 */
+}
+
+/* Ring effect for calendar cells */
+.my-shift-ring {
+  box-shadow: 0 0 0 2px #c084fc; /* purple-400 ring */
+}
+
+/* Star indicator */
+.my-shift-indicator {
+  position: absolute;
+  top: -0.25rem;
+  right: -0.25rem;
+  background-color: #a855f7; /* purple-500 */
+  color: white;
+  border-radius: 9999px;
+  width: 1.25rem;
+  height: 1.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  font-weight: bold;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  z-index: 10;
+}
+
+/* Alternative position for matrix view to avoid delete button */
+.my-shift-indicator-left {
+  left: -0.25rem;
+  right: auto;
+}
+
+/* Shift cell with purple theme */
+.my-shift-cell {
+  background-color: #faf5ff; /* purple-50 */
+  border: 2px solid #c084fc; /* purple-300 */
+}
+
+/* For combined highlighting (today + my shift) */
+.my-shift-today {
+  box-shadow: 0 0 0 2px #60a5fa, 0 0 0 4px #c084fc; /* blue-400 + purple-400 double ring */
+}
+
+/* Mobile specific adjustments */
+@media (max-width: 640px) {
+  .my-shift-indicator {
+    width: 1rem;
+    height: 1rem;
+    font-size: 0.625rem;
+  }
+}

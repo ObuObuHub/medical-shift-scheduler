@@ -215,7 +215,7 @@ export const MobileCalendarView = ({
                   className={`relative aspect-square p-1 rounded-lg touch-manipulation transition-all
                     ${!isCurrentMonth ? 'bg-gray-50 text-gray-400' : 'bg-white'}
                     ${isToday ? 'ring-2 ring-blue-400' : ''}
-                    ${hasMyShift ? 'bg-blue-50' : ''}
+                    ${hasMyShift ? 'bg-purple-50 ring-1 ring-purple-300' : ''}
                     ${dayShifts.length > 0 ? 'border-2' : 'border'}
                     ${dayShifts.length > 0 ? 'border-gray-300' : 'border-gray-200'}
                   `}
@@ -247,7 +247,9 @@ export const MobileCalendarView = ({
                   )}
                   
                   {hasMyShift && (
-                    <div className="absolute top-0 right-0 w-2 h-2 bg-blue-600 rounded-full" />
+                    <div className="absolute top-0 right-0 bg-purple-500 text-white rounded-full w-4 h-4 flex items-center justify-center text-xs font-bold shadow-sm">
+                      ★
+                    </div>
                   )}
                 </button>
               );
@@ -308,8 +310,14 @@ export const MobileCalendarView = ({
                     return (
                       <div 
                         key={shift.id}
-                        className={`p-4 rounded-lg border-2 ${isMyShift ? 'bg-blue-50 border-blue-300' : 'bg-gray-50 border-gray-200'}`}
+                        className={`p-4 rounded-lg border-2 relative ${isMyShift ? 'bg-purple-50 border-purple-300' : 'bg-gray-50 border-gray-200'}`}
                       >
+                        {/* My shift indicator */}
+                        {isMyShift && (
+                          <div className="absolute -top-2 -right-2 bg-purple-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold shadow-sm">
+                            ★
+                          </div>
+                        )}
                         <div className="flex items-start justify-between mb-2">
                           <div>
                             <h4 className="font-semibold text-lg" style={{ color: shift.type.color }}>

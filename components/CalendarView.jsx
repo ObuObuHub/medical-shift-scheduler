@@ -237,13 +237,19 @@ const CalendarViewComponent = ({
                     return (
                       <div 
                         key={fullDayShift.id} 
-                        className="shift-item text-xs p-1 rounded-lg flex flex-col hover:shadow-md transition-shadow border-2 relative group h-full"
+                        className={`shift-item text-xs p-1 rounded-lg flex flex-col hover:shadow-md transition-shadow border-2 relative group h-full ${isMyShift ? 'ring-2 ring-purple-400 ring-offset-1' : ''}`}
                         style={{ 
-                          backgroundColor: fullDayShift.type.color + '20', 
-                          borderColor: fullDayShift.type.color 
+                          backgroundColor: isMyShift ? '#faf5ff' : fullDayShift.type.color + '20', 
+                          borderColor: isMyShift ? '#c084fc' : fullDayShift.type.color 
                         }}
                         data-shift-id={fullDayShift.id}
                       >
+                        {/* My shift indicator */}
+                        {isMyShift && (
+                          <div className="absolute -top-1 -right-1 bg-purple-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold shadow-sm">
+                            ★
+                          </div>
+                        )}
                         <div className="font-semibold text-xs mb-1" style={{ color: fullDayShift.type.color }}>
                           {fullDayShift.type.name}
                         </div>
@@ -326,16 +332,25 @@ const CalendarViewComponent = ({
                     );
                   } else if (dayShift && nightShift) {
                     // Show combined day + night shifts as one logical unit
+                    const staffId = selectedStaff?.id || currentUser?.id;
+                    const isDayShiftMine = staffId && (dayShift.staffIds?.includes(staffId) || dayShift.reservedBy === staffId);
+                    const isNightShiftMine = staffId && (nightShift.staffIds?.includes(staffId) || nightShift.reservedBy === staffId);
                     const totalStaff = new Set([...dayShift.staffIds, ...nightShift.staffIds]).size;
                     return (
-                      <div className="space-y-0.5 h-full">
+                      <div className="space-y-0.5 h-full relative">
+                        {/* My shift indicator for combined shifts */}
+                        {(isDayShiftMine || isNightShiftMine) && (
+                          <div className="absolute -top-2 -right-2 bg-purple-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold shadow-sm z-10">
+                            ★
+                          </div>
+                        )}
                         {/* Day Shift */}
                         {dayShift && (
                           <div 
-                            className="shift-item text-xs p-1 rounded flex flex-col hover:shadow-sm transition-shadow border-l-4"
+                            className={`shift-item text-xs p-1 rounded flex flex-col hover:shadow-sm transition-shadow border-l-4 ${isDayShiftMine ? 'ring-1 ring-purple-400' : ''}`}
                             style={{ 
-                              backgroundColor: dayShift.type.color + '20', 
-                              borderLeftColor: dayShift.type.color 
+                              backgroundColor: isDayShiftMine ? '#faf5ff' : dayShift.type.color + '20', 
+                              borderLeftColor: isDayShiftMine ? '#c084fc' : dayShift.type.color 
                             }}
                           >
                             <div className="font-medium text-xs mb-0.5" style={{ color: dayShift.type.color }}>
@@ -355,10 +370,10 @@ const CalendarViewComponent = ({
                         {/* Night Shift */}
                         {nightShift && (
                           <div 
-                            className="shift-item text-xs p-1 rounded flex flex-col hover:shadow-sm transition-shadow border-l-4"
+                            className={`shift-item text-xs p-1 rounded flex flex-col hover:shadow-sm transition-shadow border-l-4 ${isNightShiftMine ? 'ring-1 ring-purple-400' : ''}`}
                             style={{ 
-                              backgroundColor: nightShift.type.color + '20', 
-                              borderLeftColor: nightShift.type.color 
+                              backgroundColor: isNightShiftMine ? '#faf5ff' : nightShift.type.color + '20', 
+                              borderLeftColor: isNightShiftMine ? '#c084fc' : nightShift.type.color 
                             }}
                           >
                             <div className="font-medium text-xs mb-0.5" style={{ color: nightShift.type.color }}>
@@ -388,13 +403,19 @@ const CalendarViewComponent = ({
                       return (
                         <div 
                           key={shift.id} 
-                          className="shift-item text-xs p-1 rounded-lg flex flex-col hover:shadow-sm transition-shadow border-l-4 relative group"
+                          className={`shift-item text-xs p-1 rounded-lg flex flex-col hover:shadow-sm transition-shadow border-l-4 relative group ${isMyShift ? 'ring-1 ring-purple-400' : ''}`}
                           style={{ 
-                            backgroundColor: shift.type.color + '20', 
-                            borderLeftColor: shift.type.color 
+                            backgroundColor: isMyShift ? '#faf5ff' : shift.type.color + '20', 
+                            borderLeftColor: isMyShift ? '#c084fc' : shift.type.color 
                           }}
                           data-shift-id={shift.id}
                         >
+                          {/* My shift indicator */}
+                          {isMyShift && (
+                            <div className="absolute -top-1 -right-1 bg-purple-500 text-white rounded-full w-4 h-4 flex items-center justify-center text-xs font-bold shadow-sm">
+                              ★
+                            </div>
+                          )}
                           <div className="font-medium text-xs mb-0.5" style={{ color: shift.type.color }}>
                             {shift.type.name}
                           </div>

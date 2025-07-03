@@ -1,5 +1,6 @@
 import '../styles/globals.css'
 import '../styles/mobile.css'
+import '../styles/myShiftHighlight.css'
 import Head from 'next/head'
 
 export default function App({ Component, pageProps }) {

@@ -422,15 +422,20 @@ const MatrixViewComponent = ({
                   const canClick = !readOnly && hasPermission('assign_staff');
                   const primaryShift = staffShifts[0]; // For backward compatibility
                   
+                  // Check if this is the current user's shift
+                  const currentStaffId = selectedStaff?.id || currentUser?.id;
+                  const isMyShift = currentStaffId && person.id === currentStaffId && staffShifts.length > 0;
+                  
                   return (
                     <td
                       key={`${person.id}-${date.toISOString()}`}
-                      className={`${getCellStyle(primaryShift)} ${canClick ? 'cursor-pointer touch-manipulation' : ''} h-12 sm:h-14 w-16 sm:w-20 min-w-[4rem] sm:min-w-20 text-center border-b border-gray-200 relative ${coverageStyle.className}`}
+                      className={`${getCellStyle(primaryShift)} ${canClick ? 'cursor-pointer touch-manipulation' : ''} h-12 sm:h-14 w-16 sm:w-20 min-w-[4rem] sm:min-w-20 text-center border-b border-gray-200 relative ${coverageStyle.className} ${isMyShift ? 'ring-2 ring-purple-400 ring-inset' : ''}`}
                       style={{
                         ...coverageStyle.style,
-                        borderLeftColor: coverageStyle.borderColor,
-                        borderTopColor: coverageStyle.borderColor,
-                        borderBottomColor: coverageStyle.borderColor
+                        backgroundColor: isMyShift ? '#faf5ff' : coverageStyle.style?.backgroundColor,
+                        borderLeftColor: isMyShift ? '#c084fc' : coverageStyle.borderColor,
+                        borderTopColor: isMyShift ? '#c084fc' : coverageStyle.borderColor,
+                        borderBottomColor: isMyShift ? '#c084fc' : coverageStyle.borderColor
                       }}
                       onClick={() => canClick && handleCellClick(person.id, date)}
                       title={staffShifts.length > 0 
@@ -440,6 +445,12 @@ const MatrixViewComponent = ({
                     >
                       {staffShifts.length > 0 ? (
                         <div className="flex items-center justify-center h-full relative group">
+                          {/* My shift indicator */}
+                          {isMyShift && (
+                            <div className="absolute -top-1 -left-1 bg-purple-500 text-white rounded-full w-4 h-4 flex items-center justify-center text-xs font-bold shadow-sm z-10">
+                              ★
+                            </div>
+                          )}
                           <div className="text-xs font-medium text-gray-800 truncate px-1">
                             {coverageInfo.type === 'full' 
                               ? '24h' 
