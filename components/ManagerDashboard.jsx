@@ -192,6 +192,8 @@ export const ManagerDashboard = () => {
                 selectedHospital={selectedHospital}
                 currentDate={currentDate}
                 onDateChange={setCurrentDate}
+                currentUser={currentUser}
+                selectedStaff={null}
               />
             ) : (
               <CalendarView

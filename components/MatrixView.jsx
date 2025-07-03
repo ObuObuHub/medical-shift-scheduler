@@ -7,7 +7,9 @@ const MatrixViewComponent = ({
   selectedHospital, 
   currentDate, 
   onDateChange,
-  readOnly = false
+  readOnly = false,
+  currentUser,
+  selectedStaff
 }) => {
   const { staff, shifts, shiftTypes, setShifts, createShift, deleteShift, generateFairSchedule, loadInitialData } = useData();
   const { hasPermission } = useAuth();

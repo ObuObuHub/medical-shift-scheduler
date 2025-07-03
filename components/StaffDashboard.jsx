@@ -302,6 +302,8 @@ export const StaffDashboard = ({
             currentDate={currentDate}
             onDateChange={setCurrentDate}
             readOnly={!hasPermission('assign_staff')}
+            currentUser={currentUser}
+            selectedStaff={selectedStaff}
           />
         ) : (
           // Calendar view for everyone

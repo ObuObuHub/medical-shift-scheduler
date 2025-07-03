@@ -119,6 +119,8 @@ export const AdminDashboard = () => {
                 selectedHospital={selectedHospital}
                 currentDate={currentDate}
                 onDateChange={setCurrentDate}
+                currentUser={currentUser}
+                selectedStaff={null}
               />
             ) : (
               <CalendarView
