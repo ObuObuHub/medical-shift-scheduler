@@ -4,6 +4,13 @@ import SwapRequestModal from './SwapRequestModal';
 import { useData } from './DataContext';
 import { exportShiftsToText, downloadTextFile, generateExportFilename } from '../utils/exportUtils';
 import { MobileCalendarView } from './MobileCalendarView';
+import { 
+  MONTH_NAMES, 
+  WEEKDAYS_SHORT, 
+  getDepartmentsForHospital, 
+  getDepartmentsWithSchedules,
+  findShiftsByType
+} from '../utils/calendarConstants';
 
 const CalendarViewComponent = ({ 
   currentDate,
@@ -23,9 +30,8 @@ const CalendarViewComponent = ({
   swapModal: propsSwapModal,
   setSwapModal: propsSetSwapModal
 }) => {
-  const months = ['Ianuarie', 'Februarie', 'Martie', 'Aprilie', 'Mai', 'Iunie',
-                  'Iulie', 'August', 'Septembrie', 'Octombrie', 'Noiembrie', 'Decembrie'];
-  const weekDays = ['Dum', 'Lun', 'Mar', 'Mie', 'Joi', 'Vin', 'Sâm'];
+  const months = MONTH_NAMES;
+  const weekDays = WEEKDAYS_SHORT;
   const days = getDaysInMonth();
   
   // Get context methods
@@ -34,29 +40,12 @@ const CalendarViewComponent = ({
   
   // Get unique departments from staff
   const departments = useMemo(() => {
-    const hospitalStaff = staff.filter(s => s.hospital === selectedHospital);
-    return [...new Set(hospitalStaff.map(s => s.specialization))].sort();
+    return getDepartmentsForHospital(staff, selectedHospital);
   }, [staff, selectedHospital]);
   
   // Check which departments have schedules for current month
   const departmentsWithSchedules = useMemo(() => {
-    const deptSet = new Set();
-    const year = currentDate.getFullYear();
-    const month = currentDate.getMonth();
-    
-    Object.entries(shifts).forEach(([date, dayShifts]) => {
-      const shiftDate = new Date(date);
-      if (shiftDate.getFullYear() === year && shiftDate.getMonth() === month) {
-        dayShifts.forEach(shift => {
-          // Only count shifts from the selected hospital
-          if (shift.hospital === selectedHospital && shift.department) {
-            deptSet.add(shift.department);
-          }
-        });
-      }
-    });
-    
-    return deptSet;
+    return getDepartmentsWithSchedules(shifts, currentDate, selectedHospital);
   }, [shifts, currentDate, selectedHospital]);
   
   
@@ -235,9 +224,7 @@ const CalendarViewComponent = ({
               <div className="space-y-0.5">
                 {(() => {
                   // Group shifts logically: One cell = One logical shift
-                  const dayShift = dayShifts.find(s => s.type.duration === 12 && s.type.start === '08:00');
-                  const nightShift = dayShifts.find(s => s.type.duration === 12 && s.type.start === '20:00');
-                  const fullDayShift = dayShifts.find(s => s.type.duration === 24);
+                  const { dayShift, nightShift, fullDayShift } = findShiftsByType(dayShifts);
                   
                   // Priority: 24h shift > combined 12h shifts > individual shifts
                   if (fullDayShift) {

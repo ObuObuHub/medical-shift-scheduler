@@ -3,6 +3,14 @@ import { ChevronLeft, ChevronRight, Plus, Wand2, Download, Trash2, Filter, Calen
 import SwapRequestModal from './SwapRequestModal';
 import { useData } from './DataContext';
 import { exportShiftsToText, downloadTextFile, generateExportFilename } from '../utils/exportUtils';
+import { 
+  MONTH_NAMES, 
+  WEEKDAYS_SINGLE, 
+  WEEKDAYS_FULL,
+  getDepartmentsForHospital, 
+  getDepartmentsWithSchedules,
+  findShiftsByType
+} from '../utils/calendarConstants';
 
 export const MobileCalendarView = ({ 
   currentDate,
@@ -22,10 +30,9 @@ export const MobileCalendarView = ({
   swapModal: propsSwapModal,
   setSwapModal: propsSetSwapModal
 }) => {
-  const months = ['Ianuarie', 'Februarie', 'Martie', 'Aprilie', 'Mai', 'Iunie',
-                  'Iulie', 'August', 'Septembrie', 'Octombrie', 'Noiembrie', 'Decembrie'];
-  const weekDays = ['D', 'L', 'M', 'M', 'J', 'V', 'S'];
-  const fullWeekDays = ['Duminică', 'Luni', 'Marți', 'Miercuri', 'Joi', 'Vineri', 'Sâmbătă'];
+  const months = MONTH_NAMES;
+  const weekDays = WEEKDAYS_SINGLE;
+  const fullWeekDays = WEEKDAYS_FULL;
   const days = getDaysInMonth();
   
   const { reserveShift, cancelReservation, createSwapRequest, clearDepartmentSchedule } = useData();
@@ -36,27 +43,11 @@ export const MobileCalendarView = ({
   const [showDayDetails, setShowDayDetails] = useState(false);
   
   const departments = useMemo(() => {
-    const hospitalStaff = staff.filter(s => s.hospital === selectedHospital);
-    return [...new Set(hospitalStaff.map(s => s.specialization))].sort();
+    return getDepartmentsForHospital(staff, selectedHospital);
   }, [staff, selectedHospital]);
   
   const departmentsWithSchedules = useMemo(() => {
-    const deptSet = new Set();
-    const year = currentDate.getFullYear();
-    const month = currentDate.getMonth();
-    
-    Object.entries(shifts).forEach(([date, dayShifts]) => {
-      const shiftDate = new Date(date);
-      if (shiftDate.getFullYear() === year && shiftDate.getMonth() === month) {
-        dayShifts.forEach(shift => {
-          if (shift.hospital === selectedHospital && shift.department) {
-            deptSet.add(shift.department);
-          }
-        });
-      }
-    });
-    
-    return deptSet;
+    return getDepartmentsWithSchedules(shifts, currentDate, selectedHospital);
   }, [shifts, currentDate, selectedHospital]);
   
   const [localSwapModal, setLocalSwapModal] = useState({ isOpen: false, shift: null });
@@ -73,9 +64,7 @@ export const MobileCalendarView = ({
   const getShiftSummary = (dayShifts) => {
     if (!dayShifts || dayShifts.length === 0) return null;
     
-    const fullDayShift = dayShifts.find(s => s.type.duration === 24);
-    const dayShift = dayShifts.find(s => s.type.duration === 12 && s.type.start === '08:00');
-    const nightShift = dayShifts.find(s => s.type.duration === 12 && s.type.start === '20:00');
+    const { dayShift, nightShift, fullDayShift } = findShiftsByType(dayShifts);
     
     const staffId = selectedStaff?.id || currentUser?.id;
     const myShifts = dayShifts.filter(s => staffId && (s.staffIds?.includes(staffId) || s.reservedBy === staffId));

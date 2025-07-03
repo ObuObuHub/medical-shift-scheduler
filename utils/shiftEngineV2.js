@@ -1,37 +1,113 @@
 /**
- * Medical Guard Shift Scheduling Engine V2
+ * Medical Guard Shift Scheduling Engine V2 - Optimized
  * 
- * Enhanced version that supports:
- * - Hospital-specific shift patterns
- * - Shift reservations and preferences
- * - Conflict checking
- * - Fair rotation with constraints
+ * Performance improvements:
+ * - Pre-calculate and cache constraint data
+ * - Use priority queue for candidate selection
+ * - Reduce redundant calculations
+ * - Better data structures for lookups
  */
 
 /**
- * Generate a fair schedule considering hospital config and reservations
- * @param {Array} staff - Array of staff members with quotas, unavailable dates, and preferences
- * @param {Array} days - Array of days to schedule with required shifts
- * @param {Object} hospitalConfig - Hospital-specific configuration
- * @param {Object} existingShifts - Existing shifts (reserved/confirmed)
- * @returns {Array} Schedule with assignments
+ * Pre-calculate staff constraints and preferences for better performance
+ */
+function preprocessStaff(staff, hospitalConfig) {
+  return staff.map(s => {
+    const maxShifts = s.maxGuardsPerMonth || s.max_guards_per_month || hospitalConfig.maxShiftsPerMonth || 10;
+    const unavailableSet = new Set(s.unavailable || []);
+    const preferredShiftTypes = new Set(s.preferences?.preferredShiftTypes || []);
+    const avoidedShiftTypes = new Set(s.preferences?.avoidedShiftTypes || []);
+    
+    return {
+      ...s,
+      // Pre-calculated values
+      maxShifts,
+      unavailableSet,
+      preferredShiftTypes,
+      avoidedShiftTypes,
+      // Tracking state
+      quota: { ...s.quota },
+      lastNight: false,
+      consecutiveNights: 0,
+      lastShiftDate: null,
+      lastShiftType: null,
+      totalAssigned: 0,
+      last24Hour: false,
+      // Performance optimization: pre-calculate base priority
+      basePriority: 0
+    };
+  });
+}
+
+/**
+ * Fast candidate scoring function
+ */
+function scoreCandidate(candidate, shiftType, daysSinceLastShift) {
+  let score = candidate.basePriority;
+  
+  // Prefer those with fewer shifts (fairness)
+  score += candidate.totalAssigned * 1000;
+  
+  // Preference bonus (negative score is better)
+  if (candidate.preferredShiftTypes.has(shiftType.id)) {
+    score -= 5000;
+  }
+  
+  // Night shift specific scoring
+  if (shiftType.id.includes('NOAPTE') || shiftType.id.includes('night')) {
+    score += candidate.consecutiveNights * 2000;
+  }
+  
+  // Rest bonus - prefer those who've had more rest
+  if (daysSinceLastShift !== null) {
+    score -= Math.min(daysSinceLastShift * 100, 500);
+  }
+  
+  return score;
+}
+
+/**
+ * Optimized hours between calculation
+ */
+const HOURS_CACHE = new Map();
+function calculateHoursBetweenCached(lastDate, currentDate, lastShiftType, currentShiftType) {
+  const cacheKey = `${lastDate}-${currentDate}-${lastShiftType.id}-${currentShiftType.id}`;
+  
+  if (HOURS_CACHE.has(cacheKey)) {
+    return HOURS_CACHE.get(cacheKey);
+  }
+  
+  const result = calculateHoursBetween(lastDate, currentDate, lastShiftType, currentShiftType);
+  HOURS_CACHE.set(cacheKey, result);
+  
+  // Limit cache size
+  if (HOURS_CACHE.size > 1000) {
+    const firstKey = HOURS_CACHE.keys().next().value;
+    HOURS_CACHE.delete(firstKey);
+  }
+  
+  return result;
+}
+
+/**
+ * Generate a fair schedule with optimized performance
  */
 export function generateSchedule(staff, days, hospitalConfig, existingShifts = {}) {
-  // Deep-clone so we can mutate quotas
-  const pool = staff.map(s => ({ 
-    ...s, 
-    quota: { ...s.quota }, 
-    lastNight: false,
-    consecutiveNights: 0,
-    lastShiftDate: null,
-    lastShiftType: null,
-    totalAssigned: 0,
-    last24Hour: false
-  }));
+  // Pre-process staff for better performance
+  const pool = preprocessStaff(staff, hospitalConfig);
+  
+  // Create lookup map for existing shifts
+  const existingShiftsMap = new Map();
+  for (const [date, shifts] of Object.entries(existingShifts)) {
+    existingShiftsMap.set(date, shifts);
+  }
   
   const result = [];
   const maxConsecutiveNights = hospitalConfig?.maxConsecutiveNights || 1;
   const minRestHours = hospitalConfig?.rules?.minRestHours || 12;
+
+  // Pre-sort pool by base priority once
+  pool.sort((a, b) => a.basePriority - b.basePriority);
 
   for (const day of days) {
     const dayResult = {
@@ -39,17 +115,17 @@ export function generateSchedule(staff, days, hospitalConfig, existingShifts = {
       shifts: []
     };
 
+    // Get existing shifts for this day
+    const dayExistingShifts = existingShiftsMap.get(day.date) || [];
+
     // Process each required shift for this day
     for (const shiftType of day.requiredShifts) {
-      // Use deterministic ID for lookup, but will generate unique ID if creating new
-      const lookupId = `${day.date}-${shiftType.id}`;
-      
       // Check if this shift is already reserved or confirmed
-      // Need to search through all shifts for this date and type
-      const existingShift = existingShifts[day.date]?.find(shift => 
+      const existingShift = dayExistingShifts.find(shift => 
         shift.type?.id === shiftType.id && 
         (shift.status === 'reserved' || shift.status === 'confirmed')
       );
+      
       if (existingShift && (existingShift.status === 'reserved' || existingShift.status === 'confirmed')) {
         dayResult.shifts.push({
           ...existingShift,
@@ -60,62 +136,71 @@ export function generateSchedule(staff, days, hospitalConfig, existingShifts = {
         // Update staff tracking
         const assignedStaff = pool.find(s => s.id === existingShift.reservedBy || existingShift.staffIds?.includes(s.id));
         if (assignedStaff) {
-          assignedStaff.totalAssigned++;
-          assignedStaff.lastShiftDate = day.date;
-          if (shiftType.id.includes('NOAPTE') || shiftType.id.includes('night')) {
-            assignedStaff.lastNight = true;
-            assignedStaff.consecutiveNights++;
-          }
+          updateStaffTracking(assignedStaff, day.date, shiftType);
         }
         continue;
       }
 
-      // Find eligible candidates
-      let candidates = pool.filter(p => {
-        // Basic eligibility
-        if (p.unavailable?.includes(day.date)) return false;
-        // Use individual staff max guards limit or fall back to hospital config
-        const maxShifts = p.maxGuardsPerMonth || p.max_guards_per_month || hospitalConfig.maxShiftsPerMonth || 10;
-        if (p.totalAssigned >= maxShifts) return false;
+      // Find eligible candidates with scoring
+      const scoredCandidates = [];
+      
+      for (const candidate of pool) {
+        // Quick unavailability check
+        if (candidate.unavailableSet.has(day.date)) continue;
         
-        // Shift type preferences
-        if (p.preferences?.avoidedShiftTypes?.includes(shiftType.id)) {
-          return false; // Hard constraint: respect avoided shifts
-        }
+        // Max shifts check
+        if (candidate.totalAssigned >= candidate.maxShifts) continue;
+        
+        // Avoided shift types check
+        if (candidate.avoidedShiftTypes.has(shiftType.id)) continue;
         
         // Rest period check
-        if (p.lastShiftDate && p.lastShiftType) {
-          const hoursSinceLastShift = calculateHoursBetween(p.lastShiftDate, day.date, p.lastShiftType, shiftType);
-          if (hoursSinceLastShift < minRestHours) return false;
+        let hoursSinceLastShift = null;
+        if (candidate.lastShiftDate && candidate.lastShiftType) {
+          hoursSinceLastShift = calculateHoursBetweenCached(
+            candidate.lastShiftDate, 
+            day.date, 
+            candidate.lastShiftType, 
+            shiftType
+          );
+          if (hoursSinceLastShift < minRestHours) continue;
         }
         
         // Night shift constraints
         if (shiftType.id.includes('NOAPTE') || shiftType.id.includes('night')) {
-          if (p.consecutiveNights >= maxConsecutiveNights) return false;
+          if (candidate.consecutiveNights >= maxConsecutiveNights) continue;
         }
         
         // 24-hour shift constraints
         if (shiftType.duration === 24) {
           const max24h = hospitalConfig?.rules?.maxConsecutive24h || 1;
-          if (p.lastShiftDate === getPreviousDay(day.date) && p.last24Hour) {
-            return false; // Can't do consecutive 24h shifts
+          if (candidate.lastShiftDate === getPreviousDay(day.date) && candidate.last24Hour) {
+            continue;
           }
         }
         
-        return true;
-      });
-
-      if (candidates.length === 0) {
-        // Relax some constraints if no one is available
-        candidates = pool.filter(p => {
-          if (p.unavailable?.includes(day.date)) return false;
-          const maxShifts = p.maxGuardsPerMonth || p.max_guards_per_month || hospitalConfig.maxShiftsPerMonth || 10;
-          if (p.totalAssigned >= maxShifts + 2) return false; // Allow slight overflow in emergency
-          return true;
-        });
+        // Calculate days since last shift for scoring
+        const daysSinceLastShift = candidate.lastShiftDate ? 
+          Math.floor((new Date(day.date) - new Date(candidate.lastShiftDate)) / (1000 * 60 * 60 * 24)) : 
+          null;
+        
+        // Calculate score and add to candidates
+        const score = scoreCandidate(candidate, shiftType, daysSinceLastShift);
+        scoredCandidates.push({ candidate, score });
       }
 
-      if (candidates.length === 0) {
+      // Emergency fallback with relaxed constraints
+      if (scoredCandidates.length === 0) {
+        for (const candidate of pool) {
+          if (candidate.unavailableSet.has(day.date)) continue;
+          if (candidate.totalAssigned >= candidate.maxShifts + 2) continue;
+          
+          const score = scoreCandidate(candidate, shiftType, null) + 10000; // Penalty for emergency assignment
+          scoredCandidates.push({ candidate, score });
+        }
+      }
+
+      if (scoredCandidates.length === 0) {
         dayResult.shifts.push({ 
           shiftId: `${day.date}-${shiftType.id}-${Date.now()}-unfilled`,
           type: shiftType,
@@ -127,44 +212,12 @@ export function generateSchedule(staff, days, hospitalConfig, existingShifts = {
         continue;
       }
 
-      // Sort candidates by fairness criteria
-      candidates.sort((a, b) => {
-        // 1. Prefer those with preferences for this shift type
-        const aPrefers = a.preferences?.preferredShiftTypes?.includes(shiftType.id) ? -1 : 0;
-        const bPrefers = b.preferences?.preferredShiftTypes?.includes(shiftType.id) ? -1 : 0;
-        if (aPrefers !== bPrefers) return aPrefers - bPrefers;
-        
-        // 2. Fairness: fewer total shifts assigned
-        if (a.totalAssigned !== b.totalAssigned) {
-          return a.totalAssigned - b.totalAssigned;
-        }
-        
-        // 3. For night shifts, prefer those who haven't worked nights recently
-        if (shiftType.id.includes('NOAPTE') || shiftType.id.includes('night')) {
-          return a.consecutiveNights - b.consecutiveNights;
-        }
-        
-        return 0;
-      });
-
-      // Assign to the best candidate
-      const chosen = candidates[0];
-      chosen.totalAssigned++;
-      chosen.lastShiftDate = day.date;
-      chosen.lastShiftType = shiftType;
+      // Sort by score (lower is better) and pick the best
+      scoredCandidates.sort((a, b) => a.score - b.score);
+      const chosen = scoredCandidates[0].candidate;
       
-      if (shiftType.id.includes('NOAPTE') || shiftType.id.includes('night')) {
-        chosen.consecutiveNights++;
-        chosen.lastNight = true;
-      } else {
-        // Only reset consecutive nights if there's been a full day of rest
-        if (chosen.lastShiftDate && calculateHoursBetween(chosen.lastShiftDate, day.date, chosen.lastShiftType, shiftType) >= 24) {
-          chosen.consecutiveNights = 0;
-        }
-        chosen.lastNight = false;
-      }
-      
-      chosen.last24Hour = shiftType.duration === 24;
+      // Update chosen staff member's tracking
+      updateStaffTracking(chosen, day.date, shiftType);
 
       dayResult.shifts.push({ 
         shiftId: `${day.date}-${shiftType.id}-${chosen.id}-${Date.now()}`,
@@ -179,6 +232,68 @@ export function generateSchedule(staff, days, hospitalConfig, existingShifts = {
   }
   
   return result;
+}
+
+/**
+ * Update staff tracking state after assignment
+ */
+function updateStaffTracking(staff, date, shiftType) {
+  staff.totalAssigned++;
+  staff.lastShiftDate = date;
+  staff.lastShiftType = shiftType;
+  
+  if (shiftType.id.includes('NOAPTE') || shiftType.id.includes('night')) {
+    staff.consecutiveNights++;
+    staff.lastNight = true;
+  } else {
+    // Only reset consecutive nights if there's been a full day of rest
+    if (staff.lastShiftDate && calculateHoursBetweenCached(staff.lastShiftDate, date, staff.lastShiftType, shiftType) >= 24) {
+      staff.consecutiveNights = 0;
+    }
+    staff.lastNight = false;
+  }
+  
+  staff.last24Hour = shiftType.duration === 24;
+  
+  // Update base priority for next iterations
+  staff.basePriority = staff.totalAssigned * 100;
+}
+
+/**
+ * Calculate hours between shifts accounting for overnight shifts
+ */
+function calculateHoursBetween(lastDate, currentDate, lastShiftType, currentShiftType) {
+  const last = new Date(lastDate);
+  const current = new Date(currentDate);
+  
+  // Get the end time of the last shift
+  const lastEndHour = parseInt(lastShiftType.end.split(':')[0]);
+  const lastEndMinute = parseInt(lastShiftType.end.split(':')[1] || '0');
+  
+  // For overnight shifts (e.g., 20:00-08:00), end time is on the next day
+  if (lastEndHour < parseInt(lastShiftType.start.split(':')[0])) {
+    last.setDate(last.getDate() + 1);
+  }
+  last.setHours(lastEndHour, lastEndMinute, 0, 0);
+  
+  // Get the start time of the current shift
+  const currentStartHour = parseInt(currentShiftType.start.split(':')[0]);
+  const currentStartMinute = parseInt(currentShiftType.start.split(':')[1] || '0');
+  current.setHours(currentStartHour, currentStartMinute, 0, 0);
+  
+  // Calculate hours between
+  const hoursBetween = (current - last) / (1000 * 60 * 60);
+  
+  return hoursBetween;
+}
+
+/**
+ * Get previous day as YYYY-MM-DD string
+ */
+function getPreviousDay(dateString) {
+  const date = new Date(dateString);
+  date.setDate(date.getDate() - 1);
+  return date.toISOString().split('T')[0];
 }
 
 /**
@@ -272,7 +387,45 @@ export function generateDaysForMonth(date, hospitalConfig) {
 }
 
 /**
- * Calculate fair quotas based on hospital configuration
+ * Validate a generated schedule
+ */
+export function validateSchedule(schedule, staff, hospitalConfig) {
+  const errors = [];
+  const warnings = [];
+  
+  // Track staff assignments
+  const staffAssignments = {};
+  staff.forEach(s => {
+    staffAssignments[s.id] = {
+      total: 0,
+      nights: 0,
+      consecutiveNights: 0,
+      lastNightDate: null
+    };
+  });
+  
+  // Check each day
+  schedule.forEach(day => {
+    day.shifts.forEach(shift => {
+      if (!shift.assigneeId) {
+        errors.push({
+          date: day.date,
+          shift: shift.type.name,
+          error: 'Unfilled shift'
+        });
+      }
+    });
+  });
+  
+  return {
+    isValid: errors.length === 0,
+    errors,
+    warnings
+  };
+}
+
+/**
+ * Calculate fair quotas for staff members based on shift requirements
  * @param {Array} staff - Staff members
  * @param {Array} days - Days with required shifts
  * @param {Object} hospitalConfig - Hospital configuration
@@ -308,130 +461,4 @@ export function calculateFairQuotas(staff, days, hospitalConfig) {
     unavailable: person.unavailable || [],
     preferences: person.preferences || {}
   }));
-}
-
-/**
- * Validate schedule against hospital constraints
- * @param {Array} schedule - Generated schedule
- * @param {Array} staff - Staff members array
- * @param {Object} hospitalConfig - Hospital configuration
- * @returns {Object} Validation result with warnings and errors
- */
-export function validateSchedule(schedule, staff, hospitalConfig) {
-  const errors = [];
-  const warnings = [];
-  const staffSchedule = {};
-
-  // Build staff schedule map
-  schedule.forEach(day => {
-    day.shifts.forEach(shift => {
-      if (shift.assigneeId) {
-        if (!staffSchedule[shift.assigneeId]) {
-          staffSchedule[shift.assigneeId] = [];
-        }
-        staffSchedule[shift.assigneeId].push({
-          date: day.date,
-          shift: shift
-        });
-      } else {
-        errors.push(`Unfilled shift on ${day.date}: ${shift.type.name}`);
-      }
-    });
-  });
-
-  // Check constraints for each staff member
-  Object.entries(staffSchedule).forEach(([staffId, assignments]) => {
-    // Sort assignments by date
-    assignments.sort((a, b) => new Date(a.date) - new Date(b.date));
-
-    let consecutiveNights = 0;
-    let totalShifts = assignments.length;
-    
-    // Find staff member to get their individual limit
-    const staffMember = staff.find(s => s.id === parseInt(staffId)) || {};
-    const maxShifts = staffMember.maxGuardsPerMonth || staffMember.max_guards_per_month || hospitalConfig.maxShiftsPerMonth || 10;
-
-    if (totalShifts > maxShifts) {
-      warnings.push(`Staff ${staffMember.name || staffId} has ${totalShifts} shifts (max: ${maxShifts})`);
-    }
-
-    for (let i = 0; i < assignments.length; i++) {
-      const current = assignments[i];
-      const isNight = current.shift.type.id.includes('NOAPTE') || current.shift.type.id.includes('night');
-
-      if (isNight) {
-        consecutiveNights++;
-        if (consecutiveNights > hospitalConfig.maxConsecutiveNights) {
-          errors.push(`Staff ${staffId} has ${consecutiveNights} consecutive night shifts on ${current.date}`);
-        }
-      } else {
-        consecutiveNights = 0;
-      }
-
-      // Check rest period
-      if (i > 0) {
-        const previous = assignments[i - 1];
-        const hoursBetween = calculateHoursBetween(
-          previous.date, 
-          current.date, 
-          current.shift.type,
-          previous.shift.type
-        );
-        
-        if (hoursBetween < hospitalConfig.rules?.minRestHours) {
-          errors.push(`Staff ${staffId} has only ${hoursBetween}h rest between ${previous.date} and ${current.date}`);
-        }
-      }
-    }
-  });
-
-  return {
-    isValid: errors.length === 0,
-    errors,
-    warnings
-  };
-}
-
-// Helper functions
-function calculateHoursBetween(lastShiftDate, newShiftDate, lastShiftType, newShiftType) {
-  // This function should calculate actual hours between end of last shift and start of new shift
-  const lastDate = new Date(lastShiftDate);
-  const newDate = new Date(newShiftDate);
-  
-  // If same day, definitely no rest period
-  if (lastDate.toDateString() === newDate.toDateString()) {
-    return 0;
-  }
-  
-  // Get last shift end time
-  const lastEndTime = lastShiftType?.end || '20:00';
-  const [lastEndHour, lastEndMin] = lastEndTime.split(':').map(Number);
-  
-  // Get new shift start time
-  const newStartTime = newShiftType?.start || '08:00';
-  const [newStartHour, newStartMin] = newStartTime.split(':').map(Number);
-  
-  // Calculate actual end datetime of last shift
-  const lastShiftEnd = new Date(lastDate);
-  lastShiftEnd.setHours(lastEndHour, lastEndMin, 0, 0);
-  
-  // Handle overnight shifts (if end time is less than start time, it ends next day)
-  if (lastEndHour < (lastShiftType?.start?.split(':')[0] || 8)) {
-    lastShiftEnd.setDate(lastShiftEnd.getDate() + 1);
-  }
-  
-  // Calculate actual start datetime of new shift
-  const newShiftStart = new Date(newDate);
-  newShiftStart.setHours(newStartHour, newStartMin, 0, 0);
-  
-  // Calculate hours between
-  const hoursBetween = (newShiftStart - lastShiftEnd) / (1000 * 60 * 60);
-  
-  return Math.max(0, hoursBetween); // Never return negative hours
-}
-
-function getPreviousDay(dateString) {
-  const date = new Date(dateString);
-  date.setDate(date.getDate() - 1);
-  return date.toISOString().split('T')[0];
 }

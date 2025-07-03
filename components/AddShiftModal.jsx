@@ -4,6 +4,7 @@ import { useAuth } from './AuthContext';
 import { X, Plus, Clock, Users, AlertCircle, CheckCircle, Calendar, Save } from './Icons';
 import { detectConflicts } from '../utils/conflictDetection';
 import { ConflictWarning } from './ConflictWarning';
+import { BaseModal } from './BaseModal';
 
 export const AddShiftModal = ({ 
   selectedDate, 
@@ -232,35 +233,55 @@ export const AddShiftModal = ({
 
   if (!selectedDate) return null;
 
+  const modalTitle = (
+    <div className="flex items-center">
+      <Calendar className="w-5 h-5 sm:w-6 sm:h-6 mr-2 sm:mr-3 text-blue-600 flex-shrink-0" />
+      <div>
+        <div className="font-bold">
+          {editingShift ? 'Editare Tură' : 'Adăugare Tură'}
+        </div>
+        <div className="text-xs sm:text-sm text-gray-600 font-normal">
+          {selectedDate.toLocaleDateString('ro-RO', { 
+            weekday: 'long', 
+            day: 'numeric', 
+            month: 'long', 
+            year: 'numeric' 
+          })}
+        </div>
+      </div>
+    </div>
+  );
+
+  const modalFooter = (
+    <div className="flex flex-col sm:flex-row justify-end space-y-3 sm:space-y-0 sm:space-x-3">
+      <button
+        onClick={onClose}
+        className="w-full sm:w-auto px-6 py-3 sm:py-2 text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300 transition-colors text-base sm:text-sm touch-manipulation"
+      >
+        Anulează
+      </button>
+      <button
+        onClick={handleSave}
+        disabled={!formData.shiftTypeId || formData.staffIds.length === 0}
+        className="w-full sm:w-auto px-6 py-3 sm:py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors flex items-center justify-center text-base sm:text-sm touch-manipulation"
+      >
+        <Save className="w-4 h-4 mr-2" />
+        <span className="sm:hidden">{editingShift ? 'Actualizează' : 'Adaugă'}</span>
+        <span className="hidden sm:inline">{editingShift ? 'Actualizează Tura' : 'Adaugă Tura'}</span>
+      </button>
+    </div>
+  );
+
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-2 sm:p-4 z-50">
-      <div className="bg-white rounded-xl max-w-4xl w-full max-h-[95vh] sm:max-h-[90vh] overflow-y-auto">
-        <div className="p-4 sm:p-6">
-          {/* Header - Mobile Responsive */}
-          <div className="flex items-start justify-between mb-4 sm:mb-6">
-            <div className="flex items-center flex-1 min-w-0">
-              <Calendar className="w-5 h-5 sm:w-6 sm:h-6 mr-2 sm:mr-3 text-blue-600 flex-shrink-0" />
-              <div className="min-w-0 flex-1">
-                <h3 className="text-lg sm:text-xl font-bold text-gray-800 truncate">
-                  {editingShift ? 'Editare Tură' : 'Adăugare Tură'}
-                </h3>
-                <p className="text-xs sm:text-sm text-gray-600 truncate">
-                  {selectedDate.toLocaleDateString('ro-RO', { 
-                    weekday: window.innerWidth < 640 ? 'short' : 'long', 
-                    day: 'numeric', 
-                    month: window.innerWidth < 640 ? 'short' : 'long', 
-                    year: 'numeric' 
-                  })}
-                </p>
-              </div>
-            </div>
-            <button
-              onClick={onClose}
-              className="p-2 hover:bg-gray-100 rounded-lg transition-colors ml-2 flex-shrink-0 touch-manipulation"
-            >
-              <X className="w-5 h-5" />
-            </button>
-          </div>
+    <>
+      <BaseModal
+        isOpen={true}
+        onClose={onClose}
+        title={modalTitle}
+        size="large"
+        footer={modalFooter}
+        contentClassName="p-4 sm:p-6"
+      >
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
             {/* Left Column: Shift Configuration */}
@@ -419,26 +440,7 @@ export const AddShiftModal = ({
             </div>
           </div>
 
-          {/* Action Buttons - Mobile Responsive */}
-          <div className="mt-6 sm:mt-8 flex flex-col sm:flex-row justify-end space-y-3 sm:space-y-0 sm:space-x-3">
-            <button
-              onClick={onClose}
-              className="w-full sm:w-auto px-6 py-3 sm:py-2 text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300 transition-colors text-base sm:text-sm touch-manipulation"
-            >
-              Anulează
-            </button>
-            <button
-              onClick={handleSave}
-              disabled={!formData.shiftTypeId || formData.staffIds.length === 0}
-              className="w-full sm:w-auto px-6 py-3 sm:py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors flex items-center justify-center text-base sm:text-sm touch-manipulation"
-            >
-              <Save className="w-4 h-4 mr-2" />
-              <span className="sm:hidden">{editingShift ? 'Actualizează' : 'Adaugă'}</span>
-              <span className="hidden sm:inline">{editingShift ? 'Actualizează Tura' : 'Adaugă Tura'}</span>
-            </button>
-          </div>
-        </div>
-      </div>
+      </BaseModal>
 
       {/* Conflict Warning Modal */}
       {showConflictWarning && pendingShift && (
@@ -457,6 +459,6 @@ export const AddShiftModal = ({
           date={selectedDate}
         />
       )}
-    </div>
+    </>
   );
 };

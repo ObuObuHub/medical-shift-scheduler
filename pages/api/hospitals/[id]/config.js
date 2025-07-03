@@ -1,33 +1,20 @@
-import jwt from 'jsonwebtoken';
-import { sql } from '@vercel/postgres';
+import { sql } from '../../../../lib/vercel-db';
+import { authMiddleware, runMiddleware, enableCORS } from '../../../../lib/auth';
 
 export default async function handler(req, res) {
-  // Enable CORS
-  res.setHeader('Access-Control-Allow-Credentials', true);
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
-  res.setHeader(
-    'Access-Control-Allow-Headers',
-    'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization'
-  );
+  // Enable CORS with environment-specific origin
+  await runMiddleware(req, res, enableCORS);
 
   if (req.method === 'OPTIONS') {
     res.status(200).end();
     return;
   }
 
-  // Verify authentication
-  const authHeader = req.headers.authorization;
-  if (!authHeader) {
-    return res.status(401).json({ error: 'No authorization header' });
-  }
-
   try {
-    const token = authHeader.split(' ')[1];
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = decoded;
+    // Run auth middleware
+    await runMiddleware(req, res, authMiddleware);
   } catch (error) {
-    return res.status(401).json({ error: 'Invalid token' });
+    return res.status(401).json({ error: 'Authentication required' });
   }
 
   const { id: hospitalId } = req.query;
@@ -91,7 +78,8 @@ export default async function handler(req, res) {
 
       res.status(200).json(rows[0]);
     } catch (error) {
-            res.status(500).json({ error: 'Failed to fetch hospital configuration' });
+      console.error('Error fetching hospital configuration:', error);
+      res.status(500).json({ error: 'Failed to fetch hospital configuration' });
     }
   } else if (req.method === 'PUT') {
     // Update hospital configuration (admin only)
@@ -175,7 +163,8 @@ export default async function handler(req, res) {
         config: result.rows[0] 
       });
     } catch (error) {
-            res.status(500).json({ error: 'Failed to update hospital configuration' });
+      console.error('Error updating hospital configuration:', error);
+      res.status(500).json({ error: 'Failed to update hospital configuration' });
     }
   } else if (req.method === 'DELETE') {
     // Soft delete configuration (admin only)
@@ -191,7 +180,8 @@ export default async function handler(req, res) {
 
       res.status(200).json({ message: 'Hospital configuration deleted successfully' });
     } catch (error) {
-            res.status(500).json({ error: 'Failed to delete hospital configuration' });
+      console.error('Error deleting hospital configuration:', error);
+      res.status(500).json({ error: 'Failed to delete hospital configuration' });
     }
   } else {
     res.status(405).json({ error: 'Method not allowed' });

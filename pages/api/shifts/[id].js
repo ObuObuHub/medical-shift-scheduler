@@ -1,33 +1,20 @@
-import jwt from 'jsonwebtoken';
 import { sql } from '../../../lib/vercel-db';
+import { authMiddleware, runMiddleware, enableCORS } from '../../../lib/auth';
 
 export default async function handler(req, res) {
-  // Enable CORS
-  res.setHeader('Access-Control-Allow-Credentials', true);
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
-  res.setHeader(
-    'Access-Control-Allow-Headers',
-    'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization'
-  );
+  // Enable CORS with environment-specific origin
+  await runMiddleware(req, res, enableCORS);
 
   if (req.method === 'OPTIONS') {
     res.status(200).end();
     return;
   }
 
-  // Verify authentication
-  const authHeader = req.headers.authorization;
-  if (!authHeader) {
-    return res.status(401).json({ error: 'No authorization header' });
-  }
-
   try {
-    const token = authHeader.split(' ')[1];
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = decoded;
+    // Run auth middleware
+    await runMiddleware(req, res, authMiddleware);
   } catch (error) {
-    return res.status(401).json({ error: 'Invalid token' });
+    return res.status(401).json({ error: 'Authentication required' });
   }
 
   const { id } = req.query;
@@ -59,7 +46,8 @@ export default async function handler(req, res) {
 
       res.status(200).json(rows[0]);
     } catch (error) {
-            res.status(500).json({ error: 'Failed to fetch shift' });
+      console.error('Error fetching shift:', error);
+      res.status(500).json({ error: 'Failed to fetch shift' });
     }
   } else if (req.method === 'PUT') {
     // Update shift
@@ -136,7 +124,8 @@ export default async function handler(req, res) {
         shift: rows[0] 
       });
     } catch (error) {
-            res.status(500).json({ error: 'Failed to update shift' });
+      console.error('Error updating shift:', error);
+      res.status(500).json({ error: 'Failed to update shift' });
     }
   } else if (req.method === 'DELETE') {
     // Only managers and admins can delete shifts
@@ -153,7 +142,8 @@ export default async function handler(req, res) {
 
       res.status(200).json({ message: 'Shift deleted successfully' });
     } catch (error) {
-            res.status(500).json({ error: 'Failed to delete shift' });
+      console.error('Error deleting shift:', error);
+      res.status(500).json({ error: 'Failed to delete shift' });
     }
   } else {
     res.status(405).json({ error: 'Method not allowed' });

@@ -2,12 +2,16 @@ import { initializeTables, seedDefaultData } from '../../../lib/vercel-db';
 import { authMiddleware, requireRole, runMiddleware } from '../../../lib/auth';
 
 export default async function handler(req, res) {
-  if (req.method !== 'POST' && req.method !== 'GET') {
+  if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
   try {
-    // Allow database initialization for initial setup
+    // Run auth middleware first
+    await runMiddleware(req, res, authMiddleware);
+    
+    // Require admin role for database initialization
+    await runMiddleware(req, res, requireRole(['admin']));
     
     // Initialize database tables
     await initializeTables();
@@ -20,7 +24,8 @@ export default async function handler(req, res) {
       note: 'Default admin credentials have been created with secure passwords'
     });
   } catch (error) {
-        res.status(500).json({ 
+    console.error('Database initialization error:', error);
+    res.status(500).json({ 
       error: 'Failed to initialize database'
     });
   }

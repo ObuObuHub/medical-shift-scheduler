@@ -16,7 +16,9 @@ import { HospitalEditModal } from './HospitalEditModal';
 import { ShiftTypeEditModal } from './ShiftTypeEditModal';
 import { AddShiftModal } from './AddShiftModal';
 import { ChangePasswordModal } from './ChangePasswordModal';
-import { formatMonthYear, addMonths } from '../utils/dateHelpers';
+import { DashboardLayout } from './DashboardLayout';
+import { formatMonthYear, addMonths, getDaysInMonth } from '../utils/dateHelpers';
+import { navigateMonth as navigateMonthHelper, getStaffName } from '../utils/dashboardHelpers';
 
 export const AdminDashboard = () => {
   const { currentUser, logout, hasPermission } = useAuth();
@@ -57,7 +59,8 @@ export const AdminDashboard = () => {
   }, []);
 
   const navigateMonth = (direction) => {
-    const newDate = addMonths(currentDate, direction);
+    const result = navigateMonthHelper(currentDate.getMonth(), currentDate.getFullYear(), direction);
+    const newDate = new Date(result.year, result.month, 1);
     setCurrentDate(newDate);
     // Load shifts for the new month with silent refresh to avoid full reload
     if (selectedHospital) {
@@ -71,42 +74,11 @@ export const AdminDashboard = () => {
     setAddShiftModalData({ date, editingShift: null });
   };
   
-  // Helper functions for CalendarView
-  const getDaysInMonth = () => {
-    const year = currentDate.getFullYear();
-    const month = currentDate.getMonth();
-    const firstDay = new Date(year, month, 1);
-    const lastDay = new Date(year, month + 1, 0);
-    const days = [];
-    
-    // Add padding days from previous month
-    const startPadding = firstDay.getDay();
-    for (let i = startPadding - 1; i >= 0; i--) {
-      // Create date at noon to avoid timezone issues
-      const date = new Date(year, month, -i, 12, 0, 0);
-      days.push(date);
-    }
-    
-    // Add all days of current month
-    for (let i = 1; i <= lastDay.getDate(); i++) {
-      // Create date at noon to avoid timezone issues
-      days.push(new Date(year, month, i, 12, 0, 0));
-    }
-    
-    // Add padding days from next month
-    const endPadding = 6 - lastDay.getDay();
-    for (let i = 1; i <= endPadding; i++) {
-      // Create date at noon to avoid timezone issues
-      days.push(new Date(year, month + 1, i, 12, 0, 0));
-    }
-    
-    return days;
-  };
+  // Use getDaysInMonth from dateHelpers
+  const getDaysInMonthForView = () => getDaysInMonth(currentDate);
   
-  const getStaffName = (staffId) => {
-    const member = staff.find(s => s.id === staffId);
-    return member ? member.name : 'Unknown';
-  };
+  // Use getStaffName from dashboardHelpers
+  const getStaffNameHelper = (staffId) => getStaffName(staffId, staff);
 
   // Menu items for administrators
   const menuItems = [

@@ -1,17 +1,17 @@
 import { sql } from '@vercel/postgres';
+import { authMiddleware, requireRole, runMiddleware } from '../../../lib/auth';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  // Simple auth check - in production, use proper authentication
-  const authHeader = req.headers.authorization;
-  if (!authHeader || authHeader !== `Bearer ${process.env.JWT_SECRET}`) {
-    return res.status(401).json({ error: 'Unauthorized' });
-  }
-
   try {
+    // Run auth middleware first
+    await runMiddleware(req, res, authMiddleware);
+    
+    // Require admin role for database migrations
+    await runMiddleware(req, res, requireRole(['admin']));
         const results = [];
 
     // 1. Update shifts table
@@ -203,6 +203,7 @@ export default async function handler(req, res) {
       }
     });
   } catch (error) {
-        res.status(500).json({ error: 'Migration failed', details: error.message });
+    console.error('Migration error:', error);
+    res.status(500).json({ error: 'Migration failed', details: error.message });
   }
 }
