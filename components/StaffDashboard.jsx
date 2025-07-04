@@ -18,7 +18,7 @@ export const StaffDashboard = ({
   isGuest
 }) => {
   const { currentUser, logout, isAuthenticated, hasPermission } = useAuth();
-  const { shifts, staff, shiftTypes, hospitals, generateFairSchedule, deleteShift, reserveShift, autoRefresh, setAutoRefresh, loadInitialData, isOffline, isLoading } = useData();
+  const { shifts, staff, shiftTypes, hospitals, generateFairSchedule, deleteShift, reserveShift, createShift, addNotification, autoRefresh, setAutoRefresh, loadInitialData, isOffline, isLoading } = useData();
   const [currentDate, setCurrentDate] = useState(() => new Date());
   const [currentView, setCurrentView] = useState('calendar'); // Default to Calendar view
   const [planningView, setPlanningView] = useState('calendar'); // Calendar or Matrix for planning
