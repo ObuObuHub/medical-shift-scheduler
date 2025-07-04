@@ -74,6 +74,8 @@ export default async function handler(req, res) {
         staffId: staffId
       });
 
+      // Note: created_by is NULL because this is a public endpoint without authentication
+      // The created_by field has a foreign key to users table, not staff table
       const { rows } = await sql`
         INSERT INTO shifts (
           shift_id,
@@ -100,7 +102,7 @@ export default async function handler(req, res) {
           ${JSON.stringify(shiftData.requirements || { minDoctors: 1, specializations: [] })},
           ${JSON.stringify({ adequate: true, warnings: [], recommendations: [], staffBreakdown: { doctors: 1, total: 1 } })},
           ${shiftData.hospital},
-          ${staffId},
+          NULL,
           'reserved',
           ${staffId},
           CURRENT_TIMESTAMP,
