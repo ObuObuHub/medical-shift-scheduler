@@ -1,4 +1,4 @@
-import { sql } from '../../../../lib/vercel-db';
+import { sql } from '@vercel/postgres';
 
 export default async function handler(req, res) {
   // Enable CORS
@@ -27,14 +27,17 @@ export default async function handler(req, res) {
     }
 
     // Validate staff member exists and belongs to the hospital
-    const { rows: staffRows } = await sql`
+    const staffResult = await sql`
       SELECT id, hospital, name FROM staff 
       WHERE id = ${staffId} AND is_active = true
     `;
 
-    if (staffRows.length === 0) {
+    if (!staffResult || !staffResult.rows || staffResult.rows.length === 0) {
+      console.error('Staff not found:', staffId);
       return res.status(404).json({ error: 'Staff member not found' });
     }
+
+    const staffRows = staffResult.rows;
 
     const staffMember = staffRows[0];
 
@@ -44,7 +47,7 @@ export default async function handler(req, res) {
     }
 
     // Check for existing shifts on the same date for this staff member
-    const { rows: existingShifts } = await sql`
+    const existingResult = await sql`
       SELECT shift_id FROM shifts 
       WHERE date = ${shiftData.date} 
       AND is_active = true
@@ -54,12 +57,12 @@ export default async function handler(req, res) {
       )
     `;
 
-    if (existingShifts.length > 0) {
+    if (existingResult && existingResult.rows && existingResult.rows.length > 0) {
       return res.status(400).json({ error: 'Staff member already has a shift on this date' });
     }
 
     // Create the shift
-    const { rows: createdShift } = await sql`
+    const createResult = await sql`
       INSERT INTO shifts (
         shift_id,
         date,
@@ -90,9 +93,12 @@ export default async function handler(req, res) {
       RETURNING *
     `;
 
-    if (createdShift.length === 0) {
+    if (!createResult || !createResult.rows || createResult.rows.length === 0) {
+      console.error('Failed to create shift');
       return res.status(500).json({ error: 'Failed to create shift' });
     }
+
+    const createdShift = createResult.rows;
 
     // Return the created and reserved shift
     const shift = createdShift[0];
@@ -113,6 +119,11 @@ export default async function handler(req, res) {
 
   } catch (error) {
     console.error('Error creating and reserving shift:', error);
-    res.status(500).json({ error: 'Failed to create and reserve shift' });
+    console.error('Error details:', error.message);
+    console.error('Error stack:', error.stack);
+    res.status(500).json({ 
+      error: 'Failed to create and reserve shift',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
   }
 }
