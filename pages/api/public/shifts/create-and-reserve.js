@@ -22,6 +22,8 @@ export default async function handler(req, res) {
   try {
     const { shiftData, staffId } = req.body;
 
+    console.log('Received request:', { shiftData, staffId });
+
     if (!shiftData || !staffId) {
       return res.status(400).json({ error: 'Missing required fields' });
     }
@@ -61,44 +63,71 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Staff member already has a shift on this date' });
     }
 
-    // Create the shift
-    const createResult = await sql`
-      INSERT INTO shifts (
-        shift_id,
-        date,
-        shift_type,
-        staff_ids,
-        department,
-        hospital,
-        status,
-        reserved_by,
-        reserved_at,
-        created_at,
-        created_by,
-        is_active
-      ) VALUES (
-        ${shiftData.id},
-        ${shiftData.date},
-        ${JSON.stringify(shiftData.type)},
-        ${JSON.stringify([])},
-        ${shiftData.department},
-        ${shiftData.hospital},
-        'reserved',
-        ${staffId},
-        CURRENT_TIMESTAMP,
-        CURRENT_TIMESTAMP,
-        ${staffMember.name},
-        true
-      )
-      RETURNING *
-    `;
+    // Create the shift - try to match the structure from other endpoints
+    let createResult;
+    try {
+      console.log('Attempting to create shift with data:', {
+        id: shiftData.id,
+        date: shiftData.date,
+        hospital: shiftData.hospital,
+        department: shiftData.department,
+        staffId: staffId
+      });
 
-    if (!createResult || !createResult.rows || createResult.rows.length === 0) {
-      console.error('Failed to create shift');
-      return res.status(500).json({ error: 'Failed to create shift' });
+      const { rows } = await sql`
+        INSERT INTO shifts (
+          shift_id,
+          date,
+          shift_type,
+          staff_ids,
+          department,
+          requirements,
+          coverage,
+          hospital,
+          created_by,
+          status,
+          reserved_by,
+          reserved_at,
+          is_active,
+          created_at,
+          updated_at
+        ) VALUES (
+          ${shiftData.id},
+          ${shiftData.date},
+          ${JSON.stringify(shiftData.type)},
+          ${JSON.stringify([])},
+          ${shiftData.department || null},
+          ${JSON.stringify(shiftData.requirements || { minDoctors: 1, specializations: [] })},
+          ${JSON.stringify({ adequate: true, warnings: [], recommendations: [], staffBreakdown: { doctors: 1, total: 1 } })},
+          ${shiftData.hospital},
+          ${staffMember.name},
+          'reserved',
+          ${staffId},
+          CURRENT_TIMESTAMP,
+          true,
+          CURRENT_TIMESTAMP,
+          CURRENT_TIMESTAMP
+        )
+        RETURNING *
+      `;
+      
+      createResult = rows;
+    } catch (sqlError) {
+      console.error('SQL Error:', sqlError);
+      console.error('SQL Error message:', sqlError.message);
+      console.error('SQL Error code:', sqlError.code);
+      return res.status(500).json({ 
+        error: 'Database error while creating shift',
+        details: sqlError.message 
+      });
     }
 
-    const createdShift = createResult.rows;
+    if (!createResult || createResult.length === 0) {
+      console.error('No rows returned from insert');
+      return res.status(500).json({ error: 'Failed to create shift - no rows returned' });
+    }
+
+    const createdShift = createResult;
 
     // Return the created and reserved shift
     const shift = createdShift[0];
