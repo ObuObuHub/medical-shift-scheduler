@@ -54,7 +54,7 @@ export default async function handler(req, res) {
       WHERE date = ${shiftData.date} 
       AND is_active = true
       AND (
-        ${staffId} = ANY(staff_ids) 
+        staff_ids::jsonb @> ${JSON.stringify([staffId])}::jsonb
         OR reserved_by = ${staffId}
       )
     `;
