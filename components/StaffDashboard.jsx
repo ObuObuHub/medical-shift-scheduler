@@ -110,8 +110,8 @@ export const StaffDashboard = ({
         // Generate shift ID
         const shiftId = `${dateStr}-${dayShiftType.id}-${Date.now()}`;
         
-        // Create new shift with status 'open'
-        const newShift = {
+        // Create new shift data
+        const shiftData = {
           id: shiftId,
           date: dateStr,
           type: dayShiftType,
@@ -125,19 +125,49 @@ export const StaffDashboard = ({
           }
         };
         
-        // Create the shift
-        await createShift(newShift);
-        
-        // Immediately reserve it for the current user
-        await reserveShift(shiftId);
+        if (!isAuthenticated) {
+          // Use public endpoint for unauthenticated users
+          const response = await fetch('/api/public/shifts/create-and-reserve', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              shiftData,
+              staffId
+            })
+          });
+          
+          if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.error || 'Failed to create shift');
+          }
+          
+          const result = await response.json();
+          
+          // Update local state
+          const newShifts = { ...shifts };
+          if (!newShifts[dateStr]) {
+            newShifts[dateStr] = [];
+          }
+          newShifts[dateStr].push(result.shift);
+          
+          // Trigger re-render by updating through context
+          loadInitialData(true, selectedHospital, currentDate);
+          
+        } else {
+          // Use authenticated flow
+          await createShift(shiftData);
+          await reserveShift(shiftId);
+        }
         
         addNotification('Tură rezervată cu succes', 'success');
       } catch (error) {
         console.error('Failed to create and reserve shift:', error);
-        addNotification('Eroare la rezervarea turei', 'error');
+        addNotification(error.message || 'Eroare la rezervarea turei', 'error');
       }
     }
-  }, [currentUser, selectedStaff, selectedHospital, setSwapModal, reserveShift, staff, shiftTypes, createShift, addNotification]);
+  }, [currentUser, selectedStaff, selectedHospital, setSwapModal, reserveShift, staff, shiftTypes, createShift, addNotification, isAuthenticated, shifts, loadInitialData, currentDate]);
 
   const getStaffName = useCallback((staffId) => {
     const member = staff.find(s => s.id === staffId);
