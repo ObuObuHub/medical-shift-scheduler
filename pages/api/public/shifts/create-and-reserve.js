@@ -100,7 +100,7 @@ export default async function handler(req, res) {
           ${JSON.stringify(shiftData.requirements || { minDoctors: 1, specializations: [] })},
           ${JSON.stringify({ adequate: true, warnings: [], recommendations: [], staffBreakdown: { doctors: 1, total: 1 } })},
           ${shiftData.hospital},
-          ${staffMember.name},
+          ${staffId},
           'reserved',
           ${staffId},
           CURRENT_TIMESTAMP,
