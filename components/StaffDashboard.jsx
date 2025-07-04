@@ -93,9 +93,51 @@ export const StaffDashboard = ({
       try {
         await reserveShift(openShift.id);
       } catch (error) {
-              }
+        console.error('Failed to reserve shift:', error);
+      }
+    } else if (dayShifts.length === 0) {
+      // No shifts at all for this day - create a new open shift and reserve it
+      try {
+        // Get staff member's department
+        const staffMember = staff.find(s => s.id === staffId);
+        if (!staffMember) return;
+        
+        // Default to day shift (08:00-20:00)
+        const dayShiftType = Object.values(shiftTypes).find(st => 
+          st.name.toLowerCase().includes('zi') || st.startTime === '08:00'
+        ) || Object.values(shiftTypes)[0];
+        
+        // Generate shift ID
+        const shiftId = `${dateStr}-${dayShiftType.id}-${Date.now()}`;
+        
+        // Create new shift with status 'open'
+        const newShift = {
+          id: shiftId,
+          date: dateStr,
+          type: dayShiftType,
+          staffIds: [],
+          department: staffMember.specialization || staffMember.department || 'General',
+          hospital: selectedHospital,
+          status: 'open',
+          requirements: {
+            minDoctors: 1,
+            specializations: []
+          }
+        };
+        
+        // Create the shift
+        await createShift(newShift);
+        
+        // Immediately reserve it for the current user
+        await reserveShift(shiftId);
+        
+        addNotification('Tură rezervată cu succes', 'success');
+      } catch (error) {
+        console.error('Failed to create and reserve shift:', error);
+        addNotification('Eroare la rezervarea turei', 'error');
+      }
     }
-  }, [currentUser, selectedStaff, selectedHospital, setSwapModal, reserveShift]);
+  }, [currentUser, selectedStaff, selectedHospital, setSwapModal, reserveShift, staff, shiftTypes, createShift, addNotification]);
 
   const getStaffName = useCallback((staffId) => {
     const member = staff.find(s => s.id === staffId);

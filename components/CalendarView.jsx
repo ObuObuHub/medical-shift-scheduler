@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { ChevronLeft, ChevronRight, Plus, Wand2, Save, Download, Trash2, RefreshCw, UserCheck, X } from './Icons';
+import { ChevronLeft, ChevronRight, Plus, Wand2, Save, Download, Trash2, RefreshCw, UserCheck, X, Users } from './Icons';
 import SwapRequestModal from './SwapRequestModal';
 import { useData } from './DataContext';
 import { exportShiftsToText, downloadTextFile, generateExportFilename } from '../utils/exportUtils';
@@ -124,6 +124,7 @@ const CalendarViewComponent = ({
           
         </div>
       </div>
+
 
       {/* Render a calendar for each department */}
       {departments.length > 0 ? (

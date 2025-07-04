@@ -33,6 +33,7 @@ function preprocessStaff(staff, hospitalConfig) {
       lastShiftType: null,
       totalAssigned: 0,
       last24Hour: false,
+      weekendShifts: 0, // Track weekend shifts for fairness
       // Performance optimization: pre-calculate base priority
       basePriority: 0
     };
@@ -42,11 +43,16 @@ function preprocessStaff(staff, hospitalConfig) {
 /**
  * Fast candidate scoring function
  */
-function scoreCandidate(candidate, shiftType, daysSinceLastShift) {
+function scoreCandidate(candidate, shiftType, daysSinceLastShift, isWeekend = false) {
   let score = candidate.basePriority;
   
   // Prefer those with fewer shifts (fairness)
   score += candidate.totalAssigned * 1000;
+  
+  // Weekend shift fairness - heavily penalize those with more weekend shifts
+  if (isWeekend) {
+    score += candidate.weekendShifts * 3000;
+  }
   
   // Preference bonus (negative score is better)
   if (candidate.preferredShiftTypes.has(shiftType.id)) {
@@ -120,21 +126,49 @@ export function generateSchedule(staff, days, hospitalConfig, existingShifts = {
 
     // Process each required shift for this day
     for (const shiftType of day.requiredShifts) {
-      // Check if this shift is already reserved or confirmed
-      const existingShift = dayExistingShifts.find(shift => 
+      // Check for all reserved or confirmed shifts of this type
+      const reservedShifts = dayExistingShifts.filter(shift => 
         shift.type?.id === shiftType.id && 
-        (shift.status === 'reserved' || shift.status === 'confirmed')
+        shift.status === 'reserved'
       );
       
-      if (existingShift && (existingShift.status === 'reserved' || existingShift.status === 'confirmed')) {
+      const confirmedShift = dayExistingShifts.find(shift => 
+        shift.type?.id === shiftType.id && 
+        shift.status === 'confirmed'
+      );
+      
+      // If there's a confirmed shift, use it
+      if (confirmedShift) {
         dayResult.shifts.push({
-          ...existingShift,
-          assignee: staff.find(s => s.id === existingShift.reservedBy || existingShift.staffIds?.includes(s.id))?.name,
-          note: existingShift.status
+          ...confirmedShift,
+          assignee: staff.find(s => s.id === confirmedShift.reservedBy || confirmedShift.staffIds?.includes(s.id))?.name,
+          note: confirmedShift.status
         });
         
         // Update staff tracking
-        const assignedStaff = pool.find(s => s.id === existingShift.reservedBy || existingShift.staffIds?.includes(s.id));
+        const assignedStaff = pool.find(s => s.id === confirmedShift.reservedBy || confirmedShift.staffIds?.includes(s.id));
+        if (assignedStaff) {
+          updateStaffTracking(assignedStaff, day.date, shiftType);
+        }
+        continue;
+      }
+      
+      // If there are multiple reservations, randomly select one
+      if (reservedShifts.length > 0) {
+        const selectedReservation = reservedShifts.length === 1 
+          ? reservedShifts[0] 
+          : reservedShifts[Math.floor(Math.random() * reservedShifts.length)];
+        
+        dayResult.shifts.push({
+          ...selectedReservation,
+          assignee: staff.find(s => s.id === selectedReservation.reservedBy)?.name,
+          note: reservedShifts.length > 1 
+            ? `reserved (${reservedShifts.length} rezervări, selectat aleatoriu)` 
+            : 'reserved'
+        });
+        
+        // Update staff tracking
+        const assignedStaff = pool.find(s => s.id === selectedReservation.reservedBy);
         if (assignedStaff) {
           updateStaffTracking(assignedStaff, day.date, shiftType);
         }
@@ -185,7 +219,9 @@ export function generateSchedule(staff, days, hospitalConfig, existingShifts = {
           null;
         
         // Calculate score and add to candidates
-        const score = scoreCandidate(candidate, shiftType, daysSinceLastShift);
+        const dayOfWeek = new Date(day.date).getDay();
+        const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+        const score = scoreCandidate(candidate, shiftType, daysSinceLastShift, isWeekend);
         scoredCandidates.push({ candidate, score });
       }
 
@@ -195,7 +231,9 @@ export function generateSchedule(staff, days, hospitalConfig, existingShifts = {
           if (candidate.unavailableSet.has(day.date)) continue;
           if (candidate.totalAssigned >= candidate.maxShifts + 2) continue;
           
-          const score = scoreCandidate(candidate, shiftType, null) + 10000; // Penalty for emergency assignment
+          const dayOfWeek = new Date(day.date).getDay();
+          const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+          const score = scoreCandidate(candidate, shiftType, null, isWeekend) + 10000; // Penalty for emergency assignment
           scoredCandidates.push({ candidate, score });
         }
       }
@@ -241,6 +279,12 @@ function updateStaffTracking(staff, date, shiftType) {
   staff.totalAssigned++;
   staff.lastShiftDate = date;
   staff.lastShiftType = shiftType;
+  
+  // Track weekend shifts for fairness
+  const dayOfWeek = new Date(date).getDay();
+  if (dayOfWeek === 0 || dayOfWeek === 6) {
+    staff.weekendShifts++;
+  }
   
   if (shiftType.id.includes('NOAPTE') || shiftType.id.includes('night')) {
     staff.consecutiveNights++;
