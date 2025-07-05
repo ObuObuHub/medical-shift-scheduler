@@ -629,6 +629,43 @@ export const DataProvider = ({ children }) => {
     }
   };
 
+  const updateShift = async (shiftId, updatedShiftData) => {
+    try {
+      // Save to database if online
+      if (!isOffline) {
+        await apiClient.updateShift(shiftId, updatedShiftData);
+      }
+
+      // Update local state
+      const dateKey = updatedShiftData.date || updatedShiftData.id.split('-')[0];
+      setShifts(prevShifts => {
+        const newShifts = { ...prevShifts };
+        
+        // First, remove the old shift from all dates (in case date changed)
+        Object.keys(newShifts).forEach(date => {
+          newShifts[date] = newShifts[date].filter(shift => shift.id !== shiftId);
+          if (newShifts[date].length === 0) {
+            delete newShifts[date];
+          }
+        });
+        
+        // Then add the updated shift to the correct date
+        if (!newShifts[dateKey]) {
+          newShifts[dateKey] = [];
+        }
+        newShifts[dateKey].push(updatedShiftData);
+        
+        return newShifts;
+      });
+
+      return updatedShiftData;
+    } catch (error) {
+      console.error('Failed to update shift:', error);
+      addNotification('Eroare la actualizarea turei', 'error');
+      throw error;
+    }
+  };
+
   const deleteShift = async (shiftId) => {
     try {
       if (!isOffline) {
@@ -1154,6 +1191,7 @@ export const DataProvider = ({ children }) => {
     generateFairSchedule,
     setStaffUnavailability,
     createShift,
+    updateShift,
     deleteShift,
     clearAllShifts,
     clearDepartmentSchedule,

@@ -13,7 +13,7 @@ export const AddShiftModal = ({
   onClose, 
   onSave 
 }) => {
-  const { shiftTypes, staff, shifts, setShifts, createShift, hospitalConfigs, loadHospitalConfig } = useData();
+  const { shiftTypes, staff, shifts, setShifts, createShift, updateShift, hospitalConfigs, loadHospitalConfig } = useData();
   const { hasPermission, currentUser } = useAuth();
   
   const [formData, setFormData] = useState({
@@ -255,16 +255,8 @@ export const AddShiftModal = ({
 
     try {
       if (editingShift) {
-        // For editing, we need to delete old and create new
-        // This is a simplified approach - ideally we'd have an updateShift method
-        const updatedShifts = { ...shifts };
-        if (updatedShifts[dateKey]) {
-          const shiftIndex = updatedShifts[dateKey].findIndex(s => s.id === editingShift.id);
-          if (shiftIndex !== -1) {
-            updatedShifts[dateKey][shiftIndex] = shiftData;
-          }
-        }
-        setShifts(updatedShifts);
+        // Update existing shift using the proper method
+        await updateShift(editingShift.id, shiftData);
       } else {
         // Add new shift
         await createShift(shiftData);
@@ -273,7 +265,7 @@ export const AddShiftModal = ({
       if (onSave) onSave(shiftData);
       onClose();
     } catch (error) {
-      // Error already handled by createShift
+      // Error already handled by createShift/updateShift
       console.error('Failed to save shift:', error);
     }
   };

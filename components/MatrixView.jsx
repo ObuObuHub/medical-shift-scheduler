@@ -156,20 +156,19 @@ const MatrixViewComponent = ({
   };
 
   // Handle cell click for shift assignment/deletion
-  const handleCellClick = (staffId, date) => {
+  const handleCellClick = async (staffId, date) => {
     if (readOnly || !hasPermission('assign_staff')) return;
     
     const existingShift = getShiftForStaffAndDate(staffId, date);
     
     if (existingShift) {
       // Delete existing shift (tap again to delete)
-      const dateKey = date.toISOString().split('T')[0];
-      const updatedShifts = { ...shifts };
-      updatedShifts[dateKey] = updatedShifts[dateKey].filter(s => s.id !== existingShift.id);
-      if (updatedShifts[dateKey].length === 0) {
-        delete updatedShifts[dateKey];
+      try {
+        await deleteShift(existingShift.id);
+      } catch (error) {
+        // Error already handled by deleteShift
+        console.error('Failed to delete shift:', error);
       }
-      setShifts(updatedShifts);
     } else {
       // Show shift type selection modal
       setSelectedCell({ staffId, date });
