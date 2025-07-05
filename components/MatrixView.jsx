@@ -1,7 +1,8 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useData } from './DataContext';
 import { useAuth } from './AuthContext';
 import { Users, Plus, Trash2, ChevronLeft, ChevronRight, X, Wand2 } from './Icons';
+import { getAvailableShiftTypes } from '../utils/shiftTypeHelpers';
 
 const MatrixViewComponent = ({ 
   selectedHospital, 
@@ -11,12 +12,30 @@ const MatrixViewComponent = ({
   currentUser,
   selectedStaff
 }) => {
-  const { staff, shifts, shiftTypes, setShifts, createShift, deleteShift, generateFairSchedule, loadInitialData } = useData();
+  const { staff, shifts, shiftTypes, setShifts, createShift, deleteShift, generateFairSchedule, loadInitialData, hospitalConfigs, loadHospitalConfig } = useData();
   const { hasPermission } = useAuth();
   
   const [selectedDepartment, setSelectedDepartment] = useState('');
   const [showShiftTypeModal, setShowShiftTypeModal] = useState(false);
   const [selectedCell, setSelectedCell] = useState(null);
+  const [availableShiftTypes, setAvailableShiftTypes] = useState([]);
+  
+  // Load available shift types when modal is opened
+  useEffect(() => {
+    const loadAvailableTypes = async () => {
+      if (showShiftTypeModal && selectedCell) {
+        let config = hospitalConfigs[selectedHospital];
+        if (!config) {
+          config = await loadHospitalConfig(selectedHospital);
+        }
+        
+        const available = getAvailableShiftTypes(selectedCell.date, config, shiftTypes);
+        setAvailableShiftTypes(available);
+      }
+    };
+    
+    loadAvailableTypes();
+  }, [showShiftTypeModal, selectedCell, selectedHospital, hospitalConfigs, loadHospitalConfig, shiftTypes]);
   
   // Generate date range for current month - just the days, no padding
   const dateRange = useMemo(() => {
@@ -584,27 +603,38 @@ const MatrixViewComponent = ({
               </div>
               
               <div className="space-y-3">
-                {Object.values(shiftTypes).map(shiftType => (
-                  <button
-                    key={shiftType.id}
-                    onClick={() => handleShiftTypeSelect(shiftType)}
-                    className="w-full p-4 text-left border border-gray-200 rounded-lg hover:bg-gray-50 hover:border-gray-300 transition-colors"
-                  >
-                    <div className="flex items-center">
-                      <div 
-                        className="w-4 h-4 rounded mr-3 flex-shrink-0"
-                        style={{ backgroundColor: shiftType.color }}
-                      />
-                      <div className="flex-1">
-                        <div className="font-medium text-gray-900">{shiftType.name}</div>
-                        <div className="text-sm text-gray-500">
-                          {shiftType.start || shiftType.startTime} - {shiftType.end || shiftType.endTime} 
-                          ({shiftType.duration || 12}h)
+                {availableShiftTypes.length === 0 ? (
+                  <div className="text-center py-4 text-gray-500">
+                    <p>Nu există tipuri de tură disponibile pentru această dată.</p>
+                    <p className="text-sm mt-2">
+                      {selectedCell && new Date(selectedCell.date).getDay() >= 1 && new Date(selectedCell.date).getDay() <= 5
+                        ? 'În zilele lucrătoare sunt disponibile doar ture de noapte.'
+                        : 'În weekend sunt disponibile ture de zi, noapte sau 24h.'}
+                    </p>
+                  </div>
+                ) : (
+                  availableShiftTypes.map(shiftType => (
+                    <button
+                      key={shiftType.id}
+                      onClick={() => handleShiftTypeSelect(shiftType)}
+                      className="w-full p-4 text-left border border-gray-200 rounded-lg hover:bg-gray-50 hover:border-gray-300 transition-colors"
+                    >
+                      <div className="flex items-center">
+                        <div 
+                          className="w-4 h-4 rounded mr-3 flex-shrink-0"
+                          style={{ backgroundColor: shiftType.color }}
+                        />
+                        <div className="flex-1">
+                          <div className="font-medium text-gray-900">{shiftType.name}</div>
+                          <div className="text-sm text-gray-500">
+                            {shiftType.start || shiftType.startTime} - {shiftType.end || shiftType.endTime} 
+                            ({shiftType.duration || 12}h)
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  </button>
-                ))}
+                    </button>
+                  ))
+                )}
               </div>
               
               <div className="mt-6 flex justify-end">

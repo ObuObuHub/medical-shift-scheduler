@@ -11,6 +11,7 @@ import { CalendarView } from './CalendarView';
 import { MatrixView } from './MatrixView';
 import { ViewSwitcher } from './ViewSwitcher';
 import { AddShiftModal } from './AddShiftModal';
+import { getDefaultShiftType } from '../utils/shiftTypeHelpers';
 
 export const StaffDashboard = ({ 
   selectedHospital: propSelectedHospital,
@@ -18,7 +19,7 @@ export const StaffDashboard = ({
   isGuest
 }) => {
   const { currentUser, logout, isAuthenticated, hasPermission } = useAuth();
-  const { shifts, staff, shiftTypes, hospitals, generateFairSchedule, deleteShift, reserveShift, createShift, addNotification, autoRefresh, setAutoRefresh, loadInitialData, isOffline, isLoading } = useData();
+  const { shifts, staff, shiftTypes, hospitals, generateFairSchedule, deleteShift, reserveShift, createShift, addNotification, autoRefresh, setAutoRefresh, loadInitialData, isOffline, isLoading, hospitalConfigs, loadHospitalConfig } = useData();
   const [currentDate, setCurrentDate] = useState(() => new Date());
   const [currentView, setCurrentView] = useState('calendar'); // Default to Calendar view
   const [planningView, setPlanningView] = useState('calendar'); // Calendar or Matrix for planning
@@ -102,19 +103,28 @@ export const StaffDashboard = ({
         const staffMember = staff.find(s => s.id === staffId);
         if (!staffMember) return;
         
-        // Default to day shift (08:00-20:00)
-        const dayShiftType = Object.values(shiftTypes).find(st => 
-          st.name.toLowerCase().includes('zi') || st.startTime === '08:00'
-        ) || Object.values(shiftTypes)[0];
+        // Load hospital configuration
+        let hospitalConfig = hospitalConfigs[selectedHospital];
+        if (!hospitalConfig) {
+          hospitalConfig = await loadHospitalConfig(selectedHospital);
+        }
+        
+        // Get appropriate shift type based on hospital config and date
+        const appropriateShiftType = getDefaultShiftType(date, hospitalConfig, shiftTypes);
+        
+        if (!appropriateShiftType) {
+          addNotification('Nu există tipuri de tură disponibile pentru această dată', 'error');
+          return;
+        }
         
         // Generate shift ID
-        const shiftId = `${dateStr}-${dayShiftType.id}-${Date.now()}`;
+        const shiftId = `${dateStr}-${appropriateShiftType.id}-${Date.now()}`;
         
         // Create new shift data
         const shiftData = {
           id: shiftId,
           date: dateStr,
-          type: dayShiftType,
+          type: appropriateShiftType,
           staffIds: [],
           department: staffMember.specialization || staffMember.department || 'General',
           hospital: selectedHospital,
@@ -167,7 +177,7 @@ export const StaffDashboard = ({
         addNotification(error.message || 'Eroare la rezervarea turei', 'error');
       }
     }
-  }, [currentUser, selectedStaff, selectedHospital, setSwapModal, reserveShift, staff, shiftTypes, createShift, addNotification, isAuthenticated, shifts, loadInitialData, currentDate]);
+  }, [currentUser, selectedStaff, selectedHospital, setSwapModal, reserveShift, staff, shiftTypes, createShift, addNotification, isAuthenticated, shifts, loadInitialData, currentDate, hospitalConfigs, loadHospitalConfig]);
 
   const getStaffName = useCallback((staffId) => {
     const member = staff.find(s => s.id === staffId);
