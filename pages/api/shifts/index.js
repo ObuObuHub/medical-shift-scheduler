@@ -116,7 +116,9 @@ async function createShift(req, res) {
       department, 
       requirements, 
       coverage, 
-      hospital 
+      hospital,
+      status,
+      reservedBy 
     } = req.body;
 
     if (!id || !date || !type || !staffIds || !hospital) {
@@ -126,7 +128,7 @@ async function createShift(req, res) {
     }
 
     const result = await sql`
-      INSERT INTO shifts (shift_id, date, shift_type, staff_ids, department, requirements, coverage, hospital, created_by)
+      INSERT INTO shifts (shift_id, date, shift_type, staff_ids, department, requirements, coverage, hospital, created_by, status, reserved_by)
       VALUES (
         ${id},
         ${date},
@@ -136,7 +138,9 @@ async function createShift(req, res) {
         ${JSON.stringify(requirements || { minDoctors: 1, specializations: [] })},
         ${JSON.stringify(coverage || { adequate: false, warnings: [], recommendations: [], staffBreakdown: { doctors: 0, total: 0 } })},
         ${hospital},
-        ${req.user.id}
+        ${req.user.id},
+        ${status || 'open'},
+        ${reservedBy || null}
       )
       RETURNING *;
     `;
@@ -150,7 +154,10 @@ async function createShift(req, res) {
       department: shift.department,
       requirements: shift.requirements,
       coverage: shift.coverage,
-      hospital: shift.hospital
+      hospital: shift.hospital,
+      status: shift.status || 'open',
+      reservedBy: shift.reserved_by || null,
+      reservedAt: shift.reserved_at || null
     };
 
     // Invalidate cache for this hospital
@@ -171,7 +178,7 @@ async function createShift(req, res) {
           // Generate a new unique ID instead
           const newId = `${date}-${type.id}-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
           const retryResult = await sql`
-            INSERT INTO shifts (shift_id, date, shift_type, staff_ids, department, requirements, coverage, hospital, created_by)
+            INSERT INTO shifts (shift_id, date, shift_type, staff_ids, department, requirements, coverage, hospital, created_by, status, reserved_by)
             VALUES (
               ${newId},
               ${date},
@@ -181,7 +188,9 @@ async function createShift(req, res) {
               ${JSON.stringify(requirements || { minDoctors: 1, specializations: [] })},
               ${JSON.stringify(coverage || { adequate: false, warnings: [], recommendations: [], staffBreakdown: { doctors: 0, total: 0 } })},
               ${hospital},
-              ${req.user.id}
+              ${req.user.id},
+              ${status || 'open'},
+              ${reservedBy || null}
             )
             RETURNING *;
           `;
@@ -195,7 +204,10 @@ async function createShift(req, res) {
               department: shift.department,
               requirements: shift.requirements,
               coverage: shift.coverage,
-              hospital: shift.hospital
+              hospital: shift.hospital,
+              status: shift.status || 'open',
+              reservedBy: shift.reserved_by || null,
+              reservedAt: shift.reserved_at || null
             };
             // Invalidate cache for this hospital
             invalidateCache.shifts(hospital);

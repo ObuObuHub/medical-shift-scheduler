@@ -517,7 +517,10 @@ export const DataProvider = ({ children }) => {
             department: shift.department,
             requirements: shift.requirements || { minDoctors: 1, specializations: [] },
             coverage: shift.coverage || { adequate: true, warnings: [], recommendations: [], staffBreakdown: { doctors: 1, total: 1 } },
-            hospital: hospitalId
+            hospital: hospitalId,
+            status: shift.status || 'open',
+            reservedBy: shift.reservedBy || null,
+            assigneeId: shift.assigneeId || null
           };
           savePromises.push(
             apiClient.createShift(shiftData)
@@ -586,7 +589,9 @@ export const DataProvider = ({ children }) => {
           department: shiftData.department,
           requirements: shiftData.requirements || { minDoctors: 1, specializations: [] },
           coverage: shiftData.coverage || { adequate: true, warnings: [], recommendations: [], staffBreakdown: { doctors: 1, total: 1 } },
-          hospital: shiftData.hospital || 'spital1'
+          hospital: shiftData.hospital || 'spital1',
+          status: shiftData.status || 'open',
+          reservedBy: shiftData.reservedBy || null
         });
       }
 
@@ -997,7 +1002,14 @@ export const DataProvider = ({ children }) => {
         const newShifts = { ...prevShifts };
         Object.keys(newShifts).forEach(date => {
           newShifts[date] = newShifts[date].map(shift => 
-            shift.id === shiftId ? { ...shift, status: 'reserved', reservedBy: result.shift.reserved_by } : shift
+            shift.id === shiftId ? { 
+              ...shift, 
+              status: 'reserved', 
+              reservedBy: result.shift.reserved_by,
+              reservedAt: result.shift.reserved_at,
+              // Also add the staff ID to staffIds array
+              staffIds: result.shift.reserved_by ? [result.shift.reserved_by] : []
+            } : shift
           );
         });
         return newShifts;
@@ -1021,7 +1033,14 @@ export const DataProvider = ({ children }) => {
         const newShifts = { ...prevShifts };
         Object.keys(newShifts).forEach(date => {
           newShifts[date] = newShifts[date].map(shift => 
-            shift.id === shiftId ? { ...shift, status: 'open', reservedBy: null } : shift
+            shift.id === shiftId ? { 
+              ...shift, 
+              status: 'open', 
+              reservedBy: null,
+              reservedAt: null,
+              // Clear the staffIds array when canceling reservation
+              staffIds: []
+            } : shift
           );
         });
         return newShifts;
