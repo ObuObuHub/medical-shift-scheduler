@@ -157,3 +157,14 @@ textarea:focus {
     transform: translateZ(0);
   }
 }
+
+/* Vacation/holiday striped pattern */
+.bg-stripes-orange {
+  background-image: repeating-linear-gradient(
+    45deg,
+    #fed7aa,
+    #fed7aa 10px,
+    #ffedd5 10px,
+    #ffedd5 20px
+  );
+}

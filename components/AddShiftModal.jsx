@@ -13,7 +13,7 @@ export const AddShiftModal = ({
   onClose, 
   onSave 
 }) => {
-  const { shiftTypes, staff, shifts, setShifts, createShift } = useData();
+  const { shiftTypes, staff, shifts, setShifts, createShift, hospitalConfigs, loadHospitalConfig } = useData();
   const { hasPermission, currentUser } = useAuth();
   
   const [formData, setFormData] = useState({
@@ -31,9 +31,66 @@ export const AddShiftModal = ({
   const [conflicts, setConflicts] = useState([]);
   const [showConflictWarning, setShowConflictWarning] = useState(false);
   const [pendingShift, setPendingShift] = useState(null);
+  const [availableShiftTypes, setAvailableShiftTypes] = useState([]);
+  const [hospitalConfig, setHospitalConfig] = useState(null);
 
   // Get available departments
   const departments = [...new Set(staff.map(s => s.specialization))].sort();
+  
+  // Load hospital config and filter shift types based on date
+  useEffect(() => {
+    const loadConfigAndFilterShifts = async () => {
+      if (!selectedDate || !selectedHospital) return;
+      
+      let config = hospitalConfigs[selectedHospital];
+      if (!config) {
+        config = await loadHospitalConfig(selectedHospital);
+      }
+      setHospitalConfig(config);
+      
+      // Determine day of week
+      const date = new Date(selectedDate);
+      const dayOfWeek = date.getDay(); // 0 = Sunday, 6 = Saturday
+      const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+      
+      let allowedShiftIds = [];
+      
+      if (config.shift_pattern === 'only_24') {
+        // Hospital with only 24-hour shifts
+        allowedShiftIds = ['GARDA_24'];
+      } else if (config.shift_pattern === 'standard_12_24') {
+        // Standard pattern
+        if (isWeekend) {
+          allowedShiftIds = config.weekend_shifts || ['GARDA_ZI', 'NOAPTE', 'GARDA_24'];
+        } else {
+          // Weekdays
+          allowedShiftIds = config.weekday_shifts || ['NOAPTE'];
+        }
+      } else if (config.shift_pattern === 'custom') {
+        // Custom pattern
+        if (isWeekend) {
+          allowedShiftIds = config.weekend_shifts || [];
+        } else {
+          allowedShiftIds = config.weekday_shifts || [];
+        }
+      }
+      
+      // Filter available shift types
+      const configShiftTypes = config.shift_types || shiftTypes;
+      const filtered = Object.values(configShiftTypes).filter(st => 
+        allowedShiftIds.includes(st.id)
+      );
+      
+      setAvailableShiftTypes(filtered);
+      
+      // If current selection is not in available types, clear it
+      if (formData.shiftTypeId && !filtered.find(st => st.id === formData.shiftTypeId)) {
+        setFormData(prev => ({ ...prev, shiftTypeId: '' }));
+      }
+    };
+    
+    loadConfigAndFilterShifts();
+  }, [selectedDate, selectedHospital, hospitalConfigs, loadHospitalConfig, formData.shiftTypeId, shiftTypes]);
   
   // Get available staff based on selected department and hospital
   useEffect(() => {
@@ -59,7 +116,7 @@ export const AddShiftModal = ({
   // Analyze coverage when shift data changes
   useEffect(() => {
     if (formData.shiftTypeId && formData.staffIds.length > 0) {
-      const selectedShiftType = Object.values(shiftTypes).find(st => st.id === formData.shiftTypeId);
+      const selectedShiftType = availableShiftTypes.find(st => st.id === formData.shiftTypeId);
       if (!selectedShiftType) return;
 
       const assignedStaff = staff.filter(s => formData.staffIds.includes(s.id));
@@ -91,12 +148,12 @@ export const AddShiftModal = ({
 
       setCoverageAnalysis(analysis);
     }
-  }, [formData.shiftTypeId, formData.staffIds, formData.department, formData.requirements, shiftTypes, staff]);
+  }, [formData.shiftTypeId, formData.staffIds, formData.department, formData.requirements, availableShiftTypes, staff]);
 
   // Check for conflicts when staff selection changes
   useEffect(() => {
     if (formData.staffIds.length > 0 && formData.shiftTypeId) {
-      const selectedShiftType = Object.values(shiftTypes).find(st => st.id === formData.shiftTypeId);
+      const selectedShiftType = availableShiftTypes.find(st => st.id === formData.shiftTypeId);
       if (!selectedShiftType) return;
 
       const newShift = {
@@ -121,7 +178,7 @@ export const AddShiftModal = ({
 
       setConflicts(allConflicts);
     }
-  }, [formData.staffIds, formData.shiftTypeId, formData.department, selectedDate, shifts, staff, editingShift, shiftTypes]);
+  }, [formData.staffIds, formData.shiftTypeId, formData.department, selectedDate, shifts, staff, editingShift, availableShiftTypes]);
 
   const handleStaffToggle = (staffId) => {
     setFormData(prev => ({
@@ -133,7 +190,7 @@ export const AddShiftModal = ({
   };
 
   const handleShiftTypeChange = (shiftTypeId) => {
-    const selectedShiftType = Object.values(shiftTypes).find(st => st.id === shiftTypeId);
+    const selectedShiftType = availableShiftTypes.find(st => st.id === shiftTypeId);
     
     // Auto-set requirements based on shift type - simplified to 1 doctor always
     let requirements = { ...formData.requirements };
@@ -166,7 +223,7 @@ export const AddShiftModal = ({
 
     // Check for conflicts using our new system
     if (conflicts.length > 0) {
-      const selectedShiftType = Object.values(shiftTypes).find(st => st.id === formData.shiftTypeId);
+      const selectedShiftType = availableShiftTypes.find(st => st.id === formData.shiftTypeId);
       setPendingShift({
         type: selectedShiftType,
         staffIds: formData.staffIds,
@@ -182,7 +239,7 @@ export const AddShiftModal = ({
 
   const proceedWithSave = async () => {
 
-    const selectedShiftType = Object.values(shiftTypes).find(st => st.id === formData.shiftTypeId);
+    const selectedShiftType = availableShiftTypes.find(st => st.id === formData.shiftTypeId);
     const dateKey = selectedDate.toISOString().split('T')[0];
 
     const shiftData = {
@@ -292,33 +349,49 @@ export const AddShiftModal = ({
                   Tip Tură *
                 </label>
                 <div className="grid grid-cols-1 gap-2 sm:gap-3">
-                  {Object.values(shiftTypes).map(shiftType => (
-                    <button
-                      key={shiftType.id}
-                      onClick={() => handleShiftTypeChange(shiftType.id)}
-                      className={`p-3 sm:p-4 rounded-lg border-2 text-left transition-all touch-manipulation ${
-                        formData.shiftTypeId === shiftType.id
-                          ? 'border-blue-500 bg-blue-50'
-                          : 'border-gray-200 hover:border-gray-300 bg-white'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center min-w-0 flex-1">
-                          <div 
-                            className="w-4 h-4 rounded mr-2 sm:mr-3 flex-shrink-0"
-                            style={{ backgroundColor: shiftType.color }}
-                          />
-                          <div className="min-w-0 flex-1">
-                            <div className="font-medium text-gray-900 text-sm sm:text-base truncate">{shiftType.name}</div>
-                            <div className="text-xs sm:text-sm text-gray-600 truncate">
-                              {shiftType.start} - {shiftType.end} ({shiftType.duration}h)
+                  {availableShiftTypes.length === 0 ? (
+                    <div className="p-4 text-center text-gray-500 bg-gray-50 rounded-lg">
+                      <AlertCircle className="w-6 h-6 mx-auto mb-2" />
+                      <p className="text-sm">Nu există tipuri de tură disponibile pentru această dată.</p>
+                      {hospitalConfig && (
+                        <p className="text-xs mt-1">
+                          {hospitalConfig.shift_pattern === 'only_24' 
+                            ? 'Acest spital folosește doar ture de 24 ore.'
+                            : selectedDate && new Date(selectedDate).getDay() >= 1 && new Date(selectedDate).getDay() <= 5
+                            ? 'În zilele lucrătoare sunt disponibile doar ture de noapte.'
+                            : 'În weekend sunt disponibile ture de zi, noapte sau 24h.'}
+                        </p>
+                      )}
+                    </div>
+                  ) : (
+                    availableShiftTypes.map(shiftType => (
+                      <button
+                        key={shiftType.id}
+                        onClick={() => handleShiftTypeChange(shiftType.id)}
+                        className={`p-3 sm:p-4 rounded-lg border-2 text-left transition-all touch-manipulation ${
+                          formData.shiftTypeId === shiftType.id
+                            ? 'border-blue-500 bg-blue-50'
+                            : 'border-gray-200 hover:border-gray-300 bg-white'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center min-w-0 flex-1">
+                            <div 
+                              className="w-4 h-4 rounded mr-2 sm:mr-3 flex-shrink-0"
+                              style={{ backgroundColor: shiftType.color }}
+                            />
+                            <div className="min-w-0 flex-1">
+                              <div className="font-medium text-gray-900 text-sm sm:text-base truncate">{shiftType.name}</div>
+                              <div className="text-xs sm:text-sm text-gray-600 truncate">
+                                {shiftType.start} - {shiftType.end} ({shiftType.duration}h)
+                              </div>
                             </div>
                           </div>
+                          <Clock className="w-4 h-4 text-gray-400 flex-shrink-0" />
                         </div>
-                        <Clock className="w-4 h-4 text-gray-400 flex-shrink-0" />
-                      </div>
-                    </button>
-                  ))}
+                      </button>
+                    ))
+                  )}
                 </div>
               </div>
 

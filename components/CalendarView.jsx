@@ -67,6 +67,16 @@ const CalendarViewComponent = ({
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
+  // Helper function to get staff on vacation for a date
+  const getStaffOnVacation = (date) => {
+    const dateStr = date.toISOString().split('T')[0];
+    return staff.filter(s => 
+      s.hospital === selectedHospital && 
+      s.unavailable && 
+      s.unavailable.includes(dateStr)
+    );
+  };
+  
   // Use mobile view on small screens
   if (isMobile) {
     return (
@@ -194,6 +204,10 @@ const CalendarViewComponent = ({
             shift.department === department
           );
           
+          // Get staff on vacation for this date
+          const vacationStaff = getStaffOnVacation(date).filter(s => 
+            !department || s.specialization === department
+          );
 
           return (
             <div
@@ -221,6 +235,19 @@ const CalendarViewComponent = ({
                   </button>
                 )}
               </div>
+              
+              {/* Vacation indicators */}
+              {vacationStaff.length > 0 && (
+                <div className="mb-1 p-1 bg-orange-100 rounded text-xs">
+                  <div className="flex items-center gap-1 text-orange-700">
+                    <span className="font-medium">Concediu:</span>
+                    <span className="truncate">
+                      {vacationStaff.slice(0, 2).map(s => s.name.split(' ')[0]).join(', ')}
+                      {vacationStaff.length > 2 && ` +${vacationStaff.length - 2}`}
+                    </span>
+                  </div>
+                </div>
+              )}
               
               <div className="space-y-0.5">
                 {(() => {

@@ -99,6 +99,14 @@ const MatrixViewComponent = ({
     }
   };
 
+  // Check if staff member is on vacation for a date
+  const isStaffOnVacation = (staffId, date) => {
+    const staffMember = staff.find(s => s.id === staffId);
+    if (!staffMember || !staffMember.unavailable) return false;
+    const dateStr = date.toISOString().split('T')[0];
+    return staffMember.unavailable.includes(dateStr);
+  };
+  
   // Determine shift coverage type for visual representation
   const getShiftCoverageType = (staffShifts) => {
     if (!staffShifts || staffShifts.length === 0) return { type: 'none' };
@@ -423,6 +431,7 @@ const MatrixViewComponent = ({
                   const coverageStyle = getCellCoverageStyle(coverageInfo);
                   const canClick = !readOnly && hasPermission('assign_staff');
                   const primaryShift = staffShifts[0]; // For backward compatibility
+                  const onVacation = isStaffOnVacation(person.id, date);
                   
                   // Check if this is the current user's shift
                   const currentStaffId = selectedStaff?.id || currentUser?.id;
@@ -431,21 +440,25 @@ const MatrixViewComponent = ({
                   return (
                     <td
                       key={`${person.id}-${date.toISOString()}`}
-                      className={`${getCellStyle(primaryShift)} ${canClick ? 'cursor-pointer touch-manipulation' : ''} h-12 sm:h-14 w-16 sm:w-20 min-w-[4rem] sm:min-w-20 text-center border-b border-gray-200 relative ${coverageStyle.className} ${isMyShift ? 'ring-2 ring-purple-400 ring-inset' : ''}`}
+                      className={`${getCellStyle(primaryShift)} ${canClick && !onVacation ? 'cursor-pointer touch-manipulation' : ''} h-12 sm:h-14 w-16 sm:w-20 min-w-[4rem] sm:min-w-20 text-center border-b border-gray-200 relative ${coverageStyle.className} ${isMyShift ? 'ring-2 ring-purple-400 ring-inset' : ''} ${onVacation ? 'bg-stripes-orange' : ''}`}
                       style={{
                         ...coverageStyle.style,
-                        backgroundColor: isMyShift ? '#faf5ff' : coverageStyle.style?.backgroundColor,
+                        backgroundColor: onVacation ? '#fed7aa' : isMyShift ? '#faf5ff' : coverageStyle.style?.backgroundColor,
                         borderLeftColor: isMyShift ? '#c084fc' : coverageStyle.borderColor,
                         borderTopColor: isMyShift ? '#c084fc' : coverageStyle.borderColor,
                         borderBottomColor: isMyShift ? '#c084fc' : coverageStyle.borderColor
                       }}
-                      onClick={() => canClick && handleCellClick(person.id, date)}
-                      title={staffShifts.length > 0 
+                      onClick={() => canClick && !onVacation && handleCellClick(person.id, date)}
+                      title={onVacation ? 'Concediu' : staffShifts.length > 0 
                         ? `${staffShifts.map(s => `${s.type.name} (${s.type.startTime || s.type.start}-${s.type.endTime || s.type.end})`).join(' + ')}` 
                         : 'Tap pentru a adăuga tură'
                       }
                     >
-                      {staffShifts.length > 0 ? (
+                      {onVacation ? (
+                        <div className="flex items-center justify-center h-full">
+                          <span className="text-xs font-medium text-orange-700">C</span>
+                        </div>
+                      ) : staffShifts.length > 0 ? (
                         <div className="flex items-center justify-center h-full relative group">
                           {/* My shift indicator */}
                           {isMyShift && (
