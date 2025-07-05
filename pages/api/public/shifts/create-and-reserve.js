@@ -63,6 +63,25 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Staff member already has a shift on this date' });
     }
 
+    // Check reservation limit (2 active reservations per staff member)
+    // Note: Since this is a public endpoint, we can't check user role
+    // All staff using this endpoint will have the 2 reservation limit
+    const reservationCountResult = await sql`
+      SELECT COUNT(*) as count
+      FROM shifts
+      WHERE reserved_by = ${staffId}
+        AND status = 'reserved'
+        AND is_active = true
+    `;
+
+    const reservationCount = parseInt(reservationCountResult.rows[0].count);
+    if (reservationCount >= 2) {
+      return res.status(400).json({ 
+        error: 'You have reached the maximum of 2 shift reservations. Please cancel an existing reservation before making a new one.',
+        currentReservations: reservationCount
+      });
+    }
+
     // Create the shift - try to match the structure from other endpoints
     let createResult;
     try {

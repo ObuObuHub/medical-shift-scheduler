@@ -90,6 +90,27 @@ export default async function handler(req, res) {
         });
       }
 
+      // Check reservation limit (2 active reservations per staff member)
+      // Skip this check for managers and admins
+      if (!['manager', 'admin'].includes(req.user.role)) {
+        const { rows: reservationCountRows } = await sql`
+          SELECT COUNT(*) as count
+          FROM shifts
+          WHERE reserved_by = ${req.user.id}
+            AND status = 'reserved'
+            AND is_active = true
+            AND shift_id != ${id}
+        `;
+
+        const reservationCount = parseInt(reservationCountRows[0].count);
+        if (reservationCount >= 2) {
+          return res.status(400).json({ 
+            error: 'You have reached the maximum of 2 shift reservations. Please cancel an existing reservation before making a new one.',
+            currentReservations: reservationCount
+          });
+        }
+      }
+
       // Reserve the shift
       const { rows: updatedRows } = await sql`
         UPDATE shifts

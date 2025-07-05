@@ -603,18 +603,27 @@ export const DataProvider = ({ children }) => {
       return shiftData;
     } catch (error) {
       console.error('Failed to create shift:', error);
-      addNotification('Eroare la crearea turei. Salvat doar local.', 'warning');
       
-      // Still add to local state even if database save fails
-      const dateKey = shiftData.date || shiftData.id.split('-')[0];
-      setShifts(prevShifts => {
-        const newShifts = { ...prevShifts };
-        if (!newShifts[dateKey]) {
-          newShifts[dateKey] = [];
-        }
-        newShifts[dateKey].push(shiftData);
-        return newShifts;
-      });
+      // Check if this is a reservation limit error
+      if (error.message && error.message.includes('maximum of 2 shift reservations')) {
+        addNotification('Ai atins limita de 2 rezervări de ture. Anulează o rezervare existentă pentru a face una nouă.', 'error');
+      } else {
+        addNotification('Eroare la crearea turei. Salvat doar local.', 'warning');
+      }
+      
+      // Don't add to local state if it's a reservation limit error
+      if (!error.message || !error.message.includes('maximum of 2 shift reservations')) {
+        // Still add to local state even if database save fails
+        const dateKey = shiftData.date || shiftData.id.split('-')[0];
+        setShifts(prevShifts => {
+          const newShifts = { ...prevShifts };
+          if (!newShifts[dateKey]) {
+            newShifts[dateKey] = [];
+          }
+          newShifts[dateKey].push(shiftData);
+          return newShifts;
+        });
+      }
       
       throw error;
     }
@@ -958,7 +967,12 @@ export const DataProvider = ({ children }) => {
       addNotification('Tură rezervată cu succes', 'success');
       return result.shift;
     } catch (error) {
-            addNotification(error.message || 'Eroare la rezervarea turei', 'error');
+      // Check if this is a reservation limit error
+      if (error.message && error.message.includes('maximum of 2 shift reservations')) {
+        addNotification('Ai atins limita de 2 rezervări de ture. Anulează o rezervare existentă pentru a face una nouă.', 'error');
+      } else {
+        addNotification(error.message || 'Eroare la rezervarea turei', 'error');
+      }
       throw error;
     }
   };
