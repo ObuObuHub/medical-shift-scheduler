@@ -73,7 +73,18 @@ export const StaffDashboard = ({
   const handleCellClick = useCallback(async (date, dayShifts, e) => {
     if (!currentUser && !selectedStaff) return;
     
-    const staffId = selectedStaff?.id || currentUser?.id;
+    // Find the staff member that corresponds to the current user
+    let staffId = selectedStaff?.id;
+    if (!staffId && currentUser) {
+      const userStaff = staff.find(s => 
+        s.name === currentUser.name && 
+        s.hospital === currentUser.hospital
+      );
+      staffId = userStaff?.id;
+    }
+    
+    if (!staffId) return; // No staff member found
+    
     const dateStr = date.toISOString().split('T')[0];
     const myShift = dayShifts.find(s => s.staffIds?.includes(staffId));
     const openShift = dayShifts.find(s => s.status === 'open');

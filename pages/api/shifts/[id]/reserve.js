@@ -61,17 +61,27 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: 'Tura este deja rezervată de alt membru al personalului' });
       }
 
-      // Check if staff member is eligible for this shift (same hospital and department)
+      // Find the staff member that corresponds to this user (by name and hospital)
       const { rows: staffRows } = await sql`
-        SELECT hospital, specialization FROM staff WHERE id = ${req.user.id} AND is_active = true
+        SELECT id, hospital, specialization FROM staff 
+        WHERE name = ${req.user.name} 
+        AND hospital = ${req.user.hospital}
+        AND is_active = true
       `;
 
-      if (staffRows.length === 0 || staffRows[0].hospital !== shift.hospital) {
+      if (staffRows.length === 0) {
+        return res.status(403).json({ error: 'Nu s-a găsit personalul asociat cu contul tău' });
+      }
+
+      const staffMember = staffRows[0];
+      const staffId = staffMember.id;
+
+      if (staffMember.hospital !== shift.hospital) {
         return res.status(403).json({ error: 'Poți rezerva doar ture din spitalul tău' });
       }
 
       // Check department match
-      const staffDepartment = staffRows[0].specialization;
+      const staffDepartment = staffMember.specialization;
       const shiftDepartment = shift.department;
       
       // Only enforce department check if shift has a department specified
@@ -89,8 +99,8 @@ export default async function handler(req, res) {
         WHERE s.date = ${shiftDate}
           AND s.is_active = true
           AND (
-            ${req.user.id} = ANY(s.staff_ids)
-            OR (s.reserved_by = ${req.user.id} AND s.status = 'reserved')
+            ${staffId} = ANY(s.staff_ids)
+            OR (s.reserved_by = ${staffId} AND s.status = 'reserved')
           )
           AND s.shift_id != ${id}
       `;
@@ -108,7 +118,7 @@ export default async function handler(req, res) {
         const { rows: reservationCountRows } = await sql`
           SELECT COUNT(*) as count
           FROM shifts
-          WHERE reserved_by = ${req.user.id}
+          WHERE reserved_by = ${staffId}
             AND status = 'reserved'
             AND is_active = true
             AND shift_id != ${id}
@@ -128,7 +138,7 @@ export default async function handler(req, res) {
         UPDATE shifts
         SET 
           status = 'reserved',
-          reserved_by = ${req.user.id},
+          reserved_by = ${staffId},
           reserved_at = CURRENT_TIMESTAMP,
           updated_at = CURRENT_TIMESTAMP,
           updated_by = ${req.user.username}
@@ -167,8 +177,18 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: 'Shift is not reserved' });
       }
 
-      if (shift.reserved_by !== req.user.id && !['manager', 'admin'].includes(req.user.role)) {
-        return res.status(403).json({ error: 'You can only cancel your own reservations' });
+      // Get staff ID for the current user
+      const { rows: userStaffRows } = await sql`
+        SELECT id FROM staff 
+        WHERE name = ${req.user.name} 
+        AND hospital = ${req.user.hospital}
+        AND is_active = true
+      `;
+      
+      const userStaffId = userStaffRows.length > 0 ? userStaffRows[0].id : null;
+      
+      if (shift.reserved_by !== userStaffId && !['manager', 'admin'].includes(req.user.role)) {
+        return res.status(403).json({ error: 'Poți anula doar propriile rezervări' });
       }
 
       // Cancel the reservation

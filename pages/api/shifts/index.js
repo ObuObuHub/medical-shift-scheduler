@@ -89,7 +89,10 @@ async function getShifts(req, res) {
         department: shift.department,
         requirements: shift.requirements,
         coverage: shift.coverage,
-        hospital: shift.hospital
+        hospital: shift.hospital,
+        status: shift.status || 'open',
+        reservedBy: shift.reserved_by || null,
+        reservedAt: shift.reserved_at || null
       });
     });
 

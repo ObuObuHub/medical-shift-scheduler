@@ -53,7 +53,10 @@ export default async function handler(req, res) {
         hospital: shift.hospital,
         department: shift.department,
         requirements: shift.requirements || {},
-        coverage: shift.coverage || {}
+        coverage: shift.coverage || {},
+        status: shift.status || 'open',
+        reservedBy: shift.reserved_by || null,
+        reservedAt: shift.reserved_at || null
       });
     });
 
