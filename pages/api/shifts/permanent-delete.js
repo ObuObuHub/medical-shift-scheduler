@@ -32,12 +32,13 @@ export default async function handler(req, res) {
     let result;
     
     if (force === 'true') {
-      // PERMANENT DELETE - actually remove from database
+      // PERMANENT DELETE - actually remove from database (but preserve reserved shifts)
       result = await sql`
         DELETE FROM shifts 
         WHERE hospital = ${hospital} 
           AND date >= ${startDate} 
           AND date <= ${endDate}
+          AND status != 'reserved'
         RETURNING shift_id;
       `;
       
@@ -49,7 +50,7 @@ export default async function handler(req, res) {
         permanent: true
       });
     } else {
-      // Soft delete - mark as inactive
+      // Soft delete - mark as inactive (but preserve reserved shifts)
       result = await sql`
         UPDATE shifts 
         SET is_active = false, 
@@ -58,6 +59,7 @@ export default async function handler(req, res) {
           AND date >= ${startDate} 
           AND date <= ${endDate}
           AND is_active = true
+          AND status != 'reserved'
         RETURNING shift_id;
       `;
       

@@ -479,7 +479,8 @@ export const DataProvider = ({ children }) => {
           Object.entries(existingShifts).forEach(([shiftDate, dayShifts]) => {
             if (shiftDate >= startDate && shiftDate <= endDate) {
               dayShifts.forEach(shift => {
-                if (shift.department === department) {
+                // Only delete shifts that are NOT reserved
+                if (shift.department === department && shift.status !== 'reserved') {
                   shiftsToDelete.push(shift.id);
                 }
               });
@@ -732,9 +733,9 @@ export const DataProvider = ({ children }) => {
         Object.keys(updatedShifts).forEach(dateKey => {
           const shiftDate = new Date(dateKey);
           if (shiftDate >= new Date(startDate) && shiftDate <= new Date(endDate)) {
-            // Keep only shifts from other departments
+            // Keep shifts from other departments AND reserved shifts from this department
             updatedShifts[dateKey] = updatedShifts[dateKey].filter(shift => 
-              shift.department !== department
+              shift.department !== department || shift.status === 'reserved'
             );
             
             // Remove empty date entries
