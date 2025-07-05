@@ -23,7 +23,7 @@ export default async function handler(req, res) {
 
   try {
     // Get hospital configuration (read-only for public)
-    const { rows } = await sql`
+    const result = await sql`
       SELECT 
         hsc.*,
         h.name as hospital_name
@@ -32,7 +32,10 @@ export default async function handler(req, res) {
       WHERE hsc.hospital_id = ${hospitalId}
     `;
 
-    if (rows.length === 0) {
+    // Neon returns results directly as an array
+    const rows = Array.isArray(result) ? result : (result?.rows || []);
+    
+    if (!rows || rows.length === 0) {
       // Return default configuration if none exists
       const defaultConfig = {
         hospital_id: hospitalId,
