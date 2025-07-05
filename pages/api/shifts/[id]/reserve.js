@@ -58,7 +58,7 @@ export default async function handler(req, res) {
 
       // Check if shift is already reserved
       if (shift.status === 'reserved' && shift.reserved_by !== req.user.id) {
-        return res.status(400).json({ error: 'Shift is already reserved by another staff member' });
+        return res.status(400).json({ error: 'Tura este deja rezervată de alt membru al personalului' });
       }
 
       // Check if staff member is eligible for this shift (same hospital and department)
@@ -67,7 +67,7 @@ export default async function handler(req, res) {
       `;
 
       if (staffRows.length === 0 || staffRows[0].hospital !== shift.hospital) {
-        return res.status(403).json({ error: 'You can only reserve shifts in your assigned hospital' });
+        return res.status(403).json({ error: 'Poți rezerva doar ture din spitalul tău' });
       }
 
       // Check department match
@@ -97,7 +97,7 @@ export default async function handler(req, res) {
 
       if (conflictRows.length > 0) {
         return res.status(400).json({ 
-          error: 'You already have a shift scheduled on this date',
+          error: 'Deja ai o tură programată în această zi',
           conflicts: conflictRows
         });
       }
@@ -117,7 +117,7 @@ export default async function handler(req, res) {
         const reservationCount = parseInt(reservationCountRows[0].count);
         if (reservationCount >= 2) {
           return res.status(400).json({ 
-            error: 'You have reached the maximum of 2 shift reservations. Please cancel an existing reservation before making a new one.',
+            error: 'Ai atins limita de 2 rezervări de ture. Anulează o rezervare existentă pentru a face una nouă.',
             currentReservations: reservationCount
           });
         }

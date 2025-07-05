@@ -198,10 +198,10 @@ const CalendarViewComponent = ({
           const isToday = date.toDateString() === new Date().toDateString();
           let dayShifts = isCurrentMonth ? (shifts[date.toISOString().split('T')[0]] || []) : [];
           
-          // Filter by hospital and department
+          // Filter by hospital and department (only if department is selected)
           dayShifts = dayShifts.filter(shift => 
             shift.hospital === selectedHospital && 
-            shift.department === department
+            (!department || shift.department === department)
           );
           
           // Get staff on vacation for this date

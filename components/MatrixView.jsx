@@ -12,7 +12,7 @@ const MatrixViewComponent = ({
   currentUser,
   selectedStaff
 }) => {
-  const { staff, shifts, shiftTypes, setShifts, createShift, deleteShift, generateFairSchedule, loadInitialData, hospitalConfigs, loadHospitalConfig } = useData();
+  const { staff, shifts, shiftTypes, setShifts, createShift, deleteShift, generateFairSchedule, loadInitialData, hospitalConfigs, loadHospitalConfig, reserveShift, addNotification } = useData();
   const { hasPermission } = useAuth();
   
   const [selectedDepartment, setSelectedDepartment] = useState('');
@@ -182,24 +182,39 @@ const MatrixViewComponent = ({
     
     const { staffId, date } = selectedCell;
     const dateKey = date.toISOString().split('T')[0];
+    const staffMember = staff.find(s => s.id === staffId);
     
+    if (!staffMember) return;
+    
+    // Create shift ID
+    const shiftId = `${dateKey}-${shiftType.id}-${Date.now()}`;
+    
+    // Create open shift (no staff assigned yet)
     const newShift = {
-      id: `${dateKey}-${shiftType.id}-${staffId}-${Date.now()}`,
+      id: shiftId,
       date: dateKey,
       type: shiftType,
-      staffIds: [staffId],
-      department: staff.find(s => s.id === staffId)?.specialization || '',
+      staffIds: [], // Empty - will be filled by reservation
+      department: staffMember.specialization || '',
       requirements: { minDoctors: 1, specializations: [] },
-      hospital: selectedHospital
+      hospital: selectedHospital,
+      status: 'open' // Important: create as open shift
     };
 
     try {
+      // First create the open shift
       await createShift(newShift);
+      
+      // Then reserve it for the staff member
+      await reserveShift(shiftId);
+      
       setShowShiftTypeModal(false);
       setSelectedCell(null);
     } catch (error) {
-      // Error already handled by createShift
-      console.error('Failed to create shift:', error);
+      // Error already handled by createShift/reserveShift
+      console.error('Failed to create and reserve shift:', error);
+      setShowShiftTypeModal(false);
+      setSelectedCell(null);
     }
   };
 

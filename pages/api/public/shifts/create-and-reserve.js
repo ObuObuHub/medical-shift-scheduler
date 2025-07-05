@@ -45,7 +45,7 @@ export default async function handler(req, res) {
 
     // Validate staff belongs to the correct hospital
     if (staffMember.hospital !== shiftData.hospital) {
-      return res.status(403).json({ error: 'Staff member does not belong to this hospital' });
+      return res.status(403).json({ error: 'Membrul personalului nu aparține acestui spital' });
     }
 
     // Validate department match
@@ -71,7 +71,7 @@ export default async function handler(req, res) {
     `;
 
     if (existingResult && existingResult.rows && existingResult.rows.length > 0) {
-      return res.status(400).json({ error: 'Staff member already has a shift on this date' });
+      return res.status(400).json({ error: 'Deja ai o tură programată în această zi' });
     }
 
     // Check reservation limit (2 active reservations per staff member)
@@ -88,7 +88,7 @@ export default async function handler(req, res) {
     const reservationCount = parseInt(reservationCountResult.rows[0].count);
     if (reservationCount >= 2) {
       return res.status(400).json({ 
-        error: 'You have reached the maximum of 2 shift reservations. Please cancel an existing reservation before making a new one.',
+        error: 'Ai atins limita de 2 rezervări de ture. Anulează o rezervare existentă pentru a face una nouă.',
         currentReservations: reservationCount
       });
     }

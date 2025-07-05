@@ -158,12 +158,8 @@ export const StaffDashboard = ({
           
           if (!response.ok) {
             const error = await response.json();
-            // Check if this is a reservation limit error
-            if (error.error && error.error.includes('maximum of 2 shift reservations')) {
-              throw new Error('Ai atins limita de 2 rezervări de ture. Anulează o rezervare existentă pentru a face una nouă.');
-            }
-            // Check for department mismatch
-            if (error.error && error.error.includes('departamentul tău')) {
+            // Pass through the error message from API (already in Romanian)
+            if (error.error) {
               throw new Error(error.error);
             }
             throw new Error(error.error || 'Failed to create shift');

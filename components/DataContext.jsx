@@ -604,18 +604,16 @@ export const DataProvider = ({ children }) => {
     } catch (error) {
       console.error('Failed to create shift:', error);
       
-      // Check if this is a reservation limit error
-      if (error.message && error.message.includes('maximum of 2 shift reservations')) {
-        addNotification('Ai atins limita de 2 rezervări de ture. Anulează o rezervare existentă pentru a face una nouă.', 'error');
-      } else if (error.message && error.message.includes('departamentul tău')) {
-        // Department mismatch error - use the message as is
+      // Check for specific error types
+      if (error.message && (error.message.includes('limita de 2 rezervări') || error.message.includes('departamentul tău'))) {
+        // Use the Romanian error message as is
         addNotification(error.message, 'error');
       } else {
         addNotification('Eroare la crearea turei. Salvat doar local.', 'warning');
       }
       
       // Don't add to local state if it's a reservation limit error
-      if (!error.message || !error.message.includes('maximum of 2 shift reservations')) {
+      if (!error.message || !error.message.includes('limita de 2 rezervări')) {
         // Still add to local state even if database save fails
         const dateKey = shiftData.date || shiftData.id.split('-')[0];
         setShifts(prevShifts => {
@@ -1007,15 +1005,8 @@ export const DataProvider = ({ children }) => {
       addNotification('Tură rezervată cu succes', 'success');
       return result.shift;
     } catch (error) {
-      // Check if this is a reservation limit error
-      if (error.message && error.message.includes('maximum of 2 shift reservations')) {
-        addNotification('Ai atins limita de 2 rezervări de ture. Anulează o rezervare existentă pentru a face una nouă.', 'error');
-      } else if (error.message && error.message.includes('departamentul tău')) {
-        // Department mismatch error - use the message as is
-        addNotification(error.message, 'error');
-      } else {
-        addNotification(error.message || 'Eroare la rezervarea turei', 'error');
-      }
+      // Use the error message as is (already in Romanian from API)
+      addNotification(error.message || 'Eroare la rezervarea turei', 'error');
       throw error;
     }
   };
