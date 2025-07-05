@@ -44,7 +44,8 @@ export default async function handler(req, res) {
           staff_ids,
           status,
           reserved_by,
-          hospital
+          hospital,
+          department
         FROM shifts
         WHERE shift_id = ${id} AND is_active = true
       `;
@@ -60,13 +61,24 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: 'Shift is already reserved by another staff member' });
       }
 
-      // Check if staff member is eligible for this shift (same hospital)
+      // Check if staff member is eligible for this shift (same hospital and department)
       const { rows: staffRows } = await sql`
-        SELECT hospital FROM staff WHERE id = ${req.user.id} AND is_active = true
+        SELECT hospital, specialization FROM staff WHERE id = ${req.user.id} AND is_active = true
       `;
 
       if (staffRows.length === 0 || staffRows[0].hospital !== shift.hospital) {
         return res.status(403).json({ error: 'You can only reserve shifts in your assigned hospital' });
+      }
+
+      // Check department match
+      const staffDepartment = staffRows[0].specialization;
+      const shiftDepartment = shift.department;
+      
+      // Only enforce department check if shift has a department specified
+      if (shiftDepartment && staffDepartment !== shiftDepartment) {
+        return res.status(403).json({ 
+          error: `Poți rezerva doar ture din departamentul tău (${staffDepartment}). Această tură este pentru departamentul ${shiftDepartment}.`
+        });
       }
 
       // Check for conflicts (same date, overlapping times)

@@ -90,7 +90,15 @@ export const StaffDashboard = ({
         } 
       });
     } else if (openShift) {
-      // Empty shift - reserve it
+      // Empty shift - check department match before reserving
+      const staffMember = staff.find(s => s.id === staffId);
+      
+      // Only validate department if both are specified
+      if (staffMember && openShift.department && staffMember.specialization !== openShift.department) {
+        addNotification(`Poți rezerva doar ture din departamentul tău (${staffMember.specialization})`, 'error');
+        return;
+      }
+      
       try {
         await reserveShift(openShift.id);
       } catch (error) {
@@ -153,6 +161,10 @@ export const StaffDashboard = ({
             // Check if this is a reservation limit error
             if (error.error && error.error.includes('maximum of 2 shift reservations')) {
               throw new Error('Ai atins limita de 2 rezervări de ture. Anulează o rezervare existentă pentru a face una nouă.');
+            }
+            // Check for department mismatch
+            if (error.error && error.error.includes('departamentul tău')) {
+              throw new Error(error.error);
             }
             throw new Error(error.error || 'Failed to create shift');
           }

@@ -468,7 +468,7 @@ const MatrixViewComponent = ({
                       }}
                       onClick={() => canClick && !onVacation && handleCellClick(person.id, date)}
                       title={onVacation ? 'Concediu' : staffShifts.length > 0 
-                        ? `${staffShifts.map(s => `${s.type.name} (${s.type.startTime || s.type.start}-${s.type.endTime || s.type.end})`).join(' + ')}` 
+                        ? `${staffShifts.map(s => `${s.type.name} (${s.type.startTime || s.type.start}-${s.type.endTime || s.type.end})${s.status === 'reserved' ? ' - Rezervat' : ''}`).join(' + ')}` 
                         : 'Tap pentru a adăuga tură'
                       }
                     >
@@ -489,6 +489,9 @@ const MatrixViewComponent = ({
                               ? '24h' 
                               : `${staffShifts.reduce((total, s) => total + (s.type.duration || 12), 0)}h`
                             }
+                            {primaryShift?.status === 'reserved' && (
+                              <span className="text-green-600 ml-1">🔒</span>
+                            )}
                           </div>
                           {canClick && (
                             <button

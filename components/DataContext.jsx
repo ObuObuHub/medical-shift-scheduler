@@ -607,6 +607,9 @@ export const DataProvider = ({ children }) => {
       // Check if this is a reservation limit error
       if (error.message && error.message.includes('maximum of 2 shift reservations')) {
         addNotification('Ai atins limita de 2 rezervări de ture. Anulează o rezervare existentă pentru a face una nouă.', 'error');
+      } else if (error.message && error.message.includes('departamentul tău')) {
+        // Department mismatch error - use the message as is
+        addNotification(error.message, 'error');
       } else {
         addNotification('Eroare la crearea turei. Salvat doar local.', 'warning');
       }
@@ -1007,6 +1010,9 @@ export const DataProvider = ({ children }) => {
       // Check if this is a reservation limit error
       if (error.message && error.message.includes('maximum of 2 shift reservations')) {
         addNotification('Ai atins limita de 2 rezervări de ture. Anulează o rezervare existentă pentru a face una nouă.', 'error');
+      } else if (error.message && error.message.includes('departamentul tău')) {
+        // Department mismatch error - use the message as is
+        addNotification(error.message, 'error');
       } else {
         addNotification(error.message || 'Eroare la rezervarea turei', 'error');
       }

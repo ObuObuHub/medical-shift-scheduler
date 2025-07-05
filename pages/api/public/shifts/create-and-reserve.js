@@ -30,7 +30,7 @@ export default async function handler(req, res) {
 
     // Validate staff member exists and belongs to the hospital
     const staffResult = await sql`
-      SELECT id, hospital, name FROM staff 
+      SELECT id, hospital, name, specialization FROM staff 
       WHERE id = ${staffId} AND is_active = true
     `;
 
@@ -46,6 +46,17 @@ export default async function handler(req, res) {
     // Validate staff belongs to the correct hospital
     if (staffMember.hospital !== shiftData.hospital) {
       return res.status(403).json({ error: 'Staff member does not belong to this hospital' });
+    }
+
+    // Validate department match
+    const staffDepartment = staffMember.specialization;
+    const shiftDepartment = shiftData.department;
+    
+    // Only enforce department check if shift has a department specified
+    if (shiftDepartment && staffDepartment !== shiftDepartment) {
+      return res.status(403).json({ 
+        error: `Poți rezerva doar ture din departamentul tău (${staffDepartment}). Această tură este pentru departamentul ${shiftDepartment}.`
+      });
     }
 
     // Check for existing shifts on the same date for this staff member
