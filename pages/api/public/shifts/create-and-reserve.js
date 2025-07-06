@@ -74,7 +74,7 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Deja ai o tură programată în această zi' });
     }
 
-    // Check reservation limit (2 active reservations per staff member)
+    // Check reservation limit (2 active reservations per staff member per month)
     // Note: Since this is a public endpoint, we can't check user role
     // All staff using this endpoint will have the 2 reservation limit
     const reservationCountResult = await sql`
@@ -83,12 +83,14 @@ export default async function handler(req, res) {
       WHERE reserved_by = ${staffId}
         AND status = 'reserved'
         AND is_active = true
+        AND EXTRACT(YEAR FROM date) = EXTRACT(YEAR FROM ${shiftData.date}::date)
+        AND EXTRACT(MONTH FROM date) = EXTRACT(MONTH FROM ${shiftData.date}::date)
     `;
 
     const reservationCount = parseInt(reservationCountResult.rows[0].count);
     if (reservationCount >= 2) {
       return res.status(400).json({ 
-        error: 'Ai atins limita de 2 rezervări de ture. Anulează o rezervare existentă pentru a face una nouă.',
+        error: 'Ai atins limita de 2 rezervări de ture pe lună. Anulează o rezervare existentă pentru a face una nouă.',
         currentReservations: reservationCount
       });
     }

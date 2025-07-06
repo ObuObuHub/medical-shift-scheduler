@@ -112,7 +112,7 @@ export default async function handler(req, res) {
         });
       }
 
-      // Check reservation limit (2 active reservations per staff member)
+      // Check reservation limit (2 active reservations per staff member per month)
       // Skip this check for managers and admins
       if (!['manager', 'admin'].includes(req.user.role)) {
         const { rows: reservationCountRows } = await sql`
@@ -122,12 +122,14 @@ export default async function handler(req, res) {
             AND status = 'reserved'
             AND is_active = true
             AND shift_id != ${id}
+            AND EXTRACT(YEAR FROM date) = EXTRACT(YEAR FROM ${shiftDate}::date)
+            AND EXTRACT(MONTH FROM date) = EXTRACT(MONTH FROM ${shiftDate}::date)
         `;
 
         const reservationCount = parseInt(reservationCountRows[0].count);
         if (reservationCount >= 2) {
           return res.status(400).json({ 
-            error: 'Ai atins limita de 2 rezervări de ture. Anulează o rezervare existentă pentru a face una nouă.',
+            error: 'Ai atins limita de 2 rezervări de ture pe lună. Anulează o rezervare existentă pentru a face una nouă.',
             currentReservations: reservationCount
           });
         }

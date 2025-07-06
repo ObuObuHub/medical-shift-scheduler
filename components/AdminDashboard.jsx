@@ -59,6 +59,10 @@ export const AdminDashboard = () => {
   }, []);
 
   const navigateMonth = (direction) => {
+    if (!currentDate) {
+      console.error('currentDate is undefined in navigateMonth');
+      return;
+    }
     const result = navigateMonthHelper(currentDate.getMonth(), currentDate.getFullYear(), direction);
     const newDate = new Date(result.year, result.month, 1);
     setCurrentDate(newDate);
@@ -75,7 +79,13 @@ export const AdminDashboard = () => {
   };
   
   // Use getDaysInMonth from dateHelpers
-  const getDaysInMonthForView = () => getDaysInMonth(currentDate);
+  const getDaysInMonthForView = () => {
+    if (!currentDate) {
+      console.error('currentDate is undefined in getDaysInMonthForView');
+      return [];
+    }
+    return getDaysInMonth(currentDate);
+  };
   
   // Use getStaffName from dashboardHelpers
   const getStaffNameHelper = (staffId) => getStaffName(staffId, staff);

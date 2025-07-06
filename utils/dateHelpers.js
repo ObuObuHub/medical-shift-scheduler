@@ -1,20 +1,39 @@
 // Date utility functions for the medical shift scheduler
 
-export const formatShortDate = (date) => 
-  date.toLocaleDateString('ro-RO', { day: 'numeric', month: 'long' });
+export const formatShortDate = (date) => {
+  if (!date || !(date instanceof Date) || isNaN(date)) {
+    console.error('Invalid date provided to formatShortDate:', date);
+    return '';
+  }
+  return date.toLocaleDateString('ro-RO', { day: 'numeric', month: 'long' });
+};
 
-export const formatFullDate = (date) => 
-  date.toLocaleDateString('ro-RO', { 
+export const formatFullDate = (date) => {
+  if (!date || !(date instanceof Date) || isNaN(date)) {
+    console.error('Invalid date provided to formatFullDate:', date);
+    return '';
+  }
+  return date.toLocaleDateString('ro-RO', { 
     weekday: 'long', 
     day: 'numeric', 
     month: 'long', 
     year: 'numeric' 
   });
+};
 
-export const formatMonthYear = (date) => 
-  date.toLocaleDateString('ro-RO', { month: 'long', year: 'numeric' });
+export const formatMonthYear = (date) => {
+  if (!date || !(date instanceof Date) || isNaN(date)) {
+    console.error('Invalid date provided to formatMonthYear:', date);
+    return '';
+  }
+  return date.toLocaleDateString('ro-RO', { month: 'long', year: 'numeric' });
+};
 
 export const getDaysInMonth = (date) => {
+  if (!date || !(date instanceof Date) || isNaN(date)) {
+    console.error('Invalid date provided to getDaysInMonth:', date);
+    return [];
+  }
   const year = date.getFullYear();
   const month = date.getMonth();
   const firstDay = new Date(year, month, 1);
@@ -55,6 +74,9 @@ export const isToday = (date) => {
 };
 
 export const isCurrentMonth = (date, currentDate) => {
+  if (!date || !(date instanceof Date) || isNaN(date) || !currentDate || !(currentDate instanceof Date) || isNaN(currentDate)) {
+    return false;
+  }
   return date.getMonth() === currentDate.getMonth() && 
          date.getFullYear() === currentDate.getFullYear();
 };
