@@ -6,6 +6,7 @@ import {
   Calendar, Users, Building2, Settings, LogOut, 
   Menu, X, Shield, BarChart3, Lock, ChevronDown
 } from './Icons';
+import { NotificationCenter } from './NotificationCenter';
 import { MatrixView } from './MatrixView';
 import { CalendarView } from './CalendarView';
 import { ViewSwitcher } from './ViewSwitcher';
@@ -147,6 +148,7 @@ export const AdminDashboard = () => {
                 currentUser={currentUser}
                 selectedStaff={null}
                 isGuest={false}
+                deleteShift={deleteShift}
               />
             )}
           </div>
@@ -219,6 +221,9 @@ export const AdminDashboard = () => {
 
             {/* Right side - User menu and mobile toggle */}
             <div className="flex items-center space-x-2">
+              {/* Notification Center */}
+              <NotificationCenter />
+              
               {/* User menu dropdown */}
               <div className="relative" ref={userMenuRef}>
                 <button

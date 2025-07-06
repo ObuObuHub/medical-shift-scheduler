@@ -11,6 +11,7 @@ import {
   getDepartmentsWithSchedules,
   findShiftsByType
 } from '../utils/calendarConstants';
+import logger from '../utils/logger';
 
 const CalendarViewComponent = ({ 
   currentDate,
@@ -28,6 +29,7 @@ const CalendarViewComponent = ({
   selectedStaff,
   isGuest,
   swapModal: propsSwapModal,
+  deleteShift,
   setSwapModal: propsSetSwapModal
 }) => {
   const months = MONTH_NAMES;
@@ -518,6 +520,25 @@ const CalendarViewComponent = ({
                                   title="Anulează rezervarea"
                                 >
                                   ✕
+                                </button>
+                              )}
+                              {/* Delete button for managers/admins */}
+                              {hasPermission('assign_staff') && deleteShift && (
+                                <button
+                                  onClick={async (e) => {
+                                    e.stopPropagation();
+                                    if (confirm('Sigur doriți să ștergeți această tură?')) {
+                                      try {
+                                        await deleteShift(shift.id);
+                                      } catch (error) {
+                                        logger.error('Failed to delete shift:', error);
+                                      }
+                                    }
+                                  }}
+                                  className="p-1 bg-red-600 text-white rounded hover:bg-red-700"
+                                  title="Șterge tura"
+                                >
+                                  <Trash2 className="w-3 h-3" />
                                 </button>
                               )}
                             </div>

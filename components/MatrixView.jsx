@@ -2,6 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { useData } from './DataContext';
 import { useAuth } from './AuthContext';
 import { Users, Plus, Trash2, ChevronLeft, ChevronRight, X, Wand2 } from './Icons';
+import { DepartmentIndicator } from './DepartmentIndicator';
 import { getAvailableShiftTypes } from '../utils/shiftTypeHelpers';
 
 const MatrixViewComponent = ({ 
@@ -12,10 +13,8 @@ const MatrixViewComponent = ({
   currentUser,
   selectedStaff
 }) => {
-  const { staff, shifts, shiftTypes, setShifts, createShift, deleteShift, generateFairSchedule, loadInitialData, hospitalConfigs, loadHospitalConfig, reserveShift, addNotification } = useData();
+  const { staff, shifts, shiftTypes, setShifts, createShift, deleteShift, generateFairSchedule, loadInitialData, hospitalConfigs, loadHospitalConfig, reserveShift, addNotification, selectedDepartment, setSelectedDepartment } = useData();
   const { hasPermission } = useAuth();
-  
-  const [selectedDepartment, setSelectedDepartment] = useState('');
   const [showShiftTypeModal, setShowShiftTypeModal] = useState(false);
   const [selectedCell, setSelectedCell] = useState(null);
   const [availableShiftTypes, setAvailableShiftTypes] = useState([]);
@@ -387,16 +386,7 @@ const MatrixViewComponent = ({
         {/* Department Filter and Generate */}
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2">
-            <select
-              value={selectedDepartment}
-              onChange={(e) => setSelectedDepartment(e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="">Selectează departament</option>
-              {departments.map(dept => (
-                <option key={dept} value={dept}>{dept}</option>
-              ))}
-            </select>
+            <DepartmentIndicator />
           </div>
           
           {!readOnly && hasPermission('assign_staff') && (

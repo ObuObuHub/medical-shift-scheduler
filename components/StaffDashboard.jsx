@@ -3,6 +3,7 @@ import Head from 'next/head';
 import { useAuth } from './AuthContext';
 import { useData } from './DataContext';
 import { Calendar, User, Clock, LogOut, ChevronLeft, ChevronRight, Download, Shield, Settings, CalendarDays } from './Icons';
+import { NotificationCenter } from './NotificationCenter';
 import { formatMonthYear, addMonths } from '../utils/dateHelpers';
 import { LoginForm } from './LoginForm';
 import { AdminDashboard } from './AdminDashboard';
@@ -494,6 +495,7 @@ export const StaffDashboard = ({
             <div className="flex items-center">
               {isAuthenticated && currentUser ? (
                 <div className="flex items-center space-x-2">
+                  <NotificationCenter />
                   <span className="hidden sm:inline text-sm text-gray-600 max-w-[150px] truncate">
                     {currentUser.name}
                   </span>

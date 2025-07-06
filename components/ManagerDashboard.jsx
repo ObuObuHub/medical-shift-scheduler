@@ -6,6 +6,7 @@ import {
   Calendar, Users, BarChart3, Settings, LogOut, 
   Menu, X, Shield, Plus, Edit2, Trash2
 } from './Icons';
+import { NotificationCenter } from './NotificationCenter';
 import { MatrixView } from './MatrixView';
 import { CalendarView } from './CalendarView';
 import { ViewSwitcher } from './ViewSwitcher';
@@ -207,6 +208,7 @@ export const ManagerDashboard = () => {
                 currentUser={currentUser}
                 selectedStaff={null}
                 isGuest={false}
+                deleteShift={deleteShift}
               />
             )}
           </div>
@@ -273,6 +275,9 @@ export const ManagerDashboard = () => {
                 {hospitals.find(h => h.id === selectedHospital)?.name}
               </div>
 
+              {/* Notification Center */}
+              <NotificationCenter />
+              
               {/* User info and logout */}
               <div className="flex items-center space-x-2">
                 <div className="px-1.5 py-0.5 bg-blue-100 text-blue-700 rounded text-xs font-semibold">

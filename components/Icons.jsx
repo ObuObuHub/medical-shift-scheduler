@@ -141,6 +141,13 @@ export const Check = ({ className = "w-5 h-5" }) => (
   </svg>
 );
 
+export const CheckCheck = ({ className = "w-5 h-5" }) => (
+  <svg className={className} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+    <path d="M18 6L7 17l-5-5"/>
+    <path d="M22 10l-7 7"/>
+  </svg>
+);
+
 export const Settings = ({ className = "w-5 h-5" }) => (
   <svg className={className} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
     <circle cx="12" cy="12" r="3"/>

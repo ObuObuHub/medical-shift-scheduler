@@ -2,6 +2,7 @@ import { createContext, useContext, useState, useEffect } from 'react';
 import apiClient from '../lib/apiClient';
 import { generateSchedule as generateScheduleV2, generateDaysForMonth as generateDaysForMonthV2, calculateFairQuotas as calculateFairQuotasV2 } from '../utils/shiftEngineV2';
 import { generateCompleteSchedule, regenerateCompleteSchedule } from '../utils/fairScheduling';
+import { useAuth } from './AuthContext';
 import logger from '../utils/logger';
 
 // Default fallback data (used only when API is not available)
@@ -42,6 +43,7 @@ export const useData = () => {
 };
 
 export const DataProvider = ({ children }) => {
+  const { currentUser } = useAuth();
   const [shiftTypes, setShiftTypes] = useState(DEFAULT_SHIFT_TYPES);
   const [hospitals, setHospitals] = useState(DEFAULT_HOSPITALS);
   const [staff, setStaff] = useState(DEFAULT_STAFF);
@@ -52,6 +54,25 @@ export const DataProvider = ({ children }) => {
   const [swapRequests, setSwapRequests] = useState([]);
   const [hospitalConfigs, setHospitalConfigs] = useState({});
   const [autoRefresh, setAutoRefresh] = useState(true);
+  const [selectedDepartment, setSelectedDepartmentState] = useState(() => {
+    // Load from localStorage on initial render
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('selectedDepartment') || null;
+    }
+    return null;
+  });
+
+  // Persist selected department to localStorage
+  const setSelectedDepartment = (department) => {
+    setSelectedDepartmentState(department);
+    if (typeof window !== 'undefined') {
+      if (department) {
+        localStorage.setItem('selectedDepartment', department);
+      } else {
+        localStorage.removeItem('selectedDepartment');
+      }
+    }
+  };
 
   // Load initial data from API
   useEffect(() => {
@@ -189,7 +210,7 @@ export const DataProvider = ({ children }) => {
   };
 
   // Add notification
-  const addNotification = (message, type = 'info') => {
+  const addNotification = async (message, type = 'info', options = {}) => {
     const id = Date.now();
     const notification = {
       id,
@@ -200,10 +221,28 @@ export const DataProvider = ({ children }) => {
     
     setNotifications(prev => [...prev, notification]);
     
-    // Auto-remove after 5 seconds
+    // Auto-remove after 5 seconds for UI notifications
     setTimeout(() => {
       setNotifications(prev => prev.filter(n => n.id !== id));
     }, 5000);
+    
+    // For important notifications, also save to database if user is authenticated
+    if (options.persistent && options.userId) {
+      try {
+        await apiClient.createNotification({
+          userId: options.userId,
+          type: options.notificationType || type,
+          title: options.title || message.substring(0, 50),
+          message: message,
+          metadata: options.metadata || {},
+          hospital: options.hospital,
+          department: options.department,
+          expiresAt: options.expiresAt
+        });
+      } catch (error) {
+        logger.error('Failed to create persistent notification:', error);
+      }
+    }
   };
 
   // Shift type management
@@ -678,12 +717,11 @@ export const DataProvider = ({ children }) => {
   };
 
   const deleteShift = async (shiftId) => {
+    // Store previous state for rollback
+    const previousShifts = shifts;
+    
     try {
-      if (!isOffline) {
-        await apiClient.deleteShift(shiftId);
-      }
-
-      // Remove shift from local state
+      // Optimistic update - immediately remove from UI
       setShifts(prevShifts => {
         const newShifts = { ...prevShifts };
         
@@ -698,8 +736,16 @@ export const DataProvider = ({ children }) => {
         
         return newShifts;
       });
+      
+      // Make API call
+      if (!isOffline) {
+        await apiClient.deleteShift(shiftId);
+      }
 
     } catch (error) {
+      // Rollback on error
+      setShifts(previousShifts);
+      
       addNotification('Eroare la ștergerea turei', 'error');
       throw error;
     }
@@ -998,10 +1044,33 @@ export const DataProvider = ({ children }) => {
 
   // New shift management methods
   const reserveShift = async (shiftId) => {
+    // Store previous state for rollback
+    const previousShifts = shifts;
+    
     try {
+      // Optimistic update - immediately update UI
+      const optimisticUserId = currentUser?.id || 1; // Use current user ID if available
+      const optimisticUpdate = {
+        status: 'reserved',
+        reservedBy: optimisticUserId,
+        reservedAt: new Date().toISOString(),
+        staffIds: [optimisticUserId]
+      };
+      
+      setShifts(prevShifts => {
+        const newShifts = { ...prevShifts };
+        Object.keys(newShifts).forEach(date => {
+          newShifts[date] = newShifts[date].map(shift => 
+            shift.id === shiftId ? { ...shift, ...optimisticUpdate } : shift
+          );
+        });
+        return newShifts;
+      });
+      
+      // Make API call
       const result = await apiClient.reserveShift(shiftId);
       
-      // Update local shifts state
+      // Update with actual server data
       setShifts(prevShifts => {
         const newShifts = { ...prevShifts };
         Object.keys(newShifts).forEach(date => {
@@ -1011,7 +1080,6 @@ export const DataProvider = ({ children }) => {
               status: 'reserved', 
               reservedBy: result.shift.reserved_by,
               reservedAt: result.shift.reserved_at,
-              // Also add the staff ID to staffIds array
               staffIds: result.shift.reserved_by ? [result.shift.reserved_by] : []
             } : shift
           );
@@ -1022,6 +1090,9 @@ export const DataProvider = ({ children }) => {
       addNotification('Tură rezervată cu succes', 'success');
       return result.shift;
     } catch (error) {
+      // Rollback on error
+      setShifts(previousShifts);
+      
       // Use the error message as is (already in Romanian from API)
       addNotification(error.message || 'Eroare la rezervarea turei', 'error');
       throw error;
@@ -1029,10 +1100,11 @@ export const DataProvider = ({ children }) => {
   };
 
   const cancelReservation = async (shiftId) => {
+    // Store previous state for rollback
+    const previousShifts = shifts;
+    
     try {
-      const result = await apiClient.cancelReservation(shiftId);
-      
-      // Update local shifts state
+      // Optimistic update - immediately update UI
       setShifts(prevShifts => {
         const newShifts = { ...prevShifts };
         Object.keys(newShifts).forEach(date => {
@@ -1042,7 +1114,26 @@ export const DataProvider = ({ children }) => {
               status: 'open', 
               reservedBy: null,
               reservedAt: null,
-              // Clear the staffIds array when canceling reservation
+              staffIds: []
+            } : shift
+          );
+        });
+        return newShifts;
+      });
+      
+      // Make API call
+      const result = await apiClient.cancelReservation(shiftId);
+      
+      // Update with actual server data
+      setShifts(prevShifts => {
+        const newShifts = { ...prevShifts };
+        Object.keys(newShifts).forEach(date => {
+          newShifts[date] = newShifts[date].map(shift => 
+            shift.id === shiftId ? { 
+              ...shift, 
+              status: 'open', 
+              reservedBy: null,
+              reservedAt: null,
               staffIds: []
             } : shift
           );
@@ -1053,7 +1144,10 @@ export const DataProvider = ({ children }) => {
       addNotification('Rezervare anulată cu succes', 'success');
       return result.shift;
     } catch (error) {
-            addNotification(error.message || 'Eroare la anularea rezervării', 'error');
+      // Rollback on error
+      setShifts(previousShifts);
+      
+      addNotification(error.message || 'Eroare la anularea rezervării', 'error');
       throw error;
     }
   };
@@ -1190,10 +1284,12 @@ export const DataProvider = ({ children }) => {
     swapRequests,
     hospitalConfigs,
     autoRefresh,
+    selectedDepartment,
     // Setters
     setShifts,
     setNotifications,
     setAutoRefresh,
+    setSelectedDepartment,
     // Methods
     addNotification,
     // Shift types
