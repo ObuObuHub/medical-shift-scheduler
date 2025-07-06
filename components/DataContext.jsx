@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import apiClient from '../lib/apiClient';
-import { generateSchedule as generateScheduleV2, generateDaysForMonth as generateDaysForMonthV2, calculateFairQuotas as calculateFairQuotasV2, validateSchedule } from '../utils/shiftEngineV2';
+import { generateSchedule as generateScheduleV2, generateDaysForMonth as generateDaysForMonthV2, calculateFairQuotas as calculateFairQuotasV2 } from '../utils/shiftEngineV2';
 import { generateCompleteSchedule, regenerateCompleteSchedule } from '../utils/fairScheduling';
 
 // Default fallback data (used only when API is not available)

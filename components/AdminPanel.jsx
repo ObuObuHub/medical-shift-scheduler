@@ -1,5 +1,5 @@
 import React from 'react';
-import { Plus, Edit2, Trash2, Settings } from './Icons';
+import { Plus, Edit2, Trash2 } from './Icons';
 
 export const AdminPanel = ({ 
   hasPermission,

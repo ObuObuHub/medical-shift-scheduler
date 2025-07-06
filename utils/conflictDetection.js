@@ -3,6 +3,8 @@
  * Prevents scheduling errors and ensures medical staff safety
  */
 
+import { getDateKey } from './dateHelpers';
+
 /**
  * Conflict types with severity levels
  */
@@ -104,7 +106,7 @@ export function detectConflicts(newShift, staffId, existingShifts, staff, target
  */
 function checkOverlappingShifts(newShift, staffId, existingShifts, targetDate) {
   const conflicts = [];
-  const dateKey = targetDate.toISOString().split('T')[0];
+  const dateKey = getDateKey(targetDate);
   const dayShifts = existingShifts[dateKey] || [];
   
   const staffShiftsToday = dayShifts.filter(shift => 
@@ -145,7 +147,7 @@ function checkConsecutiveNights(newShift, staffId, existingShifts, targetDate) {
   // Check previous day
   const previousDay = new Date(targetDate);
   previousDay.setDate(previousDay.getDate() - 1);
-  const prevDateKey = previousDay.toISOString().split('T')[0];
+  const prevDateKey = getDateKey(previousDay);
   const prevDayShifts = existingShifts[prevDateKey] || [];
   
   const hadNightShiftYesterday = prevDayShifts.some(shift => 
@@ -155,7 +157,7 @@ function checkConsecutiveNights(newShift, staffId, existingShifts, targetDate) {
   if (hadNightShiftYesterday) {
     conflicts.push({
       ...CONFLICT_TYPES.CONSECUTIVE_NIGHTS,
-      date: targetDate.toISOString().split('T')[0],
+      date: getDateKey(targetDate),
       staffId,
       details: 'Tură de noapte după o altă tură de noapte (periculos pentru siguranța pacientului)',
       severity: 'high'
@@ -170,7 +172,7 @@ function checkConsecutiveNights(newShift, staffId, existingShifts, targetDate) {
  */
 function checkUnavailableConflict(staffMember, targetDate) {
   const conflicts = [];
-  const dateKey = targetDate.toISOString().split('T')[0];
+  const dateKey = getDateKey(targetDate);
   
   if (staffMember.unavailable && staffMember.unavailable.includes(dateKey)) {
     conflicts.push({
@@ -211,7 +213,7 @@ function checkGuardLimits(newShift, staffId, existingShifts, staffMember, target
   if (currentGuardCount >= maxGuards) {
     conflicts.push({
       ...CONFLICT_TYPES.GUARD_LIMIT_EXCEEDED,
-      date: targetDate.toISOString().split('T')[0],
+      date: getDateKey(targetDate),
       staffId,
       details: `${currentGuardCount + 1}/${maxGuards} garzi în această lună`,
       severity: 'high'
@@ -238,7 +240,7 @@ function checkExcessiveHours(newShift, staffId, existingShifts, targetDate) {
   
   // Count hours in the current week
   for (let d = new Date(weekStart); d <= weekEnd; d.setDate(d.getDate() + 1)) {
-    const dateKey = d.toISOString().split('T')[0];
+    const dateKey = getDateKey(d);
     const dayShifts = existingShifts[dateKey] || [];
     
     dayShifts.forEach(shift => {
@@ -255,7 +257,7 @@ function checkExcessiveHours(newShift, staffId, existingShifts, targetDate) {
   if (totalHours > maxWeeklyHours) {
     conflicts.push({
       ...CONFLICT_TYPES.EXCESSIVE_HOURS,
-      date: targetDate.toISOString().split('T')[0],
+      date: getDateKey(targetDate),
       staffId,
       details: `${totalHours} ore în această săptămână (limita: ${maxWeeklyHours})`,
       severity: 'medium'
@@ -297,7 +299,7 @@ function checkWeekendOverload(newShift, staffId, existingShifts, targetDate) {
   if (consecutiveWeekends >= maxConsecutiveWeekends) {
     conflicts.push({
       ...CONFLICT_TYPES.WEEKEND_OVERLOAD,
-      date: targetDate.toISOString().split('T')[0],
+      date: getDateKey(targetDate),
       staffId,
       details: `${consecutiveWeekends + 1} weekenduri consecutive`,
       severity: 'medium'
@@ -317,7 +319,7 @@ function checkRapidTurnaround(newShift, staffId, existingShifts, targetDate) {
   // Check previous day's shifts
   const previousDay = new Date(targetDate);
   previousDay.setDate(previousDay.getDate() - 1);
-  const prevDateKey = previousDay.toISOString().split('T')[0];
+  const prevDateKey = getDateKey(previousDay);
   const prevDayShifts = existingShifts[prevDateKey] || [];
   
   const lastShift = prevDayShifts
@@ -330,7 +332,7 @@ function checkRapidTurnaround(newShift, staffId, existingShifts, targetDate) {
     if (hoursBetween < minHoursBetweenShifts) {
       conflicts.push({
         ...CONFLICT_TYPES.RAPID_TURNAROUND,
-        date: targetDate.toISOString().split('T')[0],
+        date: getDateKey(targetDate),
         staffId,
         details: `Doar ${hoursBetween} ore între ture (minim recomandat: ${minHoursBetweenShifts})`,
         severity: 'medium'
@@ -394,8 +396,8 @@ function hasWeekendWork(staffId, existingShifts, weekDate) {
   const sunday = new Date(saturday);
   sunday.setDate(sunday.getDate() + 1);
   
-  const satKey = saturday.toISOString().split('T')[0];
-  const sunKey = sunday.toISOString().split('T')[0];
+  const satKey = getDateKey(saturday);
+  const sunKey = getDateKey(sunday);
   
   const satShifts = existingShifts[satKey] || [];
   const sunShifts = existingShifts[sunKey] || [];

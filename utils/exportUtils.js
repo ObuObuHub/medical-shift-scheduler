@@ -1,5 +1,4 @@
 // Simple export utilities for medical shift scheduler
-import { formatMonthYear } from './dateHelpers';
 
 export const exportShiftsToText = (shifts, staff, currentDate, selectedHospital, selectedDepartment = '') => {
   let content = `DATA        ZIUA        NUMELE ȘI PRENUMELE                           ORELE   NR. ORE\n`;
