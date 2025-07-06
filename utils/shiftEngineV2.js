@@ -262,7 +262,7 @@ export function generateSchedule(staff, days, hospitalConfig, existingShifts = {
         type: shiftType,
         assignee: chosen.name,
         assigneeId: chosen.id,
-        status: 'generated'
+        status: 'open'
       });
     }
     
