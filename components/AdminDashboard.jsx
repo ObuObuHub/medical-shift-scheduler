@@ -18,7 +18,9 @@ import { AddShiftModal } from './AddShiftModal';
 import { ChangePasswordModal } from './ChangePasswordModal';
 import { DashboardLayout } from './DashboardLayout';
 import { formatMonthYear, addMonths, getDaysInMonth } from '../utils/dateHelpers';
-import { navigateMonth as navigateMonthHelper, getStaffName } from '../utils/dashboardHelpers';
+import { navigateMonth as navigateMonthHelper } from '../utils/dashboardHelpers';
+import { getStaffName } from '../utils/dataHelpers';
+import logger from '../utils/logger';
 
 export const AdminDashboard = () => {
   const { currentUser, logout, hasPermission } = useAuth();
@@ -60,7 +62,7 @@ export const AdminDashboard = () => {
 
   const navigateMonth = (direction) => {
     if (!currentDate) {
-      console.error('currentDate is undefined in navigateMonth');
+      logger.error('currentDate is undefined in navigateMonth');
       return;
     }
     const result = navigateMonthHelper(currentDate.getMonth(), currentDate.getFullYear(), direction);
@@ -81,14 +83,11 @@ export const AdminDashboard = () => {
   // Use getDaysInMonth from dateHelpers
   const getDaysInMonthForView = () => {
     if (!currentDate) {
-      console.error('currentDate is undefined in getDaysInMonthForView');
+      logger.error('currentDate is undefined in getDaysInMonthForView');
       return [];
     }
     return getDaysInMonth(currentDate);
   };
-  
-  // Use getStaffName from dashboardHelpers
-  const getStaffNameHelper = (staffId) => getStaffName(staffId, staff);
 
   // Menu items for administrators
   const menuItems = [
@@ -139,7 +138,7 @@ export const AdminDashboard = () => {
                 generateFairSchedule={generateFairSchedule}
                 getDaysInMonth={getDaysInMonth}
                 handleCellClick={handleCellClick}
-                getStaffName={getStaffName}
+                getStaffName={(staffId) => getStaffName(staffId, staff)}
                 hasPermission={hasPermission}
                 staff={staff}
                 shifts={shifts}

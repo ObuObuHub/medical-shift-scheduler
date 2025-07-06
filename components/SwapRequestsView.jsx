@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useData } from './DataContext';
 import { useAuth } from './AuthContext';
 import { RefreshCw, Clock, Check, X, Calendar, User } from './Icons';
+import { getStaffName } from '../utils/dataHelpers';
 
 export const SwapRequestsView = ({ selectedHospital }) => {
   const { swapRequests, loadSwapRequests, staff, shifts } = useData();
@@ -54,10 +55,6 @@ export const SwapRequestsView = ({ selectedHospital }) => {
   const pendingRequests = filteredRequests.filter(r => r.status === 'pending');
   const processedRequests = filteredRequests.filter(r => r.status !== 'pending');
 
-  const getStaffName = (staffId) => {
-    const member = staff.find(s => s.id === staffId);
-    return member?.name || 'Unknown';
-  };
 
   const getShiftDetails = (shiftId) => {
     // Find shift in all shifts data
@@ -121,14 +118,14 @@ export const SwapRequestsView = ({ selectedHospital }) => {
                 <p className="text-sm text-gray-500">De la:</p>
                 <p className="font-medium text-gray-900 flex items-center">
                   <User className="w-4 h-4 mr-1" />
-                  {getStaffName(request.requester_id)}
+                  {getStaffName(request.requester_id, staff)}
                 </p>
               </div>
               <div>
                 <p className="text-sm text-gray-500">Către:</p>
                 <p className="font-medium text-gray-900 flex items-center">
                   <User className="w-4 h-4 mr-1" />
-                  {getStaffName(request.target_staff_id)}
+                  {getStaffName(request.target_staff_id, staff)}
                 </p>
               </div>
             </div>

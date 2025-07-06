@@ -2,6 +2,7 @@ import { createContext, useContext, useState, useEffect } from 'react';
 import apiClient from '../lib/apiClient';
 import { generateSchedule as generateScheduleV2, generateDaysForMonth as generateDaysForMonthV2, calculateFairQuotas as calculateFairQuotasV2 } from '../utils/shiftEngineV2';
 import { generateCompleteSchedule, regenerateCompleteSchedule } from '../utils/fairScheduling';
+import logger from '../utils/logger';
 
 // Default fallback data (used only when API is not available)
 const DEFAULT_SHIFT_TYPES = {
@@ -119,7 +120,7 @@ export const DataProvider = ({ children }) => {
         setHospitals(hospitalsData.value);
         dataLoaded = true;
       } else {
-        console.warn('Failed to load hospitals:', hospitalsData.reason);
+        logger.warn('Failed to load hospitals:', hospitalsData.reason);
         // Fall back to default hospitals
         setHospitals(DEFAULT_HOSPITALS);
       }
@@ -128,7 +129,7 @@ export const DataProvider = ({ children }) => {
         setStaff(staffData.value);
         dataLoaded = true;
       } else {
-        console.warn('Failed to load staff:', staffData.reason);
+        logger.warn('Failed to load staff:', staffData.reason);
         // Fall back to default staff
         setStaff(DEFAULT_STAFF);
       }
@@ -139,7 +140,7 @@ export const DataProvider = ({ children }) => {
           setShifts(shiftsData.value);
           dataLoaded = true;
         } else {
-          console.warn('Failed to load shifts:', shiftsData.reason);
+          logger.warn('Failed to load shifts:', shiftsData.reason);
           // Only clear shifts if we tried to load them but failed
           if (selectedHospital) {
             setShifts({});
@@ -151,7 +152,7 @@ export const DataProvider = ({ children }) => {
       setIsOffline(!dataLoaded);
 
     } catch (error) {
-      console.error('Error loading initial data:', error);
+      logger.error('Error loading initial data:', error);
       setIsOffline(true);
       // Use default data as fallback
       setHospitals(DEFAULT_HOSPITALS);
@@ -169,7 +170,7 @@ export const DataProvider = ({ children }) => {
 
   // Helper function to handle API errors
   const handleApiError = (error, operation) => {
-    console.error(`Error during ${operation}:`, error);
+    logger.error(`Error during ${operation}:`, error);
     
     if (error.message.includes('401') || error.message.includes('Unauthorized')) {
       addNotification('Acțiunea necesită autentificare. Vă rugăm să vă autentificați.', 'warning');
@@ -206,27 +207,28 @@ export const DataProvider = ({ children }) => {
   };
 
   // Shift type management
-  const addShiftType = async (newShiftType) => {
+  const addShiftType = async (newShiftType, hospitalId) => {
     const id = newShiftType.id || `shift_${Date.now()}`;
     const shiftTypeWithId = { ...newShiftType, id };
     
     if (!isOffline) {
       try {
-        // TODO: Add API endpoint for shift types
-              } catch (error) {
+        await apiClient.post(`/api/shift-types?hospital=${hospitalId}`, shiftTypeWithId);
+      } catch (error) {
         addNotification('Eroare la gestionarea tipului de tură', 'warning');
       }
     }
     
     setShiftTypes(prev => ({ ...prev, [id.toUpperCase()]: shiftTypeWithId }));
+    addNotification('Tip de tură creat cu succes', 'success');
     return shiftTypeWithId;
   };
 
   const updateShiftType = async (id, updates) => {
     if (!isOffline) {
       try {
-        // TODO: Add API endpoint for shift types
-              } catch (error) {
+        await apiClient.put(`/api/shift-types/${id}`, updates);
+      } catch (error) {
         addNotification('Eroare la gestionarea tipului de tură', 'warning');
       }
     }
@@ -238,13 +240,14 @@ export const DataProvider = ({ children }) => {
       }
       return prev;
     });
+    addNotification('Tip de tură actualizat cu succes', 'success');
   };
 
   const deleteShiftType = async (id) => {
     if (!isOffline) {
       try {
-        // TODO: Add API endpoint for shift types
-              } catch (error) {
+        await apiClient.delete(`/api/shift-types/${id}`);
+      } catch (error) {
         addNotification('Eroare la gestionarea tipului de tură', 'warning');
       }
     }
@@ -257,6 +260,7 @@ export const DataProvider = ({ children }) => {
       }
       return newShiftTypes;
     });
+    addNotification('Tip de tură șters cu succes', 'success');
   };
 
   // Staff management with API integration
@@ -277,7 +281,7 @@ export const DataProvider = ({ children }) => {
         return staffMember;
       }
     } catch (error) {
-      console.error('Staff creation error:', error);
+      logger.error('Staff creation error:', error);
       addNotification(`Eroare la adăugarea personalului: ${error.message}. Salvat local.`, 'warning');
       // Fallback to local state on error
       const staffMember = {
@@ -491,13 +495,13 @@ export const DataProvider = ({ children }) => {
           if (shiftsToDelete.length > 0) {
             await Promise.all(shiftsToDelete.map(shiftId => 
               apiClient.deleteShift(shiftId).catch(err => {
-                console.error('Failed to delete old shift:', err);
+                logger.error('Failed to delete old shift:', err);
                 return null;
               })
             ));
           }
         } catch (err) {
-          console.error('Failed to clear old shifts:', err);
+          logger.error('Failed to clear old shifts:', err);
           addNotification('Avertisment: Nu s-au putut șterge turele existente', 'warning');
         }
       }
@@ -608,7 +612,7 @@ export const DataProvider = ({ children }) => {
 
       return shiftData;
     } catch (error) {
-      console.error('Failed to create shift:', error);
+      logger.error('Failed to create shift:', error);
       
       // Check for specific error types
       if (error.message && (error.message.includes('limita de 2 rezervări') || error.message.includes('departamentul tău'))) {
@@ -667,7 +671,7 @@ export const DataProvider = ({ children }) => {
 
       return updatedShiftData;
     } catch (error) {
-      console.error('Failed to update shift:', error);
+      logger.error('Failed to update shift:', error);
       addNotification('Eroare la actualizarea turei', 'error');
       throw error;
     }
@@ -728,7 +732,7 @@ export const DataProvider = ({ children }) => {
         }
         
         const result = await response.json();
-        console.log(`Permanently deleted ${result.deletedCount} shifts for ${department}`);
+        logger.info(`Permanently deleted ${result.deletedCount} shifts for ${department}`);
       }
 
       // Remove shifts for the specified department only from local state

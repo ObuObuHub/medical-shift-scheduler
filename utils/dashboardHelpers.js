@@ -1,11 +1,5 @@
 // Common dashboard utility functions
 
-export const getStaffName = (staffId, staff) => {
-  if (!staffId) return '-';
-  const staffMember = staff.find(s => s.id === staffId);
-  return staffMember ? staffMember.name : 'Unknown';
-};
-
 export const navigateMonth = (currentMonth, currentYear, direction) => {
   let newMonth = currentMonth;
   let newYear = currentYear;

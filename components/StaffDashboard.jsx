@@ -12,6 +12,7 @@ import { MatrixView } from './MatrixView';
 import { ViewSwitcher } from './ViewSwitcher';
 import { AddShiftModal } from './AddShiftModal';
 import { getDefaultShiftType } from '../utils/shiftTypeHelpers';
+import logger from '../utils/logger';
 
 export const StaffDashboard = ({ 
   selectedHospital: propSelectedHospital,
@@ -113,7 +114,7 @@ export const StaffDashboard = ({
       try {
         await reserveShift(openShift.id);
       } catch (error) {
-        console.error('Failed to reserve shift:', error);
+        logger.error('Failed to reserve shift:', error);
       }
     } else if (dayShifts.length === 0) {
       // No shifts at all for this day - create a new open shift and reserve it
@@ -196,7 +197,7 @@ export const StaffDashboard = ({
         
         addNotification('Tură rezervată cu succes', 'success');
       } catch (error) {
-        console.error('Failed to create and reserve shift:', error);
+        logger.error('Failed to create and reserve shift:', error);
         addNotification(error.message || 'Eroare la rezervarea turei', 'error');
       }
     }

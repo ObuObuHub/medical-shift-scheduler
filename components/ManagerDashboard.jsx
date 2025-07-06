@@ -13,6 +13,7 @@ import { StaffView } from './StaffView';
 import { StaffEditModal } from './StaffEditModal';
 import { AddShiftModal } from './AddShiftModal';
 import { formatMonthYear, addMonths } from '../utils/dateHelpers';
+import { getStaffName } from '../utils/dataHelpers';
 
 export const ManagerDashboard = () => {
   const { currentUser, logout, hasPermission } = useAuth();
@@ -79,11 +80,6 @@ export const ManagerDashboard = () => {
     }
     
     return days;
-  };
-  
-  const getStaffName = (staffId) => {
-    const member = staff.find(s => s.id === staffId);
-    return member ? member.name : 'Unknown';
   };
 
   // Hospital switching is disabled for managers
@@ -202,7 +198,7 @@ export const ManagerDashboard = () => {
                 generateFairSchedule={generateFairSchedule}
                 getDaysInMonth={getDaysInMonth}
                 handleCellClick={handleCellClick}
-                getStaffName={getStaffName}
+                getStaffName={(staffId) => getStaffName(staffId, staff)}
                 hasPermission={hasPermission}
                 staff={staff}
                 shifts={shifts}
