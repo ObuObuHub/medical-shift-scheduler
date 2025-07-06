@@ -1,20 +1,36 @@
-import { sql } from '../../../../lib/vercel-db';
-import { authMiddleware, runMiddleware, enableCORS } from '../../../../lib/auth';
+import jwt from 'jsonwebtoken';
+import { sql } from '@vercel/postgres';
+import logger from '../../../../utils/logger';
 
 export default async function handler(req, res) {
-  // Enable CORS with environment-specific origin
-  await runMiddleware(req, res, enableCORS);
+  // Enable CORS
+  res.setHeader('Access-Control-Allow-Credentials', true);
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
+  res.setHeader(
+    'Access-Control-Allow-Headers',
+    'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization'
+  );
 
   if (req.method === 'OPTIONS') {
     res.status(200).end();
     return;
   }
 
-  try {
-    // Run auth middleware
-    await runMiddleware(req, res, authMiddleware);
-  } catch (error) {
-    return res.status(401).json({ error: 'Authentication required' });
+  // Verify authentication for non-GET requests
+  if (req.method !== 'GET') {
+    const authHeader = req.headers.authorization;
+    if (!authHeader) {
+      return res.status(401).json({ error: 'No authorization header' });
+    }
+
+    try {
+      const token = authHeader.split(' ')[1];
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      req.user = decoded;
+    } catch (error) {
+      return res.status(401).json({ error: 'Invalid token' });
+    }
   }
 
   const { id: hospitalId } = req.query;
@@ -78,7 +94,7 @@ export default async function handler(req, res) {
 
       res.status(200).json(rows[0]);
     } catch (error) {
-      console.error('Error fetching hospital configuration:', error);
+      logger.error('Error fetching hospital configuration:', error);
       res.status(500).json({ error: 'Failed to fetch hospital configuration' });
     }
   } else if (req.method === 'PUT') {
@@ -163,7 +179,7 @@ export default async function handler(req, res) {
         config: result.rows[0] 
       });
     } catch (error) {
-      console.error('Error updating hospital configuration:', error);
+      logger.error('Error updating hospital configuration:', error);
       res.status(500).json({ error: 'Failed to update hospital configuration' });
     }
   } else if (req.method === 'DELETE') {
@@ -180,7 +196,7 @@ export default async function handler(req, res) {
 
       res.status(200).json({ message: 'Hospital configuration deleted successfully' });
     } catch (error) {
-      console.error('Error deleting hospital configuration:', error);
+      logger.error('Error deleting hospital configuration:', error);
       res.status(500).json({ error: 'Failed to delete hospital configuration' });
     }
   } else {

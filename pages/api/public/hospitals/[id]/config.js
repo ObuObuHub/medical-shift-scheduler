@@ -1,4 +1,4 @@
-import { sql } from '../../../../../lib/vercel-db';
+import { sql } from '@vercel/postgres';
 
 export default async function handler(req, res) {
   // Enable CORS for public endpoint
