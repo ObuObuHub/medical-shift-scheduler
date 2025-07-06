@@ -2,7 +2,42 @@
 
 ## Recent Changes (January 6, 2025)
 
-### Phase 1 Implementation - Integration Plan
+### Simplified Shift Reservation System
+
+Implemented a much simpler and more intuitive shift reservation system:
+
+1. **Unified Shift Creation Interface**
+   - Created `ShiftTypeSelector` component - a simple modal for selecting shift types
+   - Staff, managers, and admins now use the same simple interface
+   - Clicking on empty days shows available shift types based on hospital configuration
+
+2. **Simplified Staff Reservations**
+   - Staff can now reserve shifts by clicking on any empty day (just like managers)
+   - System automatically creates and reserves the shift in one action
+   - Removed confusing dual behavior (open shift vs empty day)
+   - Monthly limit clearly displayed: 2 shifts or 48 hours total
+
+3. **Reservation Counter**
+   - Added `ReservationCounter` component showing current month's reservations
+   - Visual indicator: "1/2 ture" and "24/48 ore"
+   - Warning when limit is reached
+   - Only shown to staff (managers/admins have no limits)
+
+4. **Generator Improvements**
+   - Updated shift generator to respect ALL reserved shifts
+   - Previously only respected shifts matching expected types
+   - Now preserves any shift created by staff regardless of type
+   - Prevents automatic schedule generation from overriding staff preferences
+
+5. **Technical Changes**
+   - Simplified `handleCellClick` logic across all dashboards
+   - Removed complex `AddShiftModal` usage for simple shift creation
+   - Consistent experience across Calendar and Matrix views
+   - Build size: 47.9 KB (First Load: 128 KB)
+
+This makes the system work exactly as requested: staff can simply select their preferred 2 shifts per month using the same mechanism as managers, and the automatic generator respects these choices.
+
+### Phase 1 Implementation - Integration Plan (Earlier Today)
 
 Major enhancements to improve feature integration and user experience:
 
