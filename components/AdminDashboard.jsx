@@ -16,6 +16,7 @@ import { StaffEditModal } from './StaffEditModal';
 import { HospitalEditModal } from './HospitalEditModal';
 import { ShiftTypeEditModal } from './ShiftTypeEditModal';
 import { AddShiftModal } from './AddShiftModal';
+import { ShiftTypeSelector } from './ShiftTypeSelector';
 import { ChangePasswordModal } from './ChangePasswordModal';
 import { DashboardLayout } from './DashboardLayout';
 import { formatMonthYear, addMonths, getDaysInMonth } from '../utils/dateHelpers';
@@ -30,7 +31,8 @@ export const AdminDashboard = () => {
     addStaff, updateStaff, deleteStaff,
     addHospital, updateHospital, deleteHospital,
     generateFairSchedule, deleteShift, regenerateFromScratch,
-    loadInitialData
+    loadInitialData, createShift, addNotification,
+    hospitalConfigs
   } = useData();
 
   // State
@@ -45,6 +47,7 @@ export const AdminDashboard = () => {
   const [editingHospital, setEditingHospital] = useState(null);
   const [editingShiftType, setEditingShiftType] = useState(null);
   const [addShiftModalData, setAddShiftModalData] = useState(null);
+  const [shiftTypeModal, setShiftTypeModal] = useState({ isOpen: false, date: null });
   const [showChangePassword, setShowChangePassword] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const userMenuRef = useRef(null);
@@ -78,7 +81,48 @@ export const AdminDashboard = () => {
   const handleCellClick = (date, dayShifts, e) => {
     if (!hasPermission('assign_staff')) return;
     e.preventDefault();
-    setAddShiftModalData({ date, editingShift: null });
+    
+    // If there are no shifts for this day, show the simple shift type selector
+    if (dayShifts.length === 0) {
+      setShiftTypeModal({ isOpen: true, date });
+    } else {
+      // For existing shifts, use the AddShiftModal for more complex operations
+      setAddShiftModalData({ date, editingShift: null });
+    }
+  };
+  
+  const handleShiftTypeSelect = async (shiftType) => {
+    if (!shiftTypeModal.date) return;
+    
+    const date = shiftTypeModal.date;
+    const dateStr = date.toISOString().split('T')[0];
+    
+    try {
+      // Generate shift ID
+      const shiftId = `${dateStr}-${shiftType.id}-${Date.now()}`;
+      
+      // Create new shift data
+      const shiftData = {
+        id: shiftId,
+        date: dateStr,
+        type: shiftType,
+        staffIds: [],
+        department: 'General', // Admin can specify department later
+        hospital: selectedHospital,
+        status: 'open',
+        requirements: {
+          minDoctors: 1,
+          specializations: []
+        }
+      };
+      
+      await createShift(shiftData);
+      addNotification('Tură creată cu succes', 'success');
+      setShiftTypeModal({ isOpen: false, date: null });
+    } catch (error) {
+      logger.error('Failed to create shift:', error);
+      addNotification(error.message || 'Eroare la crearea turei', 'error');
+    }
   };
   
   // Use getDaysInMonth from dateHelpers
@@ -441,6 +485,16 @@ export const AdminDashboard = () => {
           onSuccess={() => setShowChangePassword(false)}
         />
       )}
+
+      {/* Shift Type Selector Modal */}
+      <ShiftTypeSelector
+        isOpen={shiftTypeModal.isOpen}
+        onClose={() => setShiftTypeModal({ isOpen: false, date: null })}
+        onSelect={handleShiftTypeSelect}
+        date={shiftTypeModal.date}
+        hospitalConfig={hospitalConfigs[selectedHospital]}
+        shiftTypes={shiftTypes}
+      />
     </div>
   );
 };

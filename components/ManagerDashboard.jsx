@@ -13,6 +13,7 @@ import { ViewSwitcher } from './ViewSwitcher';
 import { StaffView } from './StaffView';
 import { StaffEditModal } from './StaffEditModal';
 import { AddShiftModal } from './AddShiftModal';
+import { ShiftTypeSelector } from './ShiftTypeSelector';
 import { formatMonthYear, addMonths } from '../utils/dateHelpers';
 import { getStaffName } from '../utils/dataHelpers';
 
@@ -22,7 +23,8 @@ export const ManagerDashboard = () => {
     shiftTypes, hospitals, staff, shifts, 
     addStaff, updateStaff, deleteStaff,
     generateFairSchedule, deleteShift, regenerateFromScratch,
-    loadInitialData
+    loadInitialData, createShift, addNotification,
+    hospitalConfigs, loadHospitalConfig
   } = useData();
 
   // State
@@ -33,8 +35,24 @@ export const ManagerDashboard = () => {
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [editingStaff, setEditingStaff] = useState(null);
   const [addShiftModalData, setAddShiftModalData] = useState(null);
+  const [shiftTypeModal, setShiftTypeModal] = useState({ isOpen: false, date: null, staffId: null });
+  const [hospitalConfig, setHospitalConfig] = useState(null);
   
   // Hospital switching is disabled for managers
+  
+  // Load hospital config
+  useEffect(() => {
+    const loadConfig = async () => {
+      if (selectedHospital) {
+        let config = hospitalConfigs[selectedHospital];
+        if (!config) {
+          config = await loadHospitalConfig(selectedHospital);
+        }
+        setHospitalConfig(config);
+      }
+    };
+    loadConfig();
+  }, [selectedHospital, hospitalConfigs, loadHospitalConfig]);
 
   const navigateMonth = (direction) => {
     const newDate = addMonths(currentDate, direction);
@@ -48,7 +66,37 @@ export const ManagerDashboard = () => {
   const handleCellClick = (date, dayShifts, e) => {
     if (!hasPermission('assign_staff')) return;
     e.preventDefault();
-    setAddShiftModalData({ date, editingShift: null });
+    
+    // Use simplified shift type selector instead of complex modal
+    setShiftTypeModal({ isOpen: true, date, staffId: null });
+  };
+  
+  const handleShiftTypeSelect = async (shiftType) => {
+    if (!shiftTypeModal.date) return;
+    
+    const dateStr = shiftTypeModal.date.toISOString().split('T')[0];
+    const shiftId = `${dateStr}-${shiftType.id}-${Date.now()}`;
+    
+    // Create open shift that can be assigned later
+    const newShift = {
+      id: shiftId,
+      date: dateStr,
+      type: shiftType,
+      staffIds: [],
+      department: '', // Will be set when someone reserves it
+      requirements: { minDoctors: 1, specializations: [] },
+      hospital: selectedHospital,
+      status: 'open'
+    };
+    
+    try {
+      await createShift(newShift);
+      addNotification('Tură creată cu succes', 'success');
+      setShiftTypeModal({ isOpen: false, date: null, staffId: null });
+    } catch (error) {
+      console.error('Failed to create shift:', error);
+      addNotification('Eroare la crearea turei', 'error');
+    }
   };
   
   // Helper functions for CalendarView
@@ -401,6 +449,20 @@ export const ManagerDashboard = () => {
           onClose={() => setEditingStaff(null)}
         />
       )}
+
+      {/* Shift Type Selector Modal */}
+      <ShiftTypeSelector
+        isOpen={shiftTypeModal.isOpen}
+        onClose={() => setShiftTypeModal({ isOpen: false, date: null, staffId: null })}
+        onSelect={handleShiftTypeSelect}
+        selectedDate={shiftTypeModal.date}
+        selectedHospital={selectedHospital}
+        staffMember={null} // Managers create open shifts
+        shiftTypes={shiftTypes}
+        hospitalConfig={hospitalConfig}
+        currentReservations={0} // No limit for managers
+        maxReservations={999} // No limit for managers
+      />
 
     </div>
   );

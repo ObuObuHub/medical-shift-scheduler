@@ -156,8 +156,27 @@ const MatrixViewComponent = ({
 
   // Handle cell click for shift assignment/deletion
   const handleCellClick = async (staffId, date) => {
-    if (readOnly || !hasPermission('assign_staff')) return;
+    if (readOnly) return;
     
+    // For non-managers viewing Matrix, allow them to use simplified reservation flow
+    if (!hasPermission('assign_staff')) {
+      const existingShift = getShiftForStaffAndDate(staffId, date);
+      if (existingShift && existingShift.status === 'open') {
+        try {
+          await reserveShift(existingShift.id);
+          addNotification('Tură rezervată cu succes', 'success');
+        } catch (error) {
+          // Error already handled by reserveShift
+        }
+      } else if (!existingShift) {
+        // Show shift type selection modal for creating new shift
+        setSelectedCell({ staffId, date });
+        setShowShiftTypeModal(true);
+      }
+      return;
+    }
+    
+    // Manager behavior - toggle shift assignment
     const existingShift = getShiftForStaffAndDate(staffId, date);
     
     if (existingShift) {
@@ -188,30 +207,35 @@ const MatrixViewComponent = ({
     // Create shift ID
     const shiftId = `${dateKey}-${shiftType.id}-${Date.now()}`;
     
-    // Create open shift (no staff assigned yet)
+    // For managers: create shift with staff already assigned
+    // For staff: create open shift and reserve it
+    const isManager = hasPermission('assign_staff');
+    
     const newShift = {
       id: shiftId,
       date: dateKey,
       type: shiftType,
-      staffIds: [], // Empty - will be filled by reservation
+      staffIds: isManager ? [staffId] : [], // Managers assign directly, staff create open shifts
       department: staffMember.specialization || '',
       requirements: { minDoctors: 1, specializations: [] },
       hospital: selectedHospital,
-      status: 'open' // Important: create as open shift
+      status: isManager ? 'confirmed' : 'open' // Managers create confirmed shifts
     };
 
     try {
-      // First create the open shift
+      // Create the shift
       await createShift(newShift);
       
-      // Then reserve it for the staff member
-      await reserveShift(shiftId);
+      // For non-managers, also reserve it
+      if (!isManager) {
+        await reserveShift(shiftId);
+      }
       
       setShowShiftTypeModal(false);
       setSelectedCell(null);
     } catch (error) {
       // Error already handled by createShift/reserveShift
-      console.error('Failed to create and reserve shift:', error);
+      console.error('Failed to create shift:', error);
       setShowShiftTypeModal(false);
       setSelectedCell(null);
     }

@@ -124,54 +124,38 @@ export function generateSchedule(staff, days, hospitalConfig, existingShifts = {
     // Get existing shifts for this day
     const dayExistingShifts = existingShiftsMap.get(day.date) || [];
 
-    // Process each required shift for this day
-    for (const shiftType of day.requiredShifts) {
-      // Check for all reserved or confirmed shifts of this type
-      const reservedShifts = dayExistingShifts.filter(shift => 
-        shift.type?.id === shiftType.id && 
-        shift.status === 'reserved'
-      );
+    // First, include ALL reserved/confirmed shifts regardless of type
+    const allReservedShifts = dayExistingShifts.filter(shift => 
+      shift.status === 'reserved' || shift.status === 'confirmed'
+    );
+    
+    // Add all reserved shifts to the result and update staff tracking
+    for (const reservedShift of allReservedShifts) {
+      dayResult.shifts.push({
+        ...reservedShift,
+        assignee: staff.find(s => s.id === reservedShift.reservedBy || reservedShift.staffIds?.includes(s.id))?.name,
+        note: reservedShift.status
+      });
       
-      const confirmedShift = dayExistingShifts.find(shift => 
-        shift.type?.id === shiftType.id && 
-        shift.status === 'confirmed'
-      );
-      
-      // If there's a confirmed shift, use it
-      if (confirmedShift) {
-        dayResult.shifts.push({
-          ...confirmedShift,
-          assignee: staff.find(s => s.id === confirmedShift.reservedBy || confirmedShift.staffIds?.includes(s.id))?.name,
-          note: confirmedShift.status
-        });
-        
-        // Update staff tracking
-        const assignedStaff = pool.find(s => s.id === confirmedShift.reservedBy || confirmedShift.staffIds?.includes(s.id));
-        if (assignedStaff) {
-          updateStaffTracking(assignedStaff, day.date, shiftType);
-        }
-        continue;
+      // Update staff tracking
+      const assignedStaff = pool.find(s => s.id === reservedShift.reservedBy || reservedShift.staffIds?.includes(s.id));
+      if (assignedStaff) {
+        updateStaffTracking(assignedStaff, day.date, reservedShift.type);
       }
-      
-      // If there are multiple reservations, randomly select one
-      if (reservedShifts.length > 0) {
-        const selectedReservation = reservedShifts.length === 1 
-          ? reservedShifts[0] 
-          : reservedShifts[Math.floor(Math.random() * reservedShifts.length)];
-        
-        dayResult.shifts.push({
-          ...selectedReservation,
-          assignee: staff.find(s => s.id === selectedReservation.reservedBy)?.name,
-          note: reservedShifts.length > 1 
-            ? `reserved (${reservedShifts.length} rezervări, selectat aleatoriu)` 
-            : 'reserved'
-        });
-        
-        // Update staff tracking
-        const assignedStaff = pool.find(s => s.id === selectedReservation.reservedBy);
-        if (assignedStaff) {
-          updateStaffTracking(assignedStaff, day.date, shiftType);
-        }
+    }
+    
+    // Determine which required shift types are already covered by reservations
+    const coveredShiftTypes = new Set();
+    for (const reservedShift of allReservedShifts) {
+      if (reservedShift.type?.id) {
+        coveredShiftTypes.add(reservedShift.type.id);
+      }
+    }
+
+    // Process only the required shifts that aren't already covered
+    for (const shiftType of day.requiredShifts) {
+      // Skip if this shift type is already covered by a reservation
+      if (coveredShiftTypes.has(shiftType.id)) {
         continue;
       }
 

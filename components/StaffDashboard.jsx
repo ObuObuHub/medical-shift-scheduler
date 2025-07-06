@@ -12,6 +12,8 @@ import { CalendarView } from './CalendarView';
 import { MatrixView } from './MatrixView';
 import { ViewSwitcher } from './ViewSwitcher';
 import { AddShiftModal } from './AddShiftModal';
+import { ShiftTypeSelector } from './ShiftTypeSelector';
+import { ReservationCounter } from './ReservationCounter';
 import { getDefaultShiftType } from '../utils/shiftTypeHelpers';
 import logger from '../utils/logger';
 
@@ -29,6 +31,8 @@ export const StaffDashboard = ({
   const [addShiftModalData, setAddShiftModalData] = useState(null);
   const [selectedHospital, setSelectedHospital] = useState(propSelectedHospital || currentUser?.hospital || 'spital1');
   const [swapModal, setSwapModal] = useState({ isOpen: false, shift: null });
+  const [shiftTypeModal, setShiftTypeModal] = useState({ isOpen: false, date: null });
+  const [monthlyReservations, setMonthlyReservations] = useState(0);
 
   // Load initial shifts for the current month when component mounts
   useEffect(() => {
@@ -37,6 +41,40 @@ export const StaffDashboard = ({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedHospital]); // Only reload when hospital changes
+
+  // Calculate monthly reservations for current user/staff
+  useEffect(() => {
+    if (!shifts || (!currentUser && !selectedStaff)) return;
+    
+    let staffId = selectedStaff?.id;
+    if (!staffId && currentUser) {
+      const userStaff = staff.find(s => 
+        s.name === currentUser.name && 
+        s.hospital === currentUser.hospital
+      );
+      staffId = userStaff?.id;
+    }
+    
+    if (!staffId) return;
+    
+    // Count reservations for current month
+    const currentMonth = currentDate.getMonth();
+    const currentYear = currentDate.getFullYear();
+    let count = 0;
+    
+    Object.entries(shifts).forEach(([date, dayShifts]) => {
+      const shiftDate = new Date(date);
+      if (shiftDate.getMonth() === currentMonth && shiftDate.getFullYear() === currentYear) {
+        dayShifts.forEach(shift => {
+          if (shift.status === 'reserved' && shift.reservedBy === staffId) {
+            count++;
+          }
+        });
+      }
+    });
+    
+    setMonthlyReservations(count);
+  }, [shifts, currentUser, selectedStaff, staff, currentDate]);
 
   // Memoized functions - must be defined before any conditional returns
   const getDaysInMonth = useMemo(() => {
@@ -77,15 +115,18 @@ export const StaffDashboard = ({
     
     // Find the staff member that corresponds to the current user
     let staffId = selectedStaff?.id;
+    let staffMember = selectedStaff;
+    
     if (!staffId && currentUser) {
       const userStaff = staff.find(s => 
         s.name === currentUser.name && 
         s.hospital === currentUser.hospital
       );
       staffId = userStaff?.id;
+      staffMember = userStaff;
     }
     
-    if (!staffId) return; // No staff member found
+    if (!staffId || !staffMember) return; // No staff member found
     
     const dateStr = date.toISOString().split('T')[0];
     const myShift = dayShifts.find(s => s.staffIds?.includes(staffId));
@@ -103,106 +144,106 @@ export const StaffDashboard = ({
         } 
       });
     } else if (openShift) {
-      // Empty shift - check department match before reserving
-      const staffMember = staff.find(s => s.id === staffId);
-      
+      // Open shift exists - check department match before reserving
       // Only validate department if both are specified
       if (staffMember && openShift.department && staffMember.specialization !== openShift.department) {
         addNotification(`Poți rezerva doar ture din departamentul tău (${staffMember.specialization})`, 'error');
         return;
       }
       
+      // Check reservation limit
+      const maxReservations = (currentUser?.role === 'manager' || currentUser?.role === 'admin') ? 999 : 2;
+      if (monthlyReservations >= maxReservations) {
+        addNotification(`Ai atins limita de ${maxReservations} rezervări pe lună`, 'error');
+        return;
+      }
+      
       try {
         await reserveShift(openShift.id);
+        setMonthlyReservations(prev => prev + 1);
       } catch (error) {
         logger.error('Failed to reserve shift:', error);
       }
-    } else if (dayShifts.length === 0) {
-      // No shifts at all for this day - create a new open shift and reserve it
-      try {
-        // Get staff member's department
-        const staffMember = staff.find(s => s.id === staffId);
-        if (!staffMember) return;
-        
-        // Load hospital configuration
-        let hospitalConfig = hospitalConfigs[selectedHospital];
-        if (!hospitalConfig) {
-          hospitalConfig = await loadHospitalConfig(selectedHospital);
-        }
-        
-        // Get appropriate shift type based on hospital config and date
-        const appropriateShiftType = getDefaultShiftType(date, hospitalConfig, shiftTypes);
-        
-        if (!appropriateShiftType) {
-          addNotification('Nu există tipuri de tură disponibile pentru această dată', 'error');
-          return;
-        }
-        
-        // Generate shift ID
-        const shiftId = `${dateStr}-${appropriateShiftType.id}-${Date.now()}`;
-        
-        // Create new shift data
-        const shiftData = {
-          id: shiftId,
-          date: dateStr,
-          type: appropriateShiftType,
-          staffIds: [],
-          department: staffMember.specialization || staffMember.department || 'General',
-          hospital: selectedHospital,
-          status: 'open',
-          requirements: {
-            minDoctors: 1,
-            specializations: []
-          }
-        };
-        
-        if (!isAuthenticated) {
-          // Use public endpoint for unauthenticated users
-          const response = await fetch('/api/public/shifts/create-and-reserve', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              shiftData,
-              staffId
-            })
-          });
-          
-          if (!response.ok) {
-            const error = await response.json();
-            // Pass through the error message from API (already in Romanian)
-            if (error.error) {
-              throw new Error(error.error);
-            }
-            throw new Error(error.error || 'Failed to create shift');
-          }
-          
-          const result = await response.json();
-          
-          // Update local state
-          const newShifts = { ...shifts };
-          if (!newShifts[dateStr]) {
-            newShifts[dateStr] = [];
-          }
-          newShifts[dateStr].push(result.shift);
-          
-          // Trigger re-render by updating through context
-          loadInitialData(true, selectedHospital, currentDate);
-          
-        } else {
-          // Use authenticated flow
-          await createShift(shiftData);
-          await reserveShift(shiftId);
-        }
-        
-        addNotification('Tură rezervată cu succes', 'success');
-      } catch (error) {
-        logger.error('Failed to create and reserve shift:', error);
-        addNotification(error.message || 'Eroare la rezervarea turei', 'error');
-      }
+    } else {
+      // No shifts at all - show shift type selector
+      setShiftTypeModal({ isOpen: true, date });
     }
-  }, [currentUser, selectedStaff, selectedHospital, setSwapModal, reserveShift, staff, shiftTypes, createShift, addNotification, isAuthenticated, shifts, loadInitialData, currentDate, hospitalConfigs, loadHospitalConfig]);
+  }, [currentUser, selectedStaff, selectedHospital, setSwapModal, reserveShift, staff, addNotification, monthlyReservations]);
+
+  const handleShiftTypeSelect = useCallback(async (shiftType) => {
+    if (!shiftTypeModal.date) return;
+    
+    const date = shiftTypeModal.date;
+    const dateStr = date.toISOString().split('T')[0];
+    
+    // Find the staff member
+    let staffId = selectedStaff?.id;
+    let staffMember = selectedStaff;
+    
+    if (!staffId && currentUser) {
+      const userStaff = staff.find(s => 
+        s.name === currentUser.name && 
+        s.hospital === currentUser.hospital
+      );
+      staffId = userStaff?.id;
+      staffMember = userStaff;
+    }
+    
+    if (!staffId || !staffMember) return;
+    
+    try {
+      // Generate shift ID
+      const shiftId = `${dateStr}-${shiftType.id}-${Date.now()}`;
+      
+      // Create new shift data
+      const shiftData = {
+        id: shiftId,
+        date: dateStr,
+        type: shiftType,
+        staffIds: [],
+        department: staffMember.specialization || staffMember.department || 'General',
+        hospital: selectedHospital,
+        status: 'open',
+        requirements: {
+          minDoctors: 1,
+          specializations: []
+        }
+      };
+      
+      if (!isAuthenticated) {
+        // Use public endpoint for unauthenticated users
+        const response = await fetch('/api/public/shifts/create-and-reserve', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            shiftData,
+            staffId
+          })
+        });
+        
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.error || 'Failed to create shift');
+        }
+        
+        // Trigger re-render by updating through context
+        loadInitialData(true, selectedHospital, currentDate);
+      } else {
+        // Use authenticated flow
+        await createShift(shiftData);
+        await reserveShift(shiftId);
+      }
+      
+      addNotification('Tură rezervată cu succes', 'success');
+      setMonthlyReservations(prev => prev + 1);
+      setShiftTypeModal({ isOpen: false, date: null });
+    } catch (error) {
+      logger.error('Failed to create and reserve shift:', error);
+      addNotification(error.message || 'Eroare la rezervarea turei', 'error');
+    }
+  }, [shiftTypeModal.date, selectedStaff, currentUser, staff, selectedHospital, isAuthenticated, createShift, reserveShift, addNotification, loadInitialData, currentDate]);
 
   const getStaffName = useCallback((staffId) => {
     const member = staff.find(s => s.id === staffId);
@@ -258,7 +299,7 @@ export const StaffDashboard = ({
   const renderScheduleView = () => (
     <div className="space-y-4 sm:space-y-6">
       {/* Month Navigation - Mobile Responsive */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between mb-4">
         <h2 className="text-lg sm:text-2xl font-bold text-gray-900 truncate flex-1 min-w-0 mr-2">
           <span className="sm:hidden">Program - {formatMonthYear(currentDate).split(' ')[1]}</span>
           <span className="hidden sm:inline">
@@ -280,6 +321,7 @@ export const StaffDashboard = ({
           </button>
         </div>
       </div>
+      
 
       {/* My Shifts List - Mobile Responsive */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200">
@@ -392,8 +434,30 @@ export const StaffDashboard = ({
   );
 
   const renderPlanningView = () => {
+    // Get current staff ID
+    let staffId = selectedStaff?.id;
+    if (!staffId && currentUser) {
+      const userStaff = staff.find(s => 
+        s.name === currentUser.name && 
+        s.hospital === currentUser.hospital
+      );
+      staffId = userStaff?.id;
+    }
+    
     return (
       <div className="space-y-4">
+        {/* Reservation Counter for staff */}
+        {staffId && !hasPermission('assign_staff') && (
+          <div className="max-w-md mx-auto">
+            <ReservationCounter 
+              shifts={shifts}
+              staffId={staffId}
+              currentMonth={currentDate.getMonth()}
+              currentYear={currentDate.getFullYear()}
+            />
+          </div>
+        )}
+        
         {/* View switcher moved here from header */}
         <div className="flex justify-center">
           <ViewSwitcher 
@@ -556,6 +620,16 @@ export const StaffDashboard = ({
           onShiftDeleted={(shiftId) => deleteShift(shiftId)}
         />
       )}
+
+      {/* Shift Type Selector Modal */}
+      <ShiftTypeSelector
+        isOpen={shiftTypeModal.isOpen}
+        onClose={() => setShiftTypeModal({ isOpen: false, date: null })}
+        onSelect={handleShiftTypeSelect}
+        date={shiftTypeModal.date}
+        hospitalConfig={hospitalConfigs[selectedHospital]}
+        shiftTypes={shiftTypes}
+      />
     </div>
   );
 };
