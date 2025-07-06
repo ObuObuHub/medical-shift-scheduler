@@ -455,13 +455,9 @@ export const ManagerDashboard = () => {
         isOpen={shiftTypeModal.isOpen}
         onClose={() => setShiftTypeModal({ isOpen: false, date: null, staffId: null })}
         onSelect={handleShiftTypeSelect}
-        selectedDate={shiftTypeModal.date}
-        selectedHospital={selectedHospital}
-        staffMember={null} // Managers create open shifts
+        date={shiftTypeModal.date}
+        hospitalConfig={hospitalConfigs[selectedHospital]}
         shiftTypes={shiftTypes}
-        hospitalConfig={hospitalConfig}
-        currentReservations={0} // No limit for managers
-        maxReservations={999} // No limit for managers
       />
 
     </div>
