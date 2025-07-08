@@ -15,6 +15,7 @@ import { AddShiftModal } from './AddShiftModal';
 import { ShiftTypeSelector } from './ShiftTypeSelector';
 import { ReservationCounter } from './ReservationCounter';
 import { getDefaultShiftType } from '../utils/shiftTypeHelpers';
+import { useReservationSync } from '../hooks/useReservationSync';
 import logger from '../utils/logger';
 
 export const StaffDashboard = ({ 
@@ -33,6 +34,9 @@ export const StaffDashboard = ({
   const [swapModal, setSwapModal] = useState({ isOpen: false, shift: null });
   const [shiftTypeModal, setShiftTypeModal] = useState({ isOpen: false, date: null });
   const [monthlyReservations, setMonthlyReservations] = useState(0);
+
+  // Use reservation sync hook for real-time updates
+  const { syncReservations } = useReservationSync(selectedHospital, currentDate);
 
   // Load initial shifts for the current month when component mounts
   useEffect(() => {
@@ -161,6 +165,8 @@ export const StaffDashboard = ({
       try {
         await reserveShift(openShift.id);
         setMonthlyReservations(prev => prev + 1);
+        // Sync reservations after successful reservation
+        await syncReservations(true);
       } catch (error) {
         logger.error('Failed to reserve shift:', error);
       }
@@ -168,7 +174,7 @@ export const StaffDashboard = ({
       // No shifts at all - show shift type selector
       setShiftTypeModal({ isOpen: true, date });
     }
-  }, [currentUser, selectedStaff, selectedHospital, setSwapModal, reserveShift, staff, addNotification, monthlyReservations]);
+  }, [currentUser, selectedStaff, selectedHospital, setSwapModal, reserveShift, staff, addNotification, monthlyReservations, syncReservations]);
 
   const handleShiftTypeSelect = useCallback(async (shiftType) => {
     if (!shiftTypeModal.date) return;

@@ -1,5 +1,6 @@
 import jwt from 'jsonwebtoken';
 import { sql } from '@vercel/postgres';
+import reservationService from '../../../../lib/reservationService';
 
 export default async function handler(req, res) {
   // Enable CORS
@@ -32,38 +33,41 @@ export default async function handler(req, res) {
 
   const { id } = req.query;
 
-  if (req.method === 'POST') {
-    // Reserve a shift
+  if (req.method === 'GET') {
+    // Get reservation statistics for the current user
     try {
-      // First check if shift exists and is available
-      const { rows: shiftRows } = await sql`
-        SELECT 
-          shift_id,
-          date,
-          shift_type,
-          staff_ids,
-          status,
-          reserved_by,
-          hospital,
-          department
-        FROM shifts
-        WHERE shift_id = ${id} AND is_active = true
+      // Find the staff member that corresponds to this user
+      const { rows: staffRows } = await sql`
+        SELECT id FROM staff 
+        WHERE name = ${req.user.name} 
+        AND hospital = ${req.user.hospital}
+        AND is_active = true
       `;
 
-      if (shiftRows.length === 0) {
-        return res.status(404).json({ error: 'Shift not found' });
+      if (staffRows.length === 0) {
+        return res.status(403).json({ error: 'Nu s-a găsit personalul asociat cu contul tău' });
       }
 
-      const shift = shiftRows[0];
+      const staffId = staffRows[0].id;
 
-      // Check if shift is already reserved
-      if (shift.status === 'reserved' && shift.reserved_by !== req.user.id) {
-        return res.status(400).json({ error: 'Tura este deja rezervată de alt membru al personalului' });
-      }
+      // Get current month and year
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = now.getMonth() + 1; // getMonth() returns 0-11
 
-      // Find the staff member that corresponds to this user (by name and hospital)
+      const stats = await reservationService.getReservationStats(staffId, year, month);
+
+      res.status(200).json(stats);
+    } catch (error) {
+      console.error('Error getting reservation stats:', error);
+      res.status(500).json({ error: 'Failed to get reservation statistics' });
+    }
+  } else if (req.method === 'POST') {
+    // Reserve a shift
+    try {
+      // Find the staff member that corresponds to this user
       const { rows: staffRows } = await sql`
-        SELECT id, hospital, specialization FROM staff 
+        SELECT id, name, hospital, specialization FROM staff 
         WHERE name = ${req.user.name} 
         AND hospital = ${req.user.hospital}
         AND is_active = true
@@ -76,109 +80,33 @@ export default async function handler(req, res) {
       const staffMember = staffRows[0];
       const staffId = staffMember.id;
 
-      if (staffMember.hospital !== shift.hospital) {
-        return res.status(403).json({ error: 'Poți rezerva doar ture din spitalul tău' });
-      }
+      // Use the unified reservation service
+      const result = await reservationService.reserveShift(
+        id,
+        staffId,
+        staffMember,
+        req.user.role,
+        req.user.username
+      );
 
-      // Check department match
-      const staffDepartment = staffMember.specialization;
-      const shiftDepartment = shift.department;
-      
-      // Only enforce department check if shift has a department specified
-      if (shiftDepartment && staffDepartment !== shiftDepartment) {
-        return res.status(403).json({ 
-          error: `Poți rezerva doar ture din departamentul tău (${staffDepartment}). Această tură este pentru departamentul ${shiftDepartment}.`
-        });
-      }
-
-      // Check for conflicts (same date, overlapping times)
-      const shiftDate = shift.date;
-      const { rows: conflictRows } = await sql`
-        SELECT s.shift_id, s.shift_type
-        FROM shifts s
-        WHERE s.date = ${shiftDate}
-          AND s.is_active = true
-          AND (
-            ${staffId} = ANY(s.staff_ids)
-            OR (s.reserved_by = ${staffId} AND s.status = 'reserved')
-          )
-          AND s.shift_id != ${id}
-      `;
-
-      if (conflictRows.length > 0) {
+      if (!result.success) {
         return res.status(400).json({ 
-          error: 'Deja ai o tură programată în această zi',
-          conflicts: conflictRows
+          error: result.error,
+          conflicts: result.conflicts 
         });
       }
-
-      // Check reservation limit (2 active reservations per staff member per month)
-      // Skip this check for managers and admins
-      if (!['manager', 'admin'].includes(req.user.role)) {
-        const { rows: reservationCountRows } = await sql`
-          SELECT COUNT(*) as count
-          FROM shifts
-          WHERE reserved_by = ${staffId}
-            AND status = 'reserved'
-            AND is_active = true
-            AND shift_id != ${id}
-            AND EXTRACT(YEAR FROM date) = EXTRACT(YEAR FROM ${shiftDate}::date)
-            AND EXTRACT(MONTH FROM date) = EXTRACT(MONTH FROM ${shiftDate}::date)
-        `;
-
-        const reservationCount = parseInt(reservationCountRows[0].count);
-        if (reservationCount >= 2) {
-          return res.status(400).json({ 
-            error: 'Ai atins limita de 2 rezervări de ture pe lună. Anulează o rezervare existentă pentru a face una nouă.',
-            currentReservations: reservationCount
-          });
-        }
-      }
-
-      // Reserve the shift
-      const { rows: updatedRows } = await sql`
-        UPDATE shifts
-        SET 
-          status = 'reserved',
-          reserved_by = ${staffId},
-          reserved_at = CURRENT_TIMESTAMP,
-          updated_at = CURRENT_TIMESTAMP,
-          updated_by = ${req.user.username}
-        WHERE shift_id = ${id} AND is_active = true
-        RETURNING *
-      `;
 
       res.status(200).json({ 
         message: 'Shift reserved successfully', 
-        shift: updatedRows[0] 
+        shift: result.shift 
       });
     } catch (error) {
-            res.status(500).json({ error: 'Failed to reserve shift' });
+      console.error('Error in reservation endpoint:', error);
+      res.status(500).json({ error: 'Failed to reserve shift' });
     }
   } else if (req.method === 'DELETE') {
     // Cancel reservation
     try {
-      // Check if shift exists and is reserved by the user
-      const { rows: shiftRows } = await sql`
-        SELECT 
-          shift_id,
-          status,
-          reserved_by
-        FROM shifts
-        WHERE shift_id = ${id} AND is_active = true
-      `;
-
-      if (shiftRows.length === 0) {
-        return res.status(404).json({ error: 'Shift not found' });
-      }
-
-      const shift = shiftRows[0];
-
-      // Check permissions
-      if (shift.status !== 'reserved') {
-        return res.status(400).json({ error: 'Shift is not reserved' });
-      }
-
       // Get staff ID for the current user
       const { rows: userStaffRows } = await sql`
         SELECT id FROM staff 
@@ -189,29 +117,29 @@ export default async function handler(req, res) {
       
       const userStaffId = userStaffRows.length > 0 ? userStaffRows[0].id : null;
       
-      if (shift.reserved_by !== userStaffId && !['manager', 'admin'].includes(req.user.role)) {
-        return res.status(403).json({ error: 'Poți anula doar propriile rezervări' });
+      if (!userStaffId) {
+        return res.status(403).json({ error: 'Nu s-a găsit personalul asociat cu contul tău' });
       }
 
-      // Cancel the reservation
-      const { rows: updatedRows } = await sql`
-        UPDATE shifts
-        SET 
-          status = 'open',
-          reserved_by = NULL,
-          reserved_at = NULL,
-          updated_at = CURRENT_TIMESTAMP,
-          updated_by = ${req.user.username}
-        WHERE shift_id = ${id} AND is_active = true
-        RETURNING *
-      `;
+      // Use the unified reservation service
+      const result = await reservationService.cancelReservation(
+        id,
+        userStaffId,
+        req.user.role,
+        req.user.username
+      );
+
+      if (!result.success) {
+        return res.status(400).json({ error: result.error });
+      }
 
       res.status(200).json({ 
         message: 'Reservation cancelled successfully', 
-        shift: updatedRows[0] 
+        shift: result.shift 
       });
     } catch (error) {
-            res.status(500).json({ error: 'Failed to cancel reservation' });
+      console.error('Error in cancellation endpoint:', error);
+      res.status(500).json({ error: 'Failed to cancel reservation' });
     }
   } else {
     res.status(405).json({ error: 'Method not allowed' });
