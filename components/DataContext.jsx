@@ -788,9 +788,9 @@ export const DataProvider = ({ children }) => {
         Object.keys(updatedShifts).forEach(dateKey => {
           const shiftDate = new Date(dateKey);
           if (shiftDate >= new Date(startDate) && shiftDate <= new Date(endDate)) {
-            // Keep shifts from other departments AND reserved shifts from this department
+            // Keep shifts from other departments only
             updatedShifts[dateKey] = updatedShifts[dateKey].filter(shift => 
-              shift.department !== department || shift.status === 'reserved'
+              shift.department !== department
             );
             
             // Remove empty date entries
@@ -1042,27 +1042,43 @@ export const DataProvider = ({ children }) => {
     }
   };
 
-  // New shift management methods
+  // SIMPLIFIED shift reservation method
   const reserveShift = async (shiftId) => {
     // Store previous state for rollback
     const previousShifts = shifts;
     
     try {
-      // Optimistic update - immediately update UI
-      const optimisticUserId = currentUser?.id || 1; // Use current user ID if available
-      const optimisticUpdate = {
-        status: 'reserved',
-        reservedBy: optimisticUserId,
-        reservedAt: new Date().toISOString(),
-        staffIds: [optimisticUserId]
-      };
+      // Find the staff member ID for the current user
+      let staffId = null;
+      if (currentUser) {
+        const userStaff = staff.find(s => 
+          s.name === currentUser.name && 
+          s.hospital === currentUser.hospital
+        );
+        staffId = userStaff?.id;
+      }
       
+      if (!staffId) {
+        throw new Error('Nu s-a găsit personalul asociat cu contul tău');
+      }
+      
+      // Optimistic update - immediately add staff to shift
       setShifts(prevShifts => {
         const newShifts = { ...prevShifts };
         Object.keys(newShifts).forEach(date => {
-          newShifts[date] = newShifts[date].map(shift => 
-            shift.id === shiftId ? { ...shift, ...optimisticUpdate } : shift
-          );
+          newShifts[date] = newShifts[date].map(shift => {
+            if (shift.id === shiftId) {
+              const currentStaffIds = shift.staffIds || [];
+              if (!currentStaffIds.includes(staffId)) {
+                return { 
+                  ...shift, 
+                  staffIds: [...currentStaffIds, staffId],
+                  status: 'assigned'
+                };
+              }
+            }
+            return shift;
+          });
         });
         return newShifts;
       });
@@ -1077,24 +1093,22 @@ export const DataProvider = ({ children }) => {
           newShifts[date] = newShifts[date].map(shift => 
             shift.id === shiftId ? { 
               ...shift, 
-              status: 'reserved', 
-              reservedBy: result.shift.reserved_by,
-              reservedAt: result.shift.reserved_at,
-              staffIds: result.shift.reserved_by ? [result.shift.reserved_by] : []
+              staffIds: result.shift.staff_ids || [],
+              status: result.shift.status || 'assigned'
             } : shift
           );
         });
         return newShifts;
       });
 
-      addNotification('Tură rezervată cu succes', 'success');
+      addNotification('Tură atribuită cu succes', 'success');
       return result.shift;
     } catch (error) {
       // Rollback on error
       setShifts(previousShifts);
       
       // Use the error message as is (already in Romanian from API)
-      addNotification(error.message || 'Eroare la rezervarea turei', 'error');
+      addNotification(error.message || 'Eroare la atribuirea turei', 'error');
       throw error;
     }
   };
@@ -1104,19 +1118,36 @@ export const DataProvider = ({ children }) => {
     const previousShifts = shifts;
     
     try {
-      // Optimistic update - immediately update UI
+      // Find the staff member ID for the current user
+      let staffId = null;
+      if (currentUser) {
+        const userStaff = staff.find(s => 
+          s.name === currentUser.name && 
+          s.hospital === currentUser.hospital
+        );
+        staffId = userStaff?.id;
+      }
+      
+      if (!staffId) {
+        throw new Error('Nu s-a găsit personalul asociat cu contul tău');
+      }
+      
+      // Optimistic update - immediately remove staff from shift
       setShifts(prevShifts => {
         const newShifts = { ...prevShifts };
         Object.keys(newShifts).forEach(date => {
-          newShifts[date] = newShifts[date].map(shift => 
-            shift.id === shiftId ? { 
-              ...shift, 
-              status: 'open', 
-              reservedBy: null,
-              reservedAt: null,
-              staffIds: []
-            } : shift
-          );
+          newShifts[date] = newShifts[date].map(shift => {
+            if (shift.id === shiftId) {
+              const currentStaffIds = shift.staffIds || [];
+              const updatedStaffIds = currentStaffIds.filter(id => id !== staffId);
+              return { 
+                ...shift, 
+                staffIds: updatedStaffIds,
+                status: updatedStaffIds.length > 0 ? 'assigned' : 'open'
+              };
+            }
+            return shift;
+          });
         });
         return newShifts;
       });
@@ -1131,23 +1162,21 @@ export const DataProvider = ({ children }) => {
           newShifts[date] = newShifts[date].map(shift => 
             shift.id === shiftId ? { 
               ...shift, 
-              status: 'open', 
-              reservedBy: null,
-              reservedAt: null,
-              staffIds: []
+              staffIds: result.shift.staff_ids || [],
+              status: result.shift.status || 'open'
             } : shift
           );
         });
         return newShifts;
       });
 
-      addNotification('Rezervare anulată cu succes', 'success');
+      addNotification('Atribuire anulată cu succes', 'success');
       return result.shift;
     } catch (error) {
       // Rollback on error
       setShifts(previousShifts);
       
-      addNotification(error.message || 'Eroare la anularea rezervării', 'error');
+      addNotification(error.message || 'Eroare la anularea atribuirii', 'error');
       throw error;
     }
   };

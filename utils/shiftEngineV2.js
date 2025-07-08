@@ -124,31 +124,34 @@ export function generateSchedule(staff, days, hospitalConfig, existingShifts = {
     // Get existing shifts for this day
     const dayExistingShifts = existingShiftsMap.get(day.date) || [];
 
-    // First, include ALL reserved/confirmed shifts regardless of type
-    const allReservedShifts = dayExistingShifts.filter(shift => 
-      shift.status === 'reserved' || shift.status === 'confirmed'
+    // SIMPLIFIED: Include all shifts that already have staff assigned
+    const assignedShifts = dayExistingShifts.filter(shift => 
+      shift.staffIds && shift.staffIds.length > 0
     );
     
-    // Add all reserved shifts to the result and update staff tracking
-    for (const reservedShift of allReservedShifts) {
+    // Add all assigned shifts to the result and update staff tracking
+    for (const assignedShift of assignedShifts) {
+      const assignedStaffId = assignedShift.staffIds[0]; // Take first staff member
+      const assignedStaffMember = staff.find(s => s.id === assignedStaffId);
+      
       dayResult.shifts.push({
-        ...reservedShift,
-        assignee: staff.find(s => s.id === reservedShift.reservedBy || reservedShift.staffIds?.includes(s.id))?.name,
-        note: reservedShift.status
+        ...assignedShift,
+        assignee: assignedStaffMember?.name,
+        assigneeId: assignedStaffId
       });
       
       // Update staff tracking
-      const assignedStaff = pool.find(s => s.id === reservedShift.reservedBy || reservedShift.staffIds?.includes(s.id));
-      if (assignedStaff) {
-        updateStaffTracking(assignedStaff, day.date, reservedShift.type);
+      const poolStaff = pool.find(s => s.id === assignedStaffId);
+      if (poolStaff) {
+        updateStaffTracking(poolStaff, day.date, assignedShift.type);
       }
     }
     
-    // Determine which required shift types are already covered by reservations
+    // Determine which required shift types are already covered
     const coveredShiftTypes = new Set();
-    for (const reservedShift of allReservedShifts) {
-      if (reservedShift.type?.id) {
-        coveredShiftTypes.add(reservedShift.type.id);
+    for (const assignedShift of assignedShifts) {
+      if (assignedShift.type?.id) {
+        coveredShiftTypes.add(assignedShift.type.id);
       }
     }
 

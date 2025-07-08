@@ -10,9 +10,8 @@ export const ReservationCounter = ({ shifts, staffId, currentMonth, currentYear 
     Object.entries(shifts).forEach(([date, dayShifts]) => {
       const shiftDate = new Date(date);
       if (shiftDate.getMonth() === currentMonth && shiftDate.getFullYear() === currentYear) {
-        // Count shifts where this staff member has a reservation
+        // Count shifts where this staff member is assigned
         count += dayShifts.filter(shift => 
-          shift.reservedBy === staffId || 
           shift.staffIds?.includes(staffId)
         ).length;
       }
@@ -30,7 +29,7 @@ export const ReservationCounter = ({ shifts, staffId, currentMonth, currentYear 
       const shiftDate = new Date(date);
       if (shiftDate.getMonth() === currentMonth && shiftDate.getFullYear() === currentYear) {
         dayShifts.forEach(shift => {
-          if (shift.reservedBy === staffId || shift.staffIds?.includes(staffId)) {
+          if (shift.staffIds?.includes(staffId)) {
             hours += shift.type?.duration || 12;
           }
         });

@@ -55,8 +55,7 @@ export default async function handler(req, res) {
         requirements: shift.requirements || {},
         coverage: shift.coverage || {},
         status: shift.status || 'open',
-        reservedBy: shift.reserved_by || null,
-        reservedAt: shift.reserved_at || null
+        // Remove reserved_by and reserved_at - use staffIds instead
       });
     });
 
