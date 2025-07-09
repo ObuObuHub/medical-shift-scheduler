@@ -81,16 +81,20 @@ export const CalendarView = ({
 
   // Helper function to group shifts by type
   const findShiftsByType = (shifts) => {
+    if (!shifts || !Array.isArray(shifts)) {
+      return { dayShift: null, nightShift: null, fullDayShift: null };
+    }
+    
     const dayShift = shifts.find(s => 
-      s.type && (s.type.id?.includes('GARDA_ZI') || s.type.id?.includes('day') || 
+      s?.type && (s.type.id?.includes('GARDA_ZI') || s.type.id?.includes('day') || 
       (s.type.start === '08:00' && s.type.duration === 12))
     );
     const nightShift = shifts.find(s => 
-      s.type && (s.type.id?.includes('NOAPTE') || s.type.id?.includes('night') || 
+      s?.type && (s.type.id?.includes('NOAPTE') || s.type.id?.includes('night') || 
       (s.type.start === '20:00' && s.type.duration === 12))
     );
     const fullDayShift = shifts.find(s => 
-      s.type && (s.type.id?.includes('GARDA_24') || s.type.duration >= 24)
+      s?.type && (s.type.id?.includes('GARDA_24') || s.type.duration >= 24)
     );
     
     return { dayShift, nightShift, fullDayShift };
@@ -98,8 +102,10 @@ export const CalendarView = ({
 
   // Get staff on vacation for a specific date
   const getStaffOnVacation = (date) => {
+    if (!date || !staff || !Array.isArray(staff)) return [];
+    
     return staff.filter(staffMember => {
-      if (!staffMember.unavailable || staffMember.unavailable.length === 0) return false;
+      if (!staffMember?.unavailable || !Array.isArray(staffMember.unavailable) || staffMember.unavailable.length === 0) return false;
       const dateStr = date.toISOString().split('T')[0];
       return staffMember.unavailable.includes(dateStr);
     });
@@ -266,12 +272,18 @@ export const CalendarView = ({
             {days.map((date, index) => {
               const isCurrentMonth = date.getMonth() === currentDate.getMonth();
               const isToday = date.toDateString() === new Date().toDateString();
-              let dayShifts = isCurrentMonth ? (shifts[date.toISOString().split('T')[0]] || []) : [];
+              const dateKey = date.toISOString().split('T')[0];
+              let dayShifts = isCurrentMonth && shifts && shifts[dateKey] ? shifts[dateKey] : [];
+              
+              // Ensure dayShifts is always an array
+              if (!Array.isArray(dayShifts)) {
+                dayShifts = [];
+              }
               
               // Filter by hospital and department (only if department is selected)
               dayShifts = dayShifts.filter(shift => 
-                shift.hospital === selectedHospital && 
-                (!department || shift.department === department)
+                shift?.hospital === selectedHospital && 
+                (!department || shift?.department === department)
               );
               
               // Get staff on vacation for this date
@@ -312,7 +324,7 @@ export const CalendarView = ({
                       <div className="flex items-center gap-1 text-orange-700">
                         <span className="font-medium">Concediu:</span>
                         <span className="truncate">
-                          {vacationStaff.slice(0, 2).map(s => s.name.split(' ')[0]).join(', ')}
+                          {vacationStaff.slice(0, 2).map(s => s?.name ? s.name.split(' ')[0] : 'Unknown').join(', ')}
                           {vacationStaff.length > 2 && ` +${vacationStaff.length - 2}`}
                         </span>
                       </div>
@@ -351,11 +363,11 @@ export const CalendarView = ({
                               {fullDayShift.type.name}
                             </div>
                             <div className="flex-1 space-y-0.5 mb-1">
-                              {fullDayShift.staffIds.map(staffId => {
-                                const staffMember = staff.find(s => s.id === staffId);
+                              {fullDayShift.staffIds && Array.isArray(fullDayShift.staffIds) && fullDayShift.staffIds.map(staffId => {
+                                const staffMember = staff && Array.isArray(staff) ? staff.find(s => s?.id === staffId) : null;
                                 return staffMember ? (
                                   <div key={staffId} className={`text-xs truncate ${staffId === currentStaffId ? 'font-semibold' : ''}`}>
-                                    {staffMember.name}
+                                    {staffMember.name || 'Unknown'}
                                   </div>
                                 ) : null;
                               })}
@@ -428,7 +440,9 @@ export const CalendarView = ({
                         const currentStaffId = selectedStaff?.id || currentUser?.id;
                         const isDayShiftMine = currentStaffId && dayShift.staffIds?.includes(currentStaffId);
                         const isNightShiftMine = currentStaffId && nightShift.staffIds?.includes(currentStaffId);
-                        const totalStaff = new Set([...dayShift.staffIds, ...nightShift.staffIds]).size;
+                        const dayStaffIds = dayShift?.staffIds && Array.isArray(dayShift.staffIds) ? dayShift.staffIds : [];
+                        const nightStaffIds = nightShift?.staffIds && Array.isArray(nightShift.staffIds) ? nightShift.staffIds : [];
+                        const totalStaff = new Set([...dayStaffIds, ...nightStaffIds]).size;
                         return (
                           <div className="space-y-0.5 h-full relative">
                             {/* My shift indicator for combined shifts */}
@@ -454,7 +468,10 @@ export const CalendarView = ({
                                     Zi
                                   </div>
                                   <div className="text-gray-700 truncate">
-                                    {dayShift.staffIds.map(id => staff.find(s => s.id === id)?.name.split(' ')[0]).join(', ')}
+                                    {dayShift.staffIds && Array.isArray(dayShift.staffIds) ? dayShift.staffIds.map(id => {
+                                      const foundStaff = staff && Array.isArray(staff) ? staff.find(s => s?.id === id) : null;
+                                      return foundStaff?.name ? foundStaff.name.split(' ')[0] : 'Unknown';
+                                    }).join(', ') : 'No staff assigned'}
                                   </div>
                                 </div>
                                 {dayShift.status === 'swap_requested' && (
@@ -479,7 +496,10 @@ export const CalendarView = ({
                                     Noapte
                                   </div>
                                   <div className="text-gray-700 truncate">
-                                    {nightShift.staffIds.map(id => staff.find(s => s.id === id)?.name.split(' ')[0]).join(', ')}
+                                    {nightShift.staffIds && Array.isArray(nightShift.staffIds) ? nightShift.staffIds.map(id => {
+                                      const foundStaff = staff && Array.isArray(staff) ? staff.find(s => s?.id === id) : null;
+                                      return foundStaff?.name ? foundStaff.name.split(' ')[0] : 'Unknown';
+                                    }).join(', ') : 'No staff assigned'}
                                   </div>
                                 </div>
                                 {nightShift.status === 'swap_requested' && (
@@ -516,7 +536,10 @@ export const CalendarView = ({
                                   {shift.type.name}
                                 </div>
                                 <div className="text-gray-700 truncate">
-                                  {shift.staffIds.map(id => staff.find(s => s.id === id)?.name.split(' ')[0]).join(', ')}
+                                  {shift.staffIds && Array.isArray(shift.staffIds) ? shift.staffIds.map(id => {
+                                    const foundStaff = staff && Array.isArray(staff) ? staff.find(s => s?.id === id) : null;
+                                    return foundStaff?.name ? foundStaff.name.split(' ')[0] : 'Unknown';
+                                  }).join(', ') : 'No staff assigned'}
                                 </div>
                               </div>
                               {shift.status === 'swap_requested' && (
